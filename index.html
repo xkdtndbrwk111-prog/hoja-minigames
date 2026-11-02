@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="호자 미니게임">
-<title>호자 미니게임 V4.6</title>
+<title>호자 미니게임 V4.7</title>
 <style>:root{
   --ink:#342c28;--paper:#f9f2de;--deep:#224b4c;--mint:#c1dfce;--moss:#4d8674;
   --yellow:#f5c365;--coral:#e6a083;--line:#433b33;--shadow:#a9a18c;
@@ -1238,6 +1238,10 @@ html[data-device=tablet] .sx-stage{transform-origin:50% 50%}
 #boardGrid .game-card:nth-child(5){grid-column:4 / span 2!important}
 .menu-pages{flex-wrap:nowrap;min-width:0}
 .menu-pages .control{min-width:clamp(64px,8.4vw,160px);padding:0 clamp(4px,.7vw,14px);white-space:nowrap}
+/* Menu tabs and footer buttons: same lettering as the game names, no halo */
+.menu-pages .control,.menu-foot .control{font-family:"HojaTitle","HojaBody",sans-serif;font-weight:400;text-shadow:none;letter-spacing:.01em}
+.menu-pages .control:not(.primary){color:#4a3b2c;filter:none}
+.menu-foot .control.soft{color:#fff}
 </style>
 </head>
 <!--
@@ -1257,7 +1261,7 @@ html[data-device=tablet] .sx-stage{transform-origin:50% 50%}
   <section id="menuScreen" class="screen" aria-label="호자 미니게임 모음집">
     <div class="display-zone menu-sky">
       <canvas id="menuBg" width="768" height="256" aria-hidden="true"></canvas>
-      <div class="topline"><span class="star">★</span>HOJA MINI ARCADE <span style="margin-left:12px">V4.6 · CLASSROOM</span></div>
+      <div class="topline"><span class="star">★</span>HOJA MINI ARCADE <span style="margin-left:12px">V4.7 · CLASSROOM</span></div>
       <div class="menu-headline"><h1>호자 미니게임</h1><p>우리 반 쉬는 시간, 함께 놀자!</p></div>
     </div>
     <div class="ribbon"></div>
