@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="호자 미니게임">
-<title>호자 미니게임 V4.2</title>
+<title>호자 미니게임 V4.3</title>
 <style>:root{
   --ink:#342c28;--paper:#f9f2de;--deep:#224b4c;--mint:#c1dfce;--moss:#4d8674;
   --yellow:#f5c365;--coral:#e6a083;--line:#433b33;--shadow:#a9a18c;
@@ -1180,7 +1180,9 @@ html[data-device] #partyScreen.rh-full .display-zone{position:absolute!important
 
 /* Hands over the edge */
 #menuScreen{position:relative}
-#menuScreen .menu-mascot{bottom:auto;z-index:5;max-width:none;filter:drop-shadow(0 3px 0 rgba(90,80,60,.3));pointer-events:none}
+#menuScreen .menu-mascot.left{top:10.03%}
+#menuScreen .menu-mascot.right{top:11.09%}
+#menuScreen .menu-mascot{height:27.2%;width:auto;bottom:auto;z-index:5;max-width:none;filter:drop-shadow(0 3px 0 rgba(90,80,60,.3));pointer-events:none}
 .game-header{position:relative;z-index:4;overflow:visible!important}
 .game-header .avatar-wrap{pointer-events:none;z-index:1}
 .rh-stage .rh-picker-head{padding-left:15%}
@@ -1247,7 +1249,7 @@ html[data-device=tablet] .sx-stage{transform-origin:50% 50%}
   <section id="menuScreen" class="screen" aria-label="호자 미니게임 모음집">
     <div class="display-zone menu-sky">
       <canvas id="menuBg" width="768" height="256" aria-hidden="true"></canvas>
-      <div class="topline"><span class="star">★</span>HOJA MINI ARCADE <span style="margin-left:12px">V4.2 · CLASSROOM</span></div>
+      <div class="topline"><span class="star">★</span>HOJA MINI ARCADE <span style="margin-left:12px">V4.3 · CLASSROOM</span></div>
       <div class="menu-headline"><h1>호자 미니게임</h1><p>우리 반 쉬는 시간, 함께 놀자!</p></div>
     </div>
     <div class="ribbon"></div>
@@ -12440,7 +12442,18 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
     if(EMBED||!isStudentDevice()||/hof=/.test(location.hash))return;
     const wall=document.createElement('div');wall.id='studentWall';
     wall.style.cssText='position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:24px;background:#24322d;color:#fff8e8;font:800 clamp(22px,3vw,38px)/1.5 system-ui,sans-serif;text-align:center';
-    wall.textContent='선생님께 받은 링크로 접속하세요.';
+    const box=document.createElement('div'),line=document.createElement('div'),note=document.createElement('div');
+    line.textContent='선생님께 받은 링크로 접속하세요.';
+    note.style.cssText='margin:14px 0 26px;font-size:clamp(15px,1.5vw,22px);font-weight:600;opacity:.8';
+    box.append(line,note);
+    if(HOF.cfg){
+      const open=document.createElement('button');open.type='button';open.id='studentWallTeacher';open.textContent='선생님 입장';
+      open.style.cssText='min-height:64px;padding:0 32px;border:3px solid #fff8e8;border-radius:14px;background:none;color:#fff8e8;font:800 clamp(17px,1.6vw,24px) system-ui,sans-serif';
+      note.textContent='학생 기기로 등록된 기기예요. 선생님은 코드를 넣고 교사 메뉴에서 해제해 주세요.';
+      open.addEventListener('click',()=>{wall.remove();HOF.fromWall=true;$('menuScreen').hidden=true;$('hallScreen').hidden=false;hofGate();});
+      box.append(open);
+    }else note.textContent='선생님은 학급 링크로 들어가 교사 메뉴에서 해제해 주세요.';
+    wall.append(box);
     document.body.append(wall);
   }
   /* Who is playing */
@@ -12682,30 +12695,59 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
     clearInterval(HOF.pollT);HOF.pollT=setInterval(()=>{if(!document.hidden)hofRefresh();},10000);
   }
   /* Teacher: a four digit lock keeps curious hands out; the real authority is the teacher code on the server. */
+  const GATE_TRIES=3,GATE_WAIT=300000;
+  const gateState=()=>{try{return JSON.parse(preference('teacher-lock','null'))||{n:0,until:0};}catch{return {n:0,until:0};}};
+  // Returns the words to show for a wrong try, and starts the wait on the last one.
+  function gateWrong(text){
+    const st=gateState();st.n++;
+    if(st.n>=GATE_TRIES){st.n=0;st.until=Date.now()+GATE_WAIT;}
+    remember('teacher-lock',JSON.stringify(st));
+    return st.until>Date.now()?text:text+' (남은 기회 '+(GATE_TRIES-st.n)+'번)';
+  }
+  function gateBack(){
+    if(!HOF.fromWall){hofShowMain();return;}
+    HOF.fromWall=false;$('hallScreen').hidden=true;$('menuScreen').hidden=false;blockIfStudentAddress();
+  }
+  // Keeps the buttons shut and counts down while the wait lasts. Cancel stays open.
+  function gateWatch(msg,buttons){
+    const tick=()=>{
+      if(HOF.view!=='gate'){clearInterval(timer);return;}
+      const left=gateState().until-Date.now(),shut=left>0;
+      buttons.forEach(b=>{b.disabled=shut;});
+      if(shut){const sec=Math.ceil(left/1000);msg.textContent='3번 틀렸어요. '+Math.floor(sec/60)+'분 '+String(sec%60).padStart(2,'0')+'초 뒤에 다시 넣을 수 있어요.';}
+      else if(msg.dataset.shut==='1')msg.textContent='';
+      msg.dataset.shut=shut?'1':'';
+    };
+    const timer=setInterval(tick,500);tick();
+  }
   function hofGate(){
     HOF.view='gate';clearInterval(HOF.pollT);
     const cfg=HOF.cfg,msg=hofEl('p','hof-error'),input=hofEl('input','hof-input'),row=hofEl('div','hof-row');
     if(cfg.teacher&&cfg.pin){
       input.inputMode='numeric';input.maxLength=4;input.type='password';input.placeholder='잠금 숫자 4자리';
-      row.append(hofBtn('열기','primary',()=>{if(input.value===cfg.pin)hofShowTeacher();else msg.textContent='숫자가 맞지 않아요.';}),hofBtn('취소','',hofShowMain));
-      hofSet('교사 메뉴',input,msg,row);
+      const openBtn=hofBtn('열기','primary',()=>{if(gateState().until>Date.now())return;if(input.value===cfg.pin){remember('teacher-lock','null');HOF.fromWall=false;hofShowTeacher();}else{msg.textContent=gateWrong('숫자가 맞지 않아요.');input.value='';}});
+      row.append(openBtn,hofBtn('취소','',gateBack));
+      hofSet('교사 메뉴',input,msg,row);gateWatch(msg,[openBtn]);
       return;
     }
     input.placeholder='선생님 코드';input.autocapitalize='characters';
     const pin=hofEl('input','hof-input');pin.inputMode='numeric';pin.maxLength=4;pin.placeholder='이 기기의 잠금 숫자 4자리';
     const keepLabel=hofEl('label','hof-check'),keep=document.createElement('input');keep.type='checkbox';keepLabel.append(keep,hofEl('span','','이 기기에 저장 (학생용 기기에는 저장하지 마세요)'));
-    row.append(hofBtn('확인','primary',async()=>{
+    const checkBtn=hofBtn('확인','primary',async()=>{
+      if(gateState().until>Date.now())return;
       msg.textContent='확인하는 중…';
       try{
         const ok=await hofRpc('hof_teacher_check',{p_code:cfg.code,p_teacher:input.value.trim()});
-        if(!ok){msg.textContent='선생님 코드가 맞지 않아요.';return;}
+        if(!ok){msg.textContent=gateWrong('선생님 코드가 맞지 않아요.');input.value='';return;}
+        remember('teacher-lock','null');HOF.fromWall=false;
         if(keep.checked){
           if(!/^\d{4}$/.test(pin.value)){msg.textContent='저장하려면 잠금 숫자 4자리를 넣어 주세요.';return;}
           cfg.teacher=input.value.trim().toUpperCase();cfg.pin=pin.value;hofSaveCfg();hofShowTeacher();
         }else hofShowTeacher(input.value.trim().toUpperCase());
       }catch{msg.textContent='확인하지 못했어요. 인터넷 연결을 봐 주세요.';}
-    }),hofBtn('취소','',hofShowMain));
-    hofSet('교사 메뉴',input,keepLabel,pin,msg,row);
+    });
+    row.append(checkBtn,hofBtn('취소','',gateBack));
+    hofSet('교사 메뉴',input,keepLabel,pin,msg,row);gateWatch(msg,[checkBtn]);
   }
   function hofShowTeacher(oneTime){
     HOF.view='teacher';
@@ -12760,7 +12802,7 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
   }
   hofLoad();
   if(!EMBED&&hofApplyLink(location.hash)){
-    if(!isStudentDevice()){remember(STUDENT_KEY,'1');setTimeout(()=>hofToast('우리 반에 연결했어요'),600);}
+    if(!isStudentDevice()&&!HOF.cfg.teacher){remember(STUDENT_KEY,'1');setTimeout(()=>hofToast('우리 반에 연결했어요'),600);}
   }
   blockIfStudentAddress();
   if(location.hash==='#debug')window.__v37={RALLY,TRY,paEnd,paSetScore,RH,offset:()=>boardLag};
