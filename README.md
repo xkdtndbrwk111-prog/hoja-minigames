@@ -11,4 +11,7 @@
 - 효과음: Kenney (CC0)
 - 음악: OpenGameArt의 "Beach Sports Theme (Loop)", "Happy Adventure (Loop)", "Happy Lullaby" (CC0)
 - 호자 점프 배경: OpenGameArt의 Urban Landscape (CC0)
+- 파티 게임과 필살기 그림: Kenney "Fish Pack", "Animal Pack Redux", "Shooting Gallery", "Tappy Plane", "Space Shooter Redux", "Puzzle Pack", "Boardgame Pack", "Particle Pack" (CC0, OpenGameArt)
+- 아이콘과 과일: Noto Emoji 이미지, Copyright Google LLC (Apache License 2.0)
+- 메뉴 배경: 호자 프로젝트의 박물관 그림
 - 글꼴: Jua, Black Han Sans (SIL Open Font License 1.1)
