@@ -14,4 +14,4 @@
 - 파티 게임과 필살기 그림: Kenney "Fish Pack", "Animal Pack Redux", "Shooting Gallery", "Tappy Plane", "Space Shooter Redux", "Puzzle Pack", "Boardgame Pack", "Particle Pack" (CC0, OpenGameArt)
 - 아이콘과 과일: Noto Emoji 이미지, Copyright Google LLC (Apache License 2.0)
 - 메뉴 배경: 호자 프로젝트의 박물관 그림
-- 글꼴: Jua, Black Han Sans (SIL Open Font License 1.1)
+- 글꼴: Jua, Black Han Sans, 기호는 Noto Sans KR · Noto Sans Symbols · Noto Sans Math 일부 (모두 SIL Open Font License 1.1)
