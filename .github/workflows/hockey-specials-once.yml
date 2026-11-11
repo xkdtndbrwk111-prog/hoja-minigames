@@ -1,0 +1,109 @@
+name: One-shot air hockey special fixes
+on:
+  push:
+    branches: [fix/hockey-specials-20261111]
+    paths: [.github/workflows/hockey-specials-once.yml]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply targeted patch and verify JavaScript syntax
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s = Path('index.html').read_text(encoding='utf-8')
+          assert len(s) > 7_000_000, 'Missing full game source'
+          done = []
+          def patch(old, new, label):
+              global s
+              n = s.count(old)
+              assert n == 1, f'{label}: expected one match, got {n}'
+              s = s.replace(old, new, 1)
+              done.append(label)
+          
+          patch("HOJA:{kind:'cannon',name:'사랑의 캐논',tip:'발사 직전 노란 선을 봐!',short:'발사 직전에야 경로가 보이는 가장 빠른 슛'}",
+                "HOJA:{kind:'cannon',name:'사랑의 캐논',tip:'가이드선 없이 날아온다!',short:'경로를 미리 보여주지 않는 가장 빠른 슛'}", 'HOJA no telegraph text')
+          patch("MURYEONG_KING:{kind:'shield',name:'왕관 방패',tip:'왕의 골대는 6초간 무적!',short:'6초 동안 내 골대를 막는 방패'}",
+                "MURYEONG_KING:{kind:'shield',name:'왕관 방패',tip:'왕의 골대는 8초간 무적!',short:'8초 동안 내 골대를 막는 방패'}", 'MURYEONG 8s label')
+          patch("BANGASAYUSANG:{kind:'slow',name:'사유의 시간',tip:'우리 진영의 시간이 느려져!',short:'6초 동안 내 진영에서 퍽이 느려짐'}",
+                "BANGASAYUSANG:{kind:'slow',name:'사유의 시간',tip:'우리 진영의 시간이 느려져!',short:'8초 동안 내 진영에서 퍽이 느려짐'}", 'BANGASAYUSANG 8s label')
+          patch("GWANGGAETO_KING:{kind:'conquer',name:'영토 정복',tip:'중앙선이 밀려난다!',short:'6초 동안 중앙선을 상대 쪽으로 밀어냄'}",
+                "GWANGGAETO_KING:{kind:'conquer',name:'영토 정복',tip:'중앙선이 밀려난다!',short:'8초 동안 중앙선을 상대 쪽으로 밀어냄'}", 'GWANGGAETO 8s label')
+          patch("const CUT_TIME=1.5,CANNON_SPEED=1750,CANNON_PERFECT=38;",
+                "const CUT_TIME=1.5,CANNON_SPEED=1750,CANNON_PERFECT=38,TIMED_SPECIAL_DURATION=8;", '8s duration constant')
+          patch("""        const dy=realY+(k-real)*spread-puck.y;
+                  if(k===real)launch(dir*1020,dy/aimTime(dist,1020));else ghosts.push({x:puck.x,y:puck.y,vx:dir*1020,vy:dy/(dist/1020),ttl:1.5});""",
+                """        const dy=realY+(k-real)*spread-puck.y,travel=aimTime(dist,1020);
+                  const vy=dy/travel;
+                  if(k===real)launch(dir*1020,vy);
+                  else ghosts.push({x:puck.x,y:puck.y,vx:dir*1020,vy,ttl:Math.max(2.4,travel*2.2+.4),grace:.18,attacker:i});""", 'NAHAN ghost launch')
+          patch("if(sp.kind==='shield'){shields[i]=6;sfx('shield',1);}",
+                "if(sp.kind==='shield'){shields[i]=TIMED_SPECIAL_DURATION;sfx('shield',1);}", 'shield 8s')
+          patch("if(sp.kind==='slow'){slowField={side:i,time:6};sfx('shield',.8,.7);}",
+                "if(sp.kind==='slow'){slowField={side:i,time:TIMED_SPECIAL_DURATION};sfx('shield',.8,.7);}", 'slow field 8s')
+          patch("if(sp.kind==='conquer'){conquer={side:i,time:6};sfx('boom',.8);}",
+                "if(sp.kind==='conquer'){conquer={side:i,time:TIMED_SPECIAL_DURATION};sfx('boom',.8);}", 'conquer 8s')
+          patch("""      const g=ghosts[k];
+                g.x+=g.vx*dt;g.y+=g.vy*dt;g.ttl-=dt;
+                if(g.y<R||g.y>H-R){g.y=clamp(g.y,R,H-R);g.vy*=-1;}
+                const touched=mallets.some(m=>Math.hypot(g.x-m.x,g.y-m.y)<R+m.r);
+                if(g.ttl<=0||touched||g.x<70||g.x>W-70){""",
+                """      const g=ghosts[k];
+                // The decoys survive launch next to the attacker's mallet, and follow the real puck's air drag.
+                const slowed=slowField.time>0&&(slowField.side===0?g.x<W/2:g.x>=W/2);
+                const gdt=dt*(slowed?.45:1);
+                g.x+=g.vx*gdt;g.y+=g.vy*gdt;g.ttl-=dt;g.grace=Math.max(0,g.grace-dt);
+                const drag=Math.pow(.88,gdt);g.vx*=drag;g.vy*=drag;
+                if(g.y<R||g.y>H-R){g.y=clamp(g.y,R,H-R);g.vy*=-1;}
+                const defender=mallets[1-g.attacker];
+                const touched=g.grace<=0&&Math.hypot(g.x-defender.x,g.y-defender.y)<R+defender.r;
+                if(g.ttl<=0||touched||g.x<R||g.x>W-R){""", 'NAHAN ghost collision/flight')
+          patch("""  function drawPuck(x,y,alpha=1){
+              ctx.save();ctx.globalAlpha=alpha;""",
+                """  function drawPuck(x,y,owner=-1){
+              // Keep real and fake puck pixels, owner rings and opacity identical.
+              if(owner>=0&&!serve){
+                ctx.save();ctx.globalAlpha=.85;ctx.strokeStyle=SIDE_COLOR[owner];ctx.lineWidth=6;
+                ctx.beginPath();ctx.arc(x,y,R+7,0,Math.PI*2);ctx.stroke();ctx.restore();
+              }
+              ctx.save();""", 'identical puck rendering')
+          patch("const aim=specialCut.aim&&specialCut.time<=CANNON_TELL?specialCut.aim:null;",
+                "const aim=specialCut.aim&&specialCut.time<=CANNON_TELL&&choices[specialCut.attacker]!=='HOJA'?specialCut.aim:null;", 'hide HOJA cannon guide line')
+          patch("""    for(const g of ghosts)drawPuck(g.x,g.y,clamp(g.ttl*2.4,.15,1));
+              if(!puckHidden){
+                if(lastHitBy>=0&&!serve){
+                  ctx.save();ctx.globalAlpha=.85;ctx.strokeStyle=SIDE_COLOR[lastHitBy];ctx.lineWidth=6;
+                  ctx.beginPath();ctx.arc(puck.x,puck.y,R+7,0,Math.PI*2);ctx.stroke();ctx.restore();
+                }
+                drawPuck(puck.x,puck.y);""",
+                """    for(const g of ghosts)drawPuck(g.x,g.y,g.attacker);
+              if(!puckHidden){
+                drawPuck(puck.x,puck.y,lastHitBy);""", 'opaque fake pucks same as real')
+          assert 'possession.time>7' in s, 'Do not change separate 7-second possession rule'
+          assert s.count('TIMED_SPECIAL_DURATION') == 4
+          assert 'drawPuck(g.x,g.y,clamp(' not in s
+          assert 'mallets.some(m=>Math.hypot(g.x' not in s
+          assert len(done)==13
+          Path('index.html').write_text(s,encoding='utf-8')
+          scripts=re.findall(r'<script(?:\s[^>]*)?>([\s\S]*?)</script>',s,re.I)
+          assert scripts, 'Expected inline scripts'
+          p=Path('/tmp/hoja-mini-inline.js')
+          p.write_text(scripts[-1],encoding='utf-8')
+          print('PATCH_OK',len(done),'SOURCE_CHARS',len(s),'SCRIPT_CHARS',len(scripts[-1]))
+          PY
+          node --check /tmp/hoja-mini-inline.js
+          git diff --check
+      - name: Commit source change and remove temporary workflow
+        shell: bash
+        run: |
+          rm .github/workflows/hockey-specials-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html .github/workflows/hockey-specials-once.yml
+          git commit -m "fix(air-hockey): hide Hoja guide, show Nahan decoys, extend effects to 8s"
+          git push origin HEAD:fix/hockey-specials-20261111
