@@ -4004,13 +4004,13 @@ var qrcode = function() {
   const SIDE_COLOR=['#2f9c8c','#e0694f'], SIDE_GLOW=['#7ff0da','#ffb59c'];
   // Every character gets one special. Attack shots test the defender; support ones change the field.
   const SPECIALS={
-    HOJA:{kind:'cannon',name:'사랑의 캐논',tip:'발사 직전 노란 선을 봐!',short:'발사 직전에야 경로가 보이는 가장 빠른 슛'},
+    HOJA:{kind:'cannon',name:'사랑의 캐논',tip:'가이드선 없이 날아온다!',short:'경로를 미리 보여주지 않는 가장 빠른 슛'},
     NAHANSANG:{kind:'ghost',name:'급식 세 판',tip:'진짜 퍽은 하나뿐!',short:'가짜 퍽 둘과 함께 골대로 날아가는 슛'},
     SUMAKSAE:{kind:'curve',name:'기와 커브',tip:'휘어 오는 길을 읽어!',short:'물결처럼 휘어 골대로 가는 슛'},
     CHILJIDO_ELDER:{kind:'zig',name:'일곱 갈래 번개',tip:'튕길수록 빨라져!',short:'벽을 튕기며 빨라져 골대로 가는 슛'},
-    MURYEONG_KING:{kind:'shield',name:'왕관 방패',tip:'왕의 골대는 6초간 무적!',short:'6초 동안 내 골대를 막는 방패'},
-    BANGASAYUSANG:{kind:'slow',name:'사유의 시간',tip:'우리 진영의 시간이 느려져!',short:'6초 동안 내 진영에서 퍽이 느려짐'},
-    GWANGGAETO_KING:{kind:'conquer',name:'영토 정복',tip:'중앙선이 밀려난다!',short:'6초 동안 중앙선을 상대 쪽으로 밀어냄'}
+    MURYEONG_KING:{kind:'shield',name:'왕관 방패',tip:'왕의 골대는 8초간 무적!',short:'8초 동안 내 골대를 막는 방패'},
+    BANGASAYUSANG:{kind:'slow',name:'사유의 시간',tip:'우리 진영의 시간이 느려져!',short:'8초 동안 내 진영에서 퍽이 느려짐'},
+    GWANGGAETO_KING:{kind:'conquer',name:'영토 정복',tip:'중앙선이 밀려난다!',short:'8초 동안 중앙선을 상대 쪽으로 밀어냄'}
   };
   let choices=['HOJA','NAHANSANG'];
   const STAGES=[
@@ -6537,7 +6537,7 @@ var qrcode = function() {
   const SPEED_CAP=1750,SMASH_SWIPE=850,SPECIAL_SWIPE=380,GAUGE_MAX=100;
   const possession={side:-1,time:0,warned:false};let lastPossSide=-1;
   let gauge=[0,0],specialCut={time:0,attacker:-1,aim:null};
-  const CUT_TIME=1.5,CANNON_SPEED=1750,CANNON_PERFECT=38;
+  const CUT_TIME=1.5,CANNON_SPEED=1750,CANNON_PERFECT=38,TIMED_SPECIAL_DURATION=8;
   const shot={cannon:null,curve:null,zig:null};
   let ghosts=[],shields=[0,0],slowField={side:-1,time:0},conquer={side:-1,time:0},midX=W/2;
   // Stage state
@@ -6936,8 +6936,10 @@ var qrcode = function() {
       // The real one heads into the goal from any place in the fan, so its place gives nothing away.
       const real=Math.floor(Math.random()*3),realY=mouthY(),spread=H*.26,dist=goalDist(dir);
       for(let k=0;k<3;k++){
-        const dy=realY+(k-real)*spread-puck.y;
-        if(k===real)launch(dir*1020,dy/aimTime(dist,1020));else ghosts.push({x:puck.x,y:puck.y,vx:dir*1020,vy:dy/(dist/1020),ttl:1.5});
+        const dy=realY+(k-real)*spread-puck.y,travel=aimTime(dist,1020);
+        const vy=dy/travel;
+        if(k===real)launch(dir*1020,vy);
+        else ghosts.push({x:puck.x,y:puck.y,vx:dir*1020,vy,ttl:Math.max(2.4,travel*2.2+.4),grace:.18,attacker:i});
       }
     }
     else if(sp.kind==='curve'){const T=aimTime(goalDist(dir),980),ty=mouthY();
@@ -6949,9 +6951,9 @@ var qrcode = function() {
     else if(sp.kind==='zig'){const s=puck.y<H/2?1:-1,S=H-2*R;launch(dir*760,s);shot.zig={n:0,ty:mouthY(),left:clamp(Math.round(goalDist(dir)/S),1,4)};zigAim();sfx('zap',1);}
     else{
       launch(dir*1120,(mouthY()-puck.y)/aimTime(goalDist(dir),1120));
-      if(sp.kind==='shield'){shields[i]=6;sfx('shield',1);}
-      if(sp.kind==='slow'){slowField={side:i,time:6};sfx('shield',.8,.7);}
-      if(sp.kind==='conquer'){conquer={side:i,time:6};sfx('boom',.8);}
+      if(sp.kind==='shield'){shields[i]=TIMED_SPECIAL_DURATION;sfx('shield',1);}
+      if(sp.kind==='slow'){slowField={side:i,time:TIMED_SPECIAL_DURATION};sfx('shield',.8,.7);}
+      if(sp.kind==='conquer'){conquer={side:i,time:TIMED_SPECIAL_DURATION};sfx('boom',.8);}
     }
     floatText(i===0?W*.3:W*.7,70,sp.name+'!',SIDE_COLOR[i],40,1.3);
     updateControlsAfterSpecial();
@@ -7196,10 +7198,15 @@ var qrcode = function() {
 
     for(let k=ghosts.length-1;k>=0;k--){
       const g=ghosts[k];
-      g.x+=g.vx*dt;g.y+=g.vy*dt;g.ttl-=dt;
+      // The decoys survive launch next to the attacker's mallet, and follow the real puck's air drag.
+      const slowed=slowField.time>0&&(slowField.side===0?g.x<W/2:g.x>=W/2);
+      const gdt=dt*(slowed?.45:1);
+      g.x+=g.vx*gdt;g.y+=g.vy*gdt;g.ttl-=dt;g.grace=Math.max(0,g.grace-dt);
+      const drag=Math.pow(.88,gdt);g.vx*=drag;g.vy*=drag;
       if(g.y<R||g.y>H-R){g.y=clamp(g.y,R,H-R);g.vy*=-1;}
-      const touched=mallets.some(m=>Math.hypot(g.x-m.x,g.y-m.y)<R+m.r);
-      if(g.ttl<=0||touched||g.x<70||g.x>W-70){
+      const defender=mallets[1-g.attacker];
+      const touched=g.grace<=0&&Math.hypot(g.x-defender.x,g.y-defender.y)<R+defender.r;
+      if(g.ttl<=0||touched||g.x<R||g.x>W-R){
         burst(g.x,g.y,12,['#ffffff','#d9d2bf'],300);floatText(g.x,g.y-34,'가짜!','#8a7f6a',24,.6);sfx('soft',.7);ghosts.splice(k,1);
       }
     }
@@ -7433,8 +7440,13 @@ var qrcode = function() {
       ctx.beginPath();ctx.arc(m.x,m.y,r+18+a*8,0,Math.PI*2);ctx.stroke();ctx.restore();
     }
   }
-  function drawPuck(x,y,alpha=1){
-    ctx.save();ctx.globalAlpha=alpha;
+  function drawPuck(x,y,owner=-1){
+    // Keep real and fake puck pixels, owner rings and opacity identical.
+    if(owner>=0&&!serve){
+      ctx.save();ctx.globalAlpha=.85;ctx.strokeStyle=SIDE_COLOR[owner];ctx.lineWidth=6;
+      ctx.beginPath();ctx.arc(x,y,R+7,0,Math.PI*2);ctx.stroke();ctx.restore();
+    }
+    ctx.save();
     ctx.beginPath();ctx.ellipse(x+5,y+7,R+3,R*.78,0,0,Math.PI*2);ctx.fillStyle='rgba(22,28,24,.3)';ctx.fill();
     if(puckSprite.complete&&puckSprite.naturalWidth)ctx.drawImage(puckSprite,x-R-4,y-R-4,(R+4)*2,(R+4)*2);
     else{ctx.beginPath();ctx.arc(x,y,R,0,Math.PI*2);ctx.fillStyle='#efdaab';ctx.fill();}
@@ -7508,7 +7520,7 @@ var qrcode = function() {
     }
     ctx.globalAlpha=1;
 
-    const aim=specialCut.aim&&specialCut.time<=CANNON_TELL?specialCut.aim:null;
+    const aim=specialCut.aim&&specialCut.time<=CANNON_TELL&&choices[specialCut.attacker]!=='HOJA'?specialCut.aim:null;
     if(aim){
       const atk=specialCut.attacker>=0?specialCut.attacker:shot.cannon.attacker;
       const endX=atk===0?W:0,t=(endX-aim.x0)/aim.vx,ey=aim.y0+aim.vy*t;
@@ -7525,13 +7537,9 @@ var qrcode = function() {
       ctx.beginPath();ctx.arc(puck.x,puck.y,R+38,-Math.PI/2,-Math.PI/2+Math.PI*2*clamp(serve.time/4.5,0,1));ctx.stroke();ctx.restore();
     }
     mallets.forEach(drawMallet);
-    for(const g of ghosts)drawPuck(g.x,g.y,clamp(g.ttl*2.4,.15,1));
+    for(const g of ghosts)drawPuck(g.x,g.y,g.attacker);
     if(!puckHidden){
-      if(lastHitBy>=0&&!serve){
-        ctx.save();ctx.globalAlpha=.85;ctx.strokeStyle=SIDE_COLOR[lastHitBy];ctx.lineWidth=6;
-        ctx.beginPath();ctx.arc(puck.x,puck.y,R+7,0,Math.PI*2);ctx.stroke();ctx.restore();
-      }
-      drawPuck(puck.x,puck.y);
+      drawPuck(puck.x,puck.y,lastHitBy);
       if(smashSide>=0&&!serve){
         ctx.save();ctx.strokeStyle=SIDE_COLOR[smashSide];ctx.lineWidth=3;ctx.globalAlpha=.8;
         ctx.beginPath();ctx.arc(mallets[smashSide].x,mallets[smashSide].y,mallets[smashSide].r+14,0,Math.PI*2);ctx.stroke();ctx.restore();
