@@ -105,7 +105,7 @@
     $('partyScreen').hidden=true;$('paOverlay').hidden=true;$('paStage').replaceChildren();PS.run=null;RH.sess=null;
   }
   const RALLY={on:false,list:[],idx:0,wins:[0,0],total:5};
-  const RALLY_POOL=['tug','mole','pop','rush','draw','match','simon','stroop','four','bomb','slash','flap','bricks','stack','paint','dots','calc','spot','rps','archery','balloon','dodge','sort','tron','tiles'];
+  const RALLY_POOL=['tug','mole','pop','rush','draw','match','simon','stroop','four','bomb','slash','flap','bricks','stack','paint','dots','calc','spot','rps','archery','balloon','dodge','sort','tron','tiles','flash'];
   const RALLY_STAGE={rush:'r16',match:'p6',bomb:'n30',paint:'s20',dots:'n3'};
   function rallyStage(def){return def.stages.find(s=>s.id===RALLY_STAGE[PS.game])||def.stages.find(s=>s.people!==1&&!s.coop)||def.stages[0];}
   function rallyLeg(winner,detail){

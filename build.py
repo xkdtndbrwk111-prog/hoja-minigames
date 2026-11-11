@@ -27,6 +27,7 @@ MAIN_JS = [
     'js/party/page1.js',      # party games, first page (and their pictures)
     'js/party/page2.js',
     'js/party/page3.js',
+    'js/party/flash.js',      # lightning missions (one-word missions in a row)
     'js/rhythm.js',           # rhythm games
     'js/menu-background.js',  # seasonal museum scene behind the menu
     'js/selection.js',        # character and stage selection
