@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#f9f2de">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="호자 미니게임">
+<title>호자 미니게임 V5.0</title>
+<style>@@INCLUDE:css/style.css@@</style>
+</head>
+<!--
+  HOJA MINI ARCADE V3.5 asset credits
+  - QR codes: qrcode-generator by Kazuhiko Arase, MIT License (all embedded, nothing loads from the network)
+  Hoja Jump background: Urban Landscape (CC0, opengameart.org/content/urban-landscape)
+  - Sound effects: Kenney "Impact Sounds", "Sci-Fi Sounds", "RPG Audio" (www.kenney.nl), CC0
+  - Music: "Beach Sports Theme (Loop)", "Happy Adventure (Loop)", "Happy Lullaby" (opengameart.org), CC0
+  - Special cut-in light and flame: Kenney "Particle Pack" (www.kenney.nl, via opengameart.org), CC0
+  - Party game pictures: Kenney "Fish Pack", "Animal Pack Redux", "Shooting Gallery", "Tappy Plane", "Space Shooter Redux", "Puzzle Pack", "Boardgame Pack", "Particle Pack" (www.kenney.nl, via opengameart.org), CC0
+  - Icons and fruit: Noto Emoji images, Copyright Google LLC, Apache License 2.0 (github.com/googlefonts/noto-emoji)
+  - Menu backgrounds: HOJA museum parallax scenes (Buyeo, Gongju, Gyeongju, National Museum), the project's own art
+  - Fonts: Jua, Black Han Sans (Google Fonts), SIL Open Font License 1.1. Black Han Sans: Copyright 2015 The Black Han Sans Project Authors (github.com/zesstype/Black-Han-Sans)
+-->
+<body>
+<div id="app">
+  <section id="menuScreen" class="screen" aria-label="호자 미니게임 모음집">
+    <div class="display-zone menu-sky">
+      <canvas id="menuBg" width="768" height="256" aria-hidden="true"></canvas>
+      <div class="topline"><span class="star">★</span>HOJA MINI ARCADE <span style="margin-left:12px">V5.0 · CLASSROOM</span></div>
+      <div class="menu-headline"><h1>호자 미니게임</h1><p>우리 반 쉬는 시간, 함께 놀자!</p></div>
+    </div>
+    <div class="ribbon"></div>
+      <img class="menu-mascot left" src="data:image/webp;base64,@@B64:assets/images/core/portraits/hoja_01_neutral.webp@@" alt="">
+      <img class="menu-mascot right" src="data:image/webp;base64,@@B64:assets/images/core/portraits/nahansang_09_sparkling.webp@@" alt="">
+    <div class="touch-zone menu-content">
+      <div class="menu-title">놀이 선택<div class="menu-pages"><button type="button" class="control primary" id="menuPage1">아케이드</button><button type="button" class="control" id="menuPage6">보드게임</button><button type="button" class="control" id="menuPage2">파티게임 1</button><button type="button" class="control" id="menuPage3">파티게임 2</button><button type="button" class="control" id="menuPage5">파티게임 3</button><button type="button" class="control" id="menuPage4">리듬게임</button></div></div>
+      <div class="game-grid" id="classicGrid"><button type="button" class="game-card main" id="openHockey" aria-label="에어하키 시작 화면으로 이동">
+          <div class="game-icon hockey-badge" aria-hidden="true"><img src="data:image/webp;base64,@@B64:assets/images/core/art/puck.webp@@" alt=""/><span>VS</span><img src="data:image/webp;base64,@@B64:assets/images/core/art/mallet_hoja.webp@@" alt=""/></div>
+          <div class="game-name">에어하키</div>
+          <div class="game-desc">캐릭터별 필살기 · 5개 경기장</div>
+        </button><button type="button" class="game-card s-card" id="openShop" aria-label="붕어빵 가게 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="-56 -44 130 88" width="100%" height="100%"><path d="M-50 0C-38-34 20-40 44-8L70-28C62-8 62 8 70 28L44 8C20 40-38 34-50 0Z" fill="#de983c" stroke="#5a3210" stroke-width="4"/><circle cx="-30" cy="-7" r="5" fill="#3a200a"/><path d="M-8-14a8 8 0 0 1 0 14M8-14a8 8 0 0 1 0 14M-8 2a8 8 0 0 1 0 14M8 2a8 8 0 0 1 0 14" fill="none" stroke="#5a3210" stroke-width="3" opacity=".5"/></svg></div><div class="game-name">붕어빵 가게</div><div class="game-desc">타이쿤 · 장사 대결 · 4인 협동</div></button><button type="button" class="game-card cj-card" id="openJump" aria-label="호자 점프 시작 화면으로 이동"><span class="kb-mark" title="키보드로도 할 수 있어요"><svg class="kb-icon" viewBox="0 0 24 16" aria-hidden="true"><rect x="1" y="1" width="22" height="14" rx="2.5" fill="#fffbe9" stroke="currentColor" stroke-width="2"/><path d="M5 5.5h1.5M9.2 5.5h1.5M13.3 5.5h1.5M17.5 5.5H19M7 11h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><div class="game-icon s-card-icon" aria-hidden="true"><canvas id="cjIcon" width="64" height="64"></canvas></div><div class="game-name">호자 점프</div><div class="game-desc">3단 점프로 높이높이 · 혼자 또는 2인 대결</div></button><button type="button" class="game-card st-card" id="openStairs" aria-label="무한 계단 시작 화면으로 이동"><span class="kb-mark" title="키보드로도 할 수 있어요"><svg class="kb-icon" viewBox="0 0 24 16" aria-hidden="true"><rect x="1" y="1" width="22" height="14" rx="2.5" fill="#fffbe9" stroke="currentColor" stroke-width="2"/><path d="M5 5.5h1.5M9.2 5.5h1.5M13.3 5.5h1.5M17.5 5.5H19M7 11h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>1~2인</span><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 120 80" width="100%" height="100%"><g fill="#b98a56" stroke="#5a3a1e" stroke-width="3"><rect x="4" y="62" width="30" height="12" rx="3"/><rect x="28" y="48" width="30" height="12" rx="3"/><rect x="52" y="34" width="30" height="12" rx="3"/><rect x="28" y="20" width="30" height="12" rx="3"/><rect x="52" y="6" width="30" height="12" rx="3"/></g></svg></div><div class="game-name">무한 계단</div><div class="game-desc">최고 층수 도전 · 최대 6인 경주</div></button><button type="button" class="game-card b-card" id="openBubble" aria-label="퍼즐버블 시작 화면으로 이동"><span class="kb-mark" title="키보드로도 할 수 있어요"><svg class="kb-icon" viewBox="0 0 24 16" aria-hidden="true"><rect x="1" y="1" width="22" height="14" rx="2.5" fill="#fffbe9" stroke="currentColor" stroke-width="2"/><path d="M5 5.5h1.5M9.2 5.5h1.5M13.3 5.5h1.5M17.5 5.5H19M7 11h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><div class="game-icon o-card-icon b-card-icon" aria-hidden="true"><i style="background:#e8574a"></i><i style="background:#3f8ee0"></i><i style="background:#f2c230"></i></div><div class="game-name">퍼즐버블</div><div class="game-desc">동시에 쏘는 2인 대전 · 5가지 판</div></button><button type="button" class="game-card vb-card" id="openVolley" aria-label="호자 배구 시작 화면으로 이동"><span class="kb-mark" title="키보드로도 할 수 있어요"><svg class="kb-icon" viewBox="0 0 24 16" aria-hidden="true"><rect x="1" y="1" width="22" height="14" rx="2.5" fill="#fffbe9" stroke="currentColor" stroke-width="2"/><path d="M5 5.5h1.5M9.2 5.5h1.5M13.3 5.5h1.5M17.5 5.5H19M7 11h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><circle cx="50" cy="40" r="34" fill="#fff8e4" stroke="#4b3e35" stroke-width="4"/><path d="M22 22C44 28 62 48 66 72M78 22C58 26 38 44 30 70" fill="none" stroke="#d9573f" stroke-width="4"/></svg></div><div class="game-name">호자 배구</div><div class="game-desc">점프 강타 2인 대전 · 게이지 차면 필살기</div></button></div>
+      <div class="game-grid" id="boardGrid" hidden><button type="button" class="game-card pa-mcard pa-c5" id="openParty-four" aria-label="사목 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-four.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">사목</div><div class="game-desc">둘이 대결 · 컴퓨터 대결</div></button><button type="button" class="game-card o-card" id="openOthello" aria-label="오셀로 시작 화면으로 이동"><div class="game-icon o-card-icon" aria-hidden="true"><i></i><i></i></div><div class="game-name">오셀로</div><div class="game-desc">대박 뒤집기 · 5가지 판</div></button><button type="button" class="game-card g-card" id="openGomoku" aria-label="오목 시작 화면으로 이동"><div class="game-icon g-card-icon" aria-hidden="true"><i class=""></i><i class="w"></i><i class="n"></i><i class="w"></i><i class=""></i><i class="w"></i><i class="n"></i><i class="w"></i><i class=""></i></div><div class="game-name">오목</div><div class="game-desc">다섯 줄 잇기 · 5가지 판</div></button><button type="button" class="game-card tt-card" id="openTtt" aria-label="틱택토 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 80 80" width="100%" height="100%"><path d="M28 6V74M52 6V74M6 28H74M6 52H74" stroke="#4b3e35" stroke-width="5" stroke-linecap="round"/><circle cx="16" cy="16" r="7" fill="none" stroke="#17756a" stroke-width="5"/><path d="M34 34L46 46M46 34L34 46" stroke="#d9573f" stroke-width="5" stroke-linecap="round"/><circle cx="64" cy="64" r="7" fill="none" stroke="#17756a" stroke-width="5"/></svg></div><div class="game-name">틱택토</div><div class="game-desc">세 줄 잇기 · 3점 먼저 · 5가지 판</div></button><button type="button" class="game-card gx-card" id="openGerm" aria-label="세균전 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 70" width="100%" height="100%"><g stroke="#0a2f2b" stroke-width="3"><circle cx="32" cy="35" r="21" fill="#2f9c8c"/><path d="M32 8V14M32 56V62M5 35H11M53 35H59M13 16L18 21M46 49L51 54M13 54L18 49M46 21L51 16" fill="none"/></g><g stroke="#a84e36" stroke-width="3"><circle cx="74" cy="35" r="15" fill="#f7bb9c"/><path d="M74 14V20M74 50V56M53 35H59M89 35H95M60 20L64 24M84 46L88 50M60 50L64 46M84 24L88 20" fill="none"/></g></svg></div><div class="game-name">세균전</div><div class="game-desc">복제하고 점프해서 감염! · 5가지 판</div></button></div>
+      <div class="game-grid" id="partyGrid" hidden><button type="button" class="game-card pa-mcard pa-c1" id="openParty-tug" aria-label="줄다리기 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-tug.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">줄다리기</div><div class="game-desc">연타 · 신호등 · 계산 대결</div></button><button type="button" class="game-card pa-mcard pa-c2" id="openParty-mole" aria-label="두더지 잡기 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-mole.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">두더지 잡기</div><div class="game-desc">30초 승부 · 혼자 도전</div></button><button type="button" class="game-card pa-mcard pa-c3" id="openParty-pop" aria-label="풍선 터뜨리기 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/party-page1/balloon.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">풍선 터뜨리기</div><div class="game-desc">30초 승부 · 혼자 도전</div></button><button type="button" class="game-card pa-mcard pa-c4" id="openParty-rush" aria-label="순서대로 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-rush.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">순서대로</div><div class="game-desc">1~25 · 3의 배수 · 혼자 도전</div></button><button type="button" class="game-card pa-mcard pa-c5" id="openParty-draw" aria-label="눈치 번개 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-draw.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">눈치 번개</div><div class="game-desc">먼저 누르면 승리 · 속임수</div></button><button type="button" class="game-card pa-mcard pa-c3" id="openParty-match" aria-label="짝 맞추기 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-match.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">짝 맞추기</div><div class="game-desc">6쌍 · 10쌍 · 혼자 도전</div></button><button type="button" class="game-card pa-mcard pa-c2" id="openParty-simon" aria-label="따라 누르기 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-simon.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">따라 누르기</div><div class="game-desc">순서 기억 · 번갈아 대결</div></button><button type="button" class="game-card pa-mcard pa-c4" id="openParty-stroop" aria-label="색깔 함정 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-stroop.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">색깔 함정</div><div class="game-desc">글자 색 · 뜻 · 뒤섞기</div></button><button type="button" class="game-card pa-mcard pa-c1" id="openParty-bomb" aria-label="숫자 폭탄 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/party-page1/bomb.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">숫자 폭탄</div><div class="game-desc">범위를 좁혀요 · 누르면 꽝</div></button></div>
+      <div class="game-grid" id="party2Grid" hidden><button type="button" class="game-card pa-mcard pa-c1" id="openParty-slash" aria-label="과일 베기 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/party-page1/melon.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">과일 베기</div><div class="game-desc">손가락으로 쓱 · 45초 승부</div></button><button type="button" class="game-card pa-mcard pa-c3" id="openParty-flap" aria-label="호자 날개 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-flap.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">호자 날개</div><div class="game-desc">톡톡 눌러 날아요</div></button><button type="button" class="game-card pa-mcard pa-c5" id="openParty-bricks" aria-label="벽돌 깨기 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-bricks.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">벽돌 깨기</div><div class="game-desc">받침대로 공 튕기기</div></button><button type="button" class="game-card pa-mcard pa-c2" id="openParty-stack" aria-label="탑 쌓기 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-stack.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">탑 쌓기</div><div class="game-desc">멈출 때 톡 · 높이 쌓기</div></button><button type="button" class="game-card pa-mcard pa-c4" id="openParty-paint" aria-label="색칠 전쟁 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-paint.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">색칠 전쟁</div><div class="game-desc">여러 손가락으로 땅 넓히기</div></button><button type="button" class="game-card pa-mcard pa-c2" id="openParty-dots" aria-label="땅따먹기 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-dots.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">땅따먹기</div><div class="game-desc">네모를 닫으면 내 땅</div></button><button type="button" class="game-card pa-mcard pa-c5" id="openParty-calc" aria-label="계산 레이스 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-calc.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">계산 레이스</div><div class="game-desc">덧셈 · 뺄셈 · 구구단</div></button><button type="button" class="game-card pa-mcard pa-c3" id="openParty-spot" aria-label="같은 그림 찾기 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-spot.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">같은 그림 찾기</div><div class="game-desc">먼저 찾으면 1점</div></button></div>
+      <div class="game-grid" id="party3Grid" hidden><button type="button" class="game-card pa-mcard pa-c1" id="openParty-rps" aria-label="가위바위보 순발력 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/party-page1/scissors.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">가위바위보 순발력</div><div class="game-desc">이겨라 · 져라 · 비겨라</div></button><button type="button" class="game-card pa-mcard pa-c3" id="openParty-archery" aria-label="호자 양궁 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/party-page1/target.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">호자 양궁</div><div class="game-desc">조준을 보고 톡 · 화살 10발</div></button><button type="button" class="game-card pa-mcard pa-c5" id="openParty-balloon" aria-label="풍선 불기 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-balloon.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">풍선 불기</div><div class="game-desc">터지기 전에 그만!</div></button><button type="button" class="game-card pa-mcard pa-c4" id="openParty-dodge" aria-label="별똥별 피하기 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-dodge.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">별똥별 피하기</div><div class="game-desc">끌어서 피하기 · 하트 3개</div></button><button type="button" class="game-card pa-mcard pa-c2" id="openParty-sort" aria-label="척척 분류 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-sort.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">척척 분류</div><div class="game-desc">짝수 홀수 · 동물 과일</div></button><button type="button" class="game-card pa-mcard pa-c4" id="openParty-tron" aria-label="빛의 선 대결 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-tron.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">빛의 선 대결</div><div class="game-desc">방향만 틀어요 · 컴퓨터 대결</div></button><button type="button" class="game-card pa-mcard pa-c3" id="openParty-tiles" aria-label="반짝 기억 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-tiles.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">반짝 기억</div><div class="game-desc">반짝인 칸을 기억해요</div></button><button type="button" class="game-card pa-mcard pa-c2" id="openParty-rally" aria-label="파티 랠리 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><path d="M30 8H70V30C70 44 60 52 50 52S30 44 30 30Z" fill="#f3b52c" stroke="#3a2418" stroke-width="3.500" stroke-linejoin="round"/><path d="M30 14H14C14 30 22 36 32 36M70 14H86C86 30 78 36 68 36" fill="none" stroke="#3a2418" stroke-width="3.500"/><rect x="44" y="52" width="12" height="12" fill="#c98a1e" stroke="#3a2418" stroke-width="3"/><rect x="30" y="64" width="40" height="10" rx="3" fill="#7b5233" stroke="#3a2418" stroke-width="3"/><text x="50" y="36" text-anchor="middle" font-family="HojaTitle,sans-serif" font-size="24" fill="#3a2418">5</text></svg></div><div class="game-name">파티 랠리</div><div class="game-desc">무작위 5판 · 많이 이기면 승리</div></button></div>
+      <div class="game-grid rh-grid" id="rhythmGrid" hidden><button type="button" class="game-card pa-mcard rh-c1" id="openParty-rfall" aria-label="호자 리듬 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/party-page1/music.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">호자 리듬</div><div class="game-desc">떨어지는 음표 · 네 칸</div></button><button type="button" class="game-card pa-mcard rh-c4" id="openParty-rhold" aria-label="꾹 눌러 리듬 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-rhold.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">꾹 눌러 리듬</div><div class="game-desc">길게 눌렀다 떼기</div></button><button type="button" class="game-card pa-mcard rh-c2" id="openParty-rcircle" aria-label="동글 리듬 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/party-page1/circle.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">동글 리듬</div><div class="game-desc">좁아지는 동그라미</div></button><button type="button" class="game-card pa-mcard rh-c1" id="openParty-rdrum" aria-label="둥딱 북치기 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-rdrum.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">둥딱 북치기</div><div class="game-desc">두 북을 번갈아</div></button><button type="button" class="game-card pa-mcard rh-c4" id="openParty-rspin" aria-label="빙글 시계 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/party-page1/clock.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">빙글 시계</div><div class="game-desc">바늘이 지날 때 톡</div></button><button type="button" class="game-card pa-mcard rh-c3" id="openParty-rcatch" aria-label="별 받기 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-rcatch.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">별 받기</div><div class="game-desc">가장 쉬운 리듬 · 칸 옮기기</div></button><button type="button" class="game-card pa-mcard rh-c3" id="openParty-recho" aria-label="따라 치기 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-recho.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">따라 치기</div><div class="game-desc">듣고 똑같이 치기</div></button><button type="button" class="game-card pa-mcard rh-c4" id="openParty-rpiano" aria-label="피아노 타일 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-rpiano.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">피아노 타일</div><div class="game-desc">내가 누르면 노래가 나와요</div></button><button type="button" class="game-card pa-mcard rh-c2" id="openParty-rband" aria-label="우리 반 합주 시작 화면으로 이동"><div class="game-icon s-card-icon" aria-hidden="true"><svg viewBox="0 0 100 80" width="100%" height="100%"><image href="data:image/webp;base64,@@B64:assets/images/page/card-rband.webp@@" x="10" y="0" width="80" height="80"/></svg></div><div class="game-name">우리 반 합주</div><div class="game-desc">여덟 칸 · 여럿이 함께</div></button></div>
+      <div class="menu-foot"><button type="button" class="control primary" id="openHall">명예의 전당</button><button type="button" class="control" id="openCalibrate"></button><span id="touchNote">✓ 터치 · 아래쪽 66%만 사용</span><button type="button" class="control soft" id="deviceButton"></button><button type="button" class="control" id="tiltButton" hidden>기울이기 켜기</button><span class="kb-legend"><svg class="kb-icon" viewBox="0 0 24 16" aria-hidden="true"><rect x="1" y="1" width="22" height="14" rx="2.5" fill="#fffbe9" stroke="currentColor" stroke-width="2"/><path d="M5 5.5h1.5M9.2 5.5h1.5M13.3 5.5h1.5M17.5 5.5H19M7 11h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> 표시한 게임은 키보드도 가능</span><button type="button" class="control primary" id="dashboardBack" hidden>대시보드로 돌아가기</button><button type="button" class="control" id="fullscreenButton">전체 화면</button></div>
+    </div>
+  </section>
+
+  <section id="choiceScreen" class="screen select-screen" hidden aria-label="2인 캐릭터 및 스테이지 선택">
+    <div class="display-zone select-showcase">
+      <div class="showcase-side showcase-one" id="selectLeftShowcase">
+        <div class="showcase-stripes"></div>
+        <span class="showcase-number">1P <small>PLAYER ONE</small></span>
+        <img id="previewLeft" alt="1P 캐릭터 큰 초상">
+        <div class="showcase-name"><small>LEFT SIDE</small><strong id="previewNameLeft">호자</strong><em class="showcase-skill" id="skillLeft"></em></div>
+        <div class="showcase-taunt taunt-one" id="tauntLeft" hidden aria-live="polite"><span class="taunt-speaker" id="introNameLeft">호자</span><strong id="introLineLeft">사랑을 해주마!</strong></div>
+      </div>
+      <div class="showcase-vs"><small id="vsTitle">HOJA AIR HOCKEY</small><b>VS</b><em>캐릭터를 선택하세요</em></div>
+      <div class="showcase-side showcase-two" id="selectRightShowcase">
+        <div class="showcase-stripes"></div>
+        <span class="showcase-number">2P <small>PLAYER TWO</small></span>
+        <img id="previewRight" alt="2P 캐릭터 큰 초상">
+        <div class="showcase-name"><small>RIGHT SIDE</small><strong id="previewNameRight">나한상</strong><em class="showcase-skill" id="skillRight"></em></div>
+        <div class="showcase-taunt taunt-two" id="tauntRight" hidden aria-live="polite"><span class="taunt-speaker" id="introNameRight">나한상</span><strong id="introLineRight">급식은 내 거야!</strong></div>
+      </div>
+    </div>
+    <div class="touch-zone selection-controls">
+      <div class="selection-rosters">
+        <div class="selection-roster roster-one" id="rosterOne">
+          <div class="roster-label"><b>1P</b> 내 캐릭터 선택 <span>동시에 선택 가능</span></div>
+          <div class="compact-roster" id="choiceLeft"></div>
+        </div>
+        <div class="selection-roster roster-two" id="rosterTwo">
+          <div class="roster-label"><b>2P</b> 내 캐릭터 선택 <span>동시에 선택 가능</span></div>
+          <div class="compact-roster" id="choiceRight"></div>
+        </div>
+      </div>
+      <div class="stage-picker" id="stagePicker">
+        <div class="stage-heading"><strong>STAGE SELECT <span>· 경기장 선택</span></strong><small id="stageDescription">기본 경기장 · 정면 승부</small></div>
+        <div class="stage-list" id="stageList"></div>
+      </div>
+      <div class="select-actions" id="selectActions">
+        <button type="button" class="control select-back" id="choiceBack">← 모음집</button>
+        <div class="kb-hintwrap"><div class="selection-hint" id="selectionHint"></div><div class="kb-guide" id="kbGuide" hidden></div></div><button type="button" id="soundButton" class="control sounds">♪</button><button type="button" id="modeButton" class="control soft mode">2인 대전</button>
+        <button type="button" class="control primary select-start" id="choiceStart">⚔ 대전 시작!</button>
+      </div>
+    </div>
+    <button type="button" id="skipIntro" class="intro-skip" hidden>연출 건너뛰기 ››</button>
+  </section>
+
+  <section id="gameScreen" class="screen screen-game" hidden aria-label="2인 에어하키">
+    <header class="display-zone game-header">
+      <div class="team left" id="teamLeft">
+        <div class="avatar-wrap"><img id="portraitLeft" src="data:image/webp;base64,@@B64:assets/images/core/portraits/hoja_01_neutral.webp@@" alt="호자 표정"></div>
+        <div class="team-text"><span class="team-label">PLAYER 1 · 왼쪽</span><span class="team-name" id="teamNameLeft">호자</span><span class="team-streak" id="streakLeft"></span><span class="emotion-note" id="noteLeft">준비됐어!</span></div>
+      </div>
+      <div class="score-center">
+        <div class="score-caption">HOJA AIR HOCKEY · <span id="selectedStageLabel">기본</span></div>
+        <div class="score-box"><div class="score-digit" id="scoreLeft">0</div><div class="score-divider">:</div><div class="score-digit" id="scoreRight">0</div></div>
+        <div class="game-time" id="timeText">01:30</div><div class="rally-meter" id="rallyMeter" aria-live="off"><span id="rallyCount">RALLY 0</span><strong id="rallySpeed">×1.00</strong></div>
+      </div>
+      <div class="team right" id="teamRight">
+        <div class="avatar-wrap"><img id="portraitRight" src="data:image/webp;base64,@@B64:assets/images/core/portraits/nahansang_01_neutral.webp@@" alt="나한상 표정"></div>
+        <div class="team-text"><span class="team-label" id="rightLabel">PLAYER 2 · 오른쪽</span><span class="team-name" id="teamNameRight">나한상</span><span class="team-streak" id="streakRight"></span><span class="emotion-note" id="noteRight">한 판 해볼까?</span></div>
+      </div>
+    </header>
+    <div class="touch-zone play-section" id="playSection">
+      <div id="rinkAvailable" class="rink-available">
+        <div id="rinkFrame" class="rink-frame">
+          <canvas id="rink" aria-label="에어하키 경기장. 왼쪽과 오른쪽 각각 손가락을 누르고 이동해 주세요."></canvas>
+          <div id="goalBanner" class="goal-banner" hidden><img id="goalPortrait" alt=""><div><div class="goal-text" id="goalText">득점!</div><div class="goal-score" id="goalScore"></div></div></div>
+          <div id="boardOverlay" class="board-overlay" aria-live="polite" hidden>
+            <div class="tab-ov p0"><div id="overlayTitle" class="overlay-title"></div>
+            <div id="overlayDetail" class="overlay-detail"></div></div>
+            <div class="tab-ov p1"><div id="overlayTitle2" class="overlay-title"></div><div id="overlayDetail2" class="overlay-detail"></div></div>
+            <div id="overlayActions" class="overlay-actions" hidden></div>
+          </div>
+        </div>
+      </div>
+      <div class="match-strip">
+        <div class="gauge one" id="gaugeLeft"><i></i><span>기세 · <span id="gaugeNameLeft"></span></span></div>
+        <button type="button" class="hold-pause" id="holdPause">길게 눌러 멈춤</button>
+        <div class="gauge two" id="gaugeRight"><i></i><span>기세 · <span id="gaugeNameRight"></span></span></div>
+      </div>
+    </div>
+    <div id="cannonCut" class="cannon-cut" hidden aria-live="off" aria-hidden="true">
+      <div class="comic-panels">
+        <div class="comic-panel attacker"><div class="comic-scratch"></div><img id="comicAttacker" alt=""><div class="comic-bubble" id="comicAttackName">호자</div></div>
+        <div class="comic-panel defender"><div class="comic-scratch"></div><img id="comicDefender" alt=""><div class="comic-bubble" id="comicDefendName">나한상</div></div>
+      </div>
+      <div class="comic-caption"><span class="comic-top">SPECIAL!</span><strong id="comicName"></strong><span class="comic-small" id="comicTip"></span></div>
+    </div>
+  </section>
+  <section id="othelloScreen" class="screen screen-game" hidden aria-label="2인 오셀로">
+    <header class="display-zone game-header o-header">
+      <div class="team left" id="oTeam0">
+        <div class="avatar-wrap"><img id="oPortrait0" alt=""></div>
+        <div class="team-text"><span class="team-label" id="oLabel0"></span><span class="team-name" id="oName0"></span><span class="team-streak" id="oStreak0"></span><span class="emotion-note" id="oNote0"></span></div>
+      </div>
+      <div class="score-center">
+        <div class="score-caption" id="oCaption">HOJA OTHELLO</div>
+        <div class="score-box"><div class="score-digit" id="oScore0">2</div><div class="score-divider">:</div><div class="score-digit" id="oScore1">2</div></div>
+        <div class="game-time o-turn" id="oTurnText"></div>
+        <div class="rally-meter" aria-live="off"><span id="oLeft">빈칸 60</span></div>
+      </div>
+      <div class="team right" id="oTeam1">
+        <div class="avatar-wrap"><img id="oPortrait1" alt=""></div>
+        <div class="team-text"><span class="team-label" id="oLabel1"></span><span class="team-name" id="oName1"></span><span class="team-streak" id="oStreak1"></span><span class="emotion-note" id="oNote1"></span></div>
+      </div>
+    </header>
+    <div class="touch-zone">
+      <div class="o-play" id="oPlay">
+        <aside class="o-side one" id="oSide0">
+          <canvas class="o-disc" id="oDisc0" aria-hidden="true"></canvas>
+          <div class="o-turn-label" id="oTurnLabel0"></div>
+          <div class="o-tip" id="oTip0"></div>
+          <div class="o-actions">
+            <button type="button" class="control soft" id="oHint0">힌트 2</button>
+            <button type="button" class="control" id="oUndo0" hidden>무르기 2</button>
+            <button type="button" class="control" id="oMenu0">메뉴</button>
+          </div>
+        </aside>
+        <div class="o-shell" id="oShell">
+          <canvas id="oBoard" aria-label="오셀로 판. 점이 찍힌 칸을 눌러 돌을 둡니다."></canvas>
+          <div class="o-overlay" id="oOverlay" hidden>
+            <div class="overlay-title" id="oOverlayTitle"></div>
+            <div class="overlay-detail" id="oOverlayDetail"></div>
+            <div class="overlay-actions" id="oOverlayActions"></div>
+          </div>
+        </div>
+        <aside class="o-side two" id="oSide1">
+          <canvas class="o-disc" id="oDisc1" aria-hidden="true"></canvas>
+          <div class="o-turn-label" id="oTurnLabel1"></div>
+          <div class="o-tip" id="oTip1"></div>
+          <div class="o-actions">
+            <button type="button" class="control soft" id="oHint1">힌트 2</button>
+            <button type="button" class="control" id="oUndo1" hidden>무르기 2</button>
+            <button type="button" class="control" id="oMenu1">메뉴</button>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+  <section id="gomokuScreen" class="screen screen-game" hidden aria-label="2인 오목">
+    <header class="display-zone game-header o-header">
+      <div class="team left" id="gTeam0">
+        <div class="avatar-wrap"><img id="gPortrait0" alt=""></div>
+        <div class="team-text"><span class="team-label" id="gLabel0"></span><span class="team-name" id="gName0"></span><span class="team-streak" id="gStreak0"></span><span class="emotion-note" id="gNote0"></span></div>
+      </div>
+      <div class="score-center">
+        <div class="score-caption" id="gCaption">HOJA 오목</div>
+        <div class="g-vs">VS</div>
+        <div class="game-time o-turn" id="gTurnText"></div>
+        <div class="rally-meter" aria-live="off"><span id="gLeft">0수째</span></div>
+      </div>
+      <div class="team right" id="gTeam1">
+        <div class="avatar-wrap"><img id="gPortrait1" alt=""></div>
+        <div class="team-text"><span class="team-label" id="gLabel1"></span><span class="team-name" id="gName1"></span><span class="team-streak" id="gStreak1"></span><span class="emotion-note" id="gNote1"></span></div>
+      </div>
+    </header>
+    <div class="touch-zone">
+      <div class="o-play" id="gPlay">
+        <aside class="o-side one" id="gSide0">
+          <canvas class="o-disc" id="gDisc0" aria-hidden="true"></canvas>
+          <div class="o-turn-label" id="gTurnLabel0"></div>
+          <div class="o-tip" id="gTip0"></div>
+          <div class="o-actions">
+            <button type="button" class="control soft" id="gHint0">힌트 2</button>
+            <button type="button" class="control" id="gUndo0" hidden>무르기 2</button>
+            <button type="button" class="control" id="gMenu0">메뉴</button>
+          </div>
+        </aside>
+        <div class="o-shell g-shell" id="gShell">
+          <canvas id="gBoard" aria-label="오목 판. 줄이 만나는 곳을 눌러 돌을 둡니다."></canvas>
+          <div class="o-overlay" id="gOverlay" hidden>
+            <div class="overlay-title" id="gOverlayTitle"></div>
+            <div class="overlay-detail" id="gOverlayDetail"></div>
+            <div class="overlay-actions" id="gOverlayActions"></div>
+          </div>
+        </div>
+        <aside class="o-side two" id="gSide1">
+          <canvas class="o-disc" id="gDisc1" aria-hidden="true"></canvas>
+          <div class="o-turn-label" id="gTurnLabel1"></div>
+          <div class="o-tip" id="gTip1"></div>
+          <div class="o-actions">
+            <button type="button" class="control soft" id="gHint1">힌트 2</button>
+            <button type="button" class="control" id="gUndo1" hidden>무르기 2</button>
+            <button type="button" class="control" id="gMenu1">메뉴</button>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+  <section id="bubbleScreen" class="screen b-screen" hidden aria-label="2인 퍼즐버블">
+    <div class="b-play" id="bPlay">
+      <canvas id="bField0" aria-label="왼쪽 경기장. 끌어서 조준하고 손을 떼면 발사합니다."></canvas>
+      <div class="b-center">
+        <div class="b-caption" id="bCaption">HOJA 퍼즐버블</div>
+        <div class="b-vs"><div class="b-team one" id="bTeam0">
+            <div class="b-label" id="bLabel0"></div>
+            <div class="avatar-wrap"><img id="bPortrait0" alt=""></div>
+            <div class="b-name" id="bName0"></div>
+            <div class="b-score" id="bScore0">0</div>
+            <div class="b-streak" id="bStreak0"></div>
+            <div class="b-pending" id="bPending0"></div>
+            <div class="b-note" id="bNote0"></div>
+          </div><div class="b-team two" id="bTeam1">
+            <div class="b-label" id="bLabel1"></div>
+            <div class="avatar-wrap"><img id="bPortrait1" alt=""></div>
+            <div class="b-name" id="bName1"></div>
+            <div class="b-score" id="bScore1">0</div>
+            <div class="b-streak" id="bStreak1"></div>
+            <div class="b-pending" id="bPending1"></div>
+            <div class="b-note" id="bNote1"></div>
+          </div></div>
+        <button type="button" class="control b-menu" id="bMenu">메뉴</button>
+      </div>
+      <canvas id="bField1" aria-label="오른쪽 경기장. 끌어서 조준하고 손을 떼면 발사합니다."></canvas>
+    </div>
+    <div class="b-overlay" id="bOverlay" hidden>
+      <div class="overlay-title" id="bOverlayTitle"></div>
+      <div class="overlay-detail" id="bOverlayDetail"></div>
+      <div class="overlay-actions" id="bOverlayActions"></div>
+    </div>
+  </section>
+  <section id="shopScreen" class="screen sh-screen" hidden aria-label="붕어빵 가게">
+    <canvas id="shCanvas" aria-label="붕어빵 가게. 화면 아래쪽에서 붕어빵을 굽고 손님에게 내줍니다."></canvas>
+    <div class="b-overlay" id="shOverlay" hidden>
+      <div class="overlay-title" id="shOverlayTitle"></div>
+      <div class="overlay-detail" id="shOverlayDetail"></div>
+      <div class="overlay-actions" id="shOverlayActions"></div>
+    </div>
+  </section>
+  <section id="stairsScreen" class="screen sh-screen" hidden aria-label="무한 계단">
+    <canvas id="stCanvas" aria-label="무한 계단"></canvas>
+    <div class="b-overlay" id="stOverlay" hidden>
+      <div class="overlay-title" id="stOverlayTitle"></div>
+      <div class="overlay-detail" id="stOverlayDetail"></div>
+      <div class="overlay-actions" id="stOverlayActions"></div>
+    </div>
+  </section>
+  <section id="volleyScreen" class="screen sh-screen" hidden aria-label="호자 배구">
+    <canvas id="vbCanvas" aria-label="호자 배구"></canvas>
+    <div class="b-overlay" id="vbOverlay" hidden>
+      <div class="overlay-title" id="vbOverlayTitle"></div>
+      <div class="overlay-detail" id="vbOverlayDetail"></div>
+      <div class="overlay-actions" id="vbOverlayActions"></div>
+    </div>
+  </section>
+  <section id="partyScreen" class="screen screen-game" hidden aria-label="터치 파티">
+    <header class="display-zone game-header o-header">
+      <div class="team left" id="paTeam0"><div class="avatar-wrap"><img id="paPortrait0" alt=""></div><div class="team-text"><span class="team-label" id="paLabel0"></span><span class="team-name" id="paName0"></span></div></div>
+      <div class="score-center">
+        <div class="score-caption" id="paCaption"></div>
+        <div class="score-box"><div class="score-digit" id="paScore0">0</div><div class="score-divider">:</div><div class="score-digit" id="paScore1">0</div></div>
+        <div class="game-time o-turn" id="paTime"></div>
+        <div id="paHint"></div>
+      </div>
+      <div class="team right" id="paTeam1"><div class="avatar-wrap"><img id="paPortrait1" alt=""></div><div class="team-text"><span class="team-label" id="paLabel1"></span><span class="team-name" id="paName1"></span></div></div>
+    </header>
+    <div class="touch-zone pa-touch">
+      <div class="pa-stage" id="paStage"></div>
+      <div class="pa-count" id="paCount" hidden></div>
+      <button type="button" class="control pa-menu" id="paMenu">메뉴</button>
+      <div class="o-overlay pa-overlay" id="paOverlay" hidden><div class="overlay-title" id="paOverlayTitle"></div><div class="overlay-detail" id="paOverlayDetail"></div><div class="overlay-actions" id="paOverlayActions"></div></div>
+    </div>
+  </section>
+
+  <section id="tttScreen" class="screen screen-game" hidden aria-label="틱택토">
+    <header class="display-zone game-header o-header">
+      <div class="team left" id="ttTeam0">
+        <div class="avatar-wrap"><img id="ttPortrait0" alt=""></div>
+        <div class="team-text"><span class="team-label" id="ttLabel0"></span><span class="team-name" id="ttName0"></span><span class="team-streak" id="ttStreak0"></span><span class="emotion-note" id="ttNote0"></span></div>
+      </div>
+      <div class="score-center">
+        <div class="score-caption" id="ttCaption"></div>
+        <div class="score-box"><div class="score-digit" id="ttScore0">0</div><div class="score-divider">:</div><div class="score-digit" id="ttScore1">0</div></div>
+        <div class="game-time o-turn" id="ttTurnText"></div>
+        <div class="rally-meter" aria-live="off"><span id="ttLeft"></span></div>
+      </div>
+      <div class="team right" id="ttTeam1">
+        <div class="avatar-wrap"><img id="ttPortrait1" alt=""></div>
+        <div class="team-text"><span class="team-label" id="ttLabel1"></span><span class="team-name" id="ttName1"></span><span class="team-streak" id="ttStreak1"></span><span class="emotion-note" id="ttNote1"></span></div>
+      </div>
+    </header>
+    <div class="touch-zone">
+      <div class="o-play" id="ttPlay">
+        <aside class="o-side one" id="ttSide0">
+          <canvas class="o-disc" id="ttDisc0" aria-hidden="true"></canvas>
+          <div class="o-turn-label" id="ttTurnLabel0"></div>
+          <div class="o-tip" id="ttTip0"></div>
+          <div class="o-actions"><button type="button" class="control" id="ttMenu0">메뉴</button></div>
+        </aside>
+        <div class="o-shell" id="ttShell">
+          <canvas id="ttBoard" aria-label="틱택토 판. 빈 칸을 눌러 말을 둡니다."></canvas>
+          <div class="o-overlay" id="ttOverlay" hidden>
+            <div class="overlay-title" id="ttOverlayTitle"></div>
+            <div class="overlay-detail" id="ttOverlayDetail"></div>
+            <div class="overlay-actions" id="ttOverlayActions"></div>
+          </div>
+        </div>
+        <aside class="o-side two" id="ttSide1">
+          <canvas class="o-disc" id="ttDisc1" aria-hidden="true"></canvas>
+          <div class="o-turn-label" id="ttTurnLabel1"></div>
+          <div class="o-tip" id="ttTip1"></div>
+          <div class="o-actions"><button type="button" class="control" id="ttMenu1">메뉴</button></div>
+        </aside>
+      </div>
+    </div>
+  </section>
+  <section id="germScreen" class="screen screen-game" hidden aria-label="세균전">
+    <header class="display-zone game-header o-header">
+      <div class="team left" id="gxTeam0">
+        <div class="avatar-wrap"><img id="gxPortrait0" alt=""></div>
+        <div class="team-text"><span class="team-label" id="gxLabel0"></span><span class="team-name" id="gxName0"></span><span class="team-streak" id="gxStreak0"></span><span class="emotion-note" id="gxNote0"></span></div>
+      </div>
+      <div class="score-center">
+        <div class="score-caption" id="gxCaption"></div>
+        <div class="score-box"><div class="score-digit" id="gxScore0">0</div><div class="score-divider">:</div><div class="score-digit" id="gxScore1">0</div></div>
+        <div class="game-time o-turn" id="gxTurnText"></div>
+        <div class="rally-meter" aria-live="off"><span id="gxLeft"></span></div>
+      </div>
+      <div class="team right" id="gxTeam1">
+        <div class="avatar-wrap"><img id="gxPortrait1" alt=""></div>
+        <div class="team-text"><span class="team-label" id="gxLabel1"></span><span class="team-name" id="gxName1"></span><span class="team-streak" id="gxStreak1"></span><span class="emotion-note" id="gxNote1"></span></div>
+      </div>
+    </header>
+    <div class="touch-zone">
+      <div class="o-play" id="gxPlay">
+        <aside class="o-side one" id="gxSide0">
+          <canvas class="o-disc" id="gxDisc0" aria-hidden="true"></canvas>
+          <div class="o-turn-label" id="gxTurnLabel0"></div>
+          <div class="o-tip" id="gxTip0"></div>
+          <div class="o-actions"><button type="button" class="control soft" id="gxHint0">힌트 2</button><button type="button" class="control" id="gxUndo0" hidden>무르기 2</button><button type="button" class="control" id="gxMenu0">메뉴</button></div>
+        </aside>
+        <div class="o-shell" id="gxShell">
+          <canvas id="gxBoard" aria-label="세균전 판. 내 세균을 누른 뒤 갈 칸을 누릅니다."></canvas>
+          <div class="o-overlay" id="gxOverlay" hidden>
+            <div class="overlay-title" id="gxOverlayTitle"></div>
+            <div class="overlay-detail" id="gxOverlayDetail"></div>
+            <div class="overlay-actions" id="gxOverlayActions"></div>
+          </div>
+        </div>
+        <aside class="o-side two" id="gxSide1">
+          <canvas class="o-disc" id="gxDisc1" aria-hidden="true"></canvas>
+          <div class="o-turn-label" id="gxTurnLabel1"></div>
+          <div class="o-tip" id="gxTip1"></div>
+          <div class="o-actions"><button type="button" class="control soft" id="gxHint1">힌트 2</button><button type="button" class="control" id="gxUndo1" hidden>무르기 2</button><button type="button" class="control" id="gxMenu1">메뉴</button></div>
+        </aside>
+      </div>
+    </div>
+  </section>
+  <section id="jumpScreen" class="screen sh-screen" hidden aria-label="호자 점프">
+    <canvas id="cjCanvas" aria-label="호자 점프"></canvas>
+    <div id="cjLaneUi"></div>
+    <div class="cj-t" id="cjTimer" style="display:none"></div>
+    <div class="cj-t" id="cjCount"></div>
+    <div class="cj-t" id="cjTitle">호자 점프</div>
+    <div class="cj-t" id="cjResult"></div>
+    <div class="cj-panel" id="cjMenu"><button type="button" id="cjBSolo">혼자 오르기<small>얼마나 높이 갈 수 있을까?</small></button><button type="button" id="cjBDuo" class="b">둘이 대결<small>60초 동안 더 높이!</small></button><button type="button" id="cjHome" class="h">← 모음집</button></div>
+    <div class="cj-panel" id="cjAgain"><button type="button" id="cjBAgain">다시 하기</button><button type="button" id="cjBBack" class="b">게임 방식 고르기</button></div>
+    <div class="cj-keys" id="cjKeys"><svg class="kb-icon" viewBox="0 0 24 16" aria-hidden="true"><rect x="1" y="1" width="22" height="14" rx="2.5" fill="#fffbe9" stroke="currentColor" stroke-width="2"/><path d="M5 5.5h1.5M9.2 5.5h1.5M13.3 5.5h1.5M17.5 5.5H19M7 11h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>혼자: 스페이스 · 둘이: 왼쪽 W, 오른쪽 ↑ · Esc 메뉴</span></div>
+    <button type="button" id="cjPause" style="display:none">메뉴</button>
+    <div class="b-overlay" id="jumpOverlay" hidden>
+      <div class="overlay-title" id="jumpOverlayTitle"></div>
+      <div class="overlay-actions" id="jumpOverlayActions"></div>
+    </div>
+  </section>
+  <section id="hallScreen" class="screen hall-screen" hidden aria-label="명예의 전당">
+    <header class="hof-head"><div class="hof-title" id="hofTitle">명예의 전당</div><div class="hof-champ" id="hofChampion"></div></header>
+    <div class="hof-body" id="hofBody"></div>
+  </section>
+  <div class="hof-picker" id="hofPicker" hidden></div>
+  <div class="hof-toast" id="hofToast" hidden></div>
+</div>
+<script>@@INCLUDE:vendor/qrcode.js@@</script>
+<script>@@MAIN_JS@@</script>
+</body>
+</html>
