@@ -5826,6 +5826,300 @@ var qrcode = function() {
         return m;
       }}
   };
+  // Seven more, so a match of eight draws a different set from fifteen each time.
+  Object.assign(FL_MISSIONS,{
+    curtain:{word:'벌려요!',hint:'두 손가락으로 커튼 양쪽을 끝까지 벌려요',
+      plan(){return {who:CHARACTERS[paRand(CHARACTERS.length)].id};},
+      make(w,P){
+        const open=[0,0],grab=new Map(),img=flPortrait(P.who);
+        const stage=()=>{const h=w.A.h*.94,ww=Math.min(w.A.w*.9,h*1.5);return {x:w.A.x+(w.A.w-ww)/2,y:w.A.y+(w.A.h-h)/2,w:ww,h};};
+        const edge=i=>{const b=stage();return i?b.x+b.w/2+open[1]*b.w*.46:b.x+b.w/2-open[0]*b.w*.46;};
+        const m={done:false,
+          down(p,id){
+            const b=stage();if(p.y<b.y||p.y>b.y+b.h)return;
+            const i=p.x<b.x+b.w/2?0:1;
+            if(i===0&&p.x>edge(0)+b.w*.04)return;if(i===1&&p.x<edge(1)-b.w*.04)return;
+            grab.set(id,{i,x0:p.x,o0:open[i]});
+          },
+          move(p,id){
+            const g=grab.get(id);if(!g)return;const b=stage();
+            open[g.i]=clamp(g.o0+(g.i?p.x-g.x0:g.x0-p.x)/(b.w*.46),0,1);
+            if(open[0]>=.85&&open[1]>=.85){m.done=true;sfx('goal',.6);}
+          },
+          up(p,id){grab.delete(id);},
+          progress:()=>Math.min(open[0],open[1])/.85,
+          tick(dt){
+            // A curtain let go slides back, so it takes both hands (or two fingers) at once.
+            const held=new Set([...grab.values()].map(g=>g.i));
+            for(let i=0;i<2;i++)if(!held.has(i)&&!m.done)open[i]=Math.max(0,open[i]-dt*.55);
+          },
+          draw(g){
+            const b=stage();
+            g.fillStyle='#3a2a4a';g.beginPath();g.roundRect(b.x,b.y,b.w,b.h,b.h*.04);g.fill();
+            g.fillStyle='rgba(255,230,140,.25)';g.beginPath();g.ellipse(b.x+b.w/2,b.y+b.h*.9,b.w*.3,b.h*.07,0,0,Math.PI*2);g.fill();
+            if(img.complete&&img.naturalWidth){const k=b.h*.8/img.naturalHeight;g.drawImage(img,b.x+b.w/2-img.naturalWidth*k/2,b.y+b.h*.14,img.naturalWidth*k,img.naturalHeight*k);}
+            for(let i=0;i<2;i++){
+              const x0=i?edge(1):b.x,x1=i?b.x+b.w:edge(0),wd=x1-x0;
+              g.fillStyle='#c8463b';g.fillRect(x0,b.y,wd,b.h);
+              g.strokeStyle='rgba(90,20,20,.35)';g.lineWidth=Math.max(2,b.w*.008);
+              const folds=Math.max(2,Math.round(wd/(b.w*.06)));
+              for(let k=1;k<folds;k++){const x=x0+wd*k/folds;g.beginPath();g.moveTo(x,b.y);g.lineTo(x,b.y+b.h);g.stroke();}
+              const hx=i?x0:x1;g.fillStyle='#ffd24a';g.strokeStyle='#5a3a1c';g.lineWidth=3;
+              g.beginPath();g.roundRect(hx-b.w*.02,b.y+b.h*.42,b.w*.04,b.h*.16,b.w*.02);g.fill();g.stroke();
+            }
+            g.fillStyle='#8a2f28';g.fillRect(b.x,b.y,b.w,b.h*.06);
+          }};
+        return m;
+      }},
+    shake:{word:'흔들어요!',hint:'나무를 좌우로 마구 문질러 열매 세 개를 떨어뜨려요',
+      plan(){return {pic:FL_FRUIT[paRand(FL_FRUIT.length)],per:3};},
+      make(w,P){
+        let shakes=0,sway=0;const track=new Map(),fruits=[{x:-.22,y:.34},{x:.2,y:.28},{x:0,y:.52}].map(f=>({...f,fall:-1}));
+        const tree=()=>{const h=w.A.h*.95;return {x:w.A.x+w.A.w/2,y:w.A.y+w.A.h*.02,h};};
+        const fell=()=>fruits.filter(f=>f.fall>=0).length;
+        const m={done:false,
+          down(p,id){track.set(id,{x:p.x,dir:0,run:0});},
+          move(p,id){
+            const t=track.get(id);if(!t)return;
+            const dx=p.x-t.x;t.x=p.x;if(!dx)return;
+            const d=Math.sign(dx);
+            if(d!==t.dir){if(t.dir&&t.run>w.A.w*.06){shakes++;sway=Math.min(1,sway+.35);sfx('flip',.4,.7+Math.random()*.3);
+                const n=Math.floor(shakes/P.per);const f=fruits.find(o=>o.fall<0);if(f&&n>fell()){f.fall=0;sfx('tap',.5);}}
+              t.dir=d;t.run=0;}
+            t.run+=Math.abs(dx);
+          },
+          up(p,id){track.delete(id);},
+          progress:()=>fell()/3,
+          tick(dt){
+            sway=Math.max(0,sway-dt*1.2);
+            for(const f of fruits)if(f.fall>=0)f.fall=Math.min(1,f.fall+dt*2.2);
+            if(fruits.every(f=>f.fall>=1))m.done=true;
+          },
+          draw(g){
+            const t=tree(),a=Math.sin(performance.now()/60)*sway*.06;
+            g.save();g.translate(t.x,t.y+t.h);g.rotate(a);paDraw(g,'tree',0,-t.h/2,t.h,t.h);g.restore();
+            const ground=w.A.y+w.A.h*.94;
+            for(const f of fruits){
+              let x=t.x+f.x*t.h,y=t.y+f.y*t.h;
+              if(f.fall<0)x+=Math.sin(performance.now()/60)*sway*t.h*.03;
+              else y=y+(ground-y)*f.fall*f.fall;
+              paDraw(g,P.pic,x,y,t.h*.17);
+            }
+          }};
+        return m;
+      }},
+    goal:{word:'넣어요!',hint:'공을 뒤로 당겼다 놓아 골대에 넣어요',
+      plan(lvl){return {gx:.3+Math.random()*.4,gw:.34-Math.min(.08,lvl*.02),move:lvl>=2};},
+      make(w,P){
+        const ball={x:.5,y:.84,vx:0,vy:0,moving:false};let pull=null,t=0,cheer=0;
+        const R=()=>flUnit(w.A)*.07;
+        const goalX=()=>P.move?clamp(P.gx+Math.sin(t*1.6)*.18,P.gw/2+.04,1-P.gw/2-.04):P.gx;
+        const px=()=>flAt(w.A,ball.x,ball.y);
+        const reset=()=>{ball.x=.5;ball.y=.84;ball.vx=ball.vy=0;ball.moving=false;};
+        const m={done:false,
+          down(p,id){if(ball.moving||pull)return;if(flDist(p,px())<R()*2.2)pull={id,p};},
+          move(p,id){if(pull&&pull.id===id)pull.p=p;},
+          up(p,id){
+            if(!pull||pull.id!==id)return;
+            const b=px(),dx=b.x-p.x,dy=b.y-p.y,len=Math.hypot(dx,dy);pull=null;
+            if(len<R()*.8)return;
+            const k=Math.min(len,flUnit(w.A)*.45)/len*3.2;
+            ball.vx=dx*k/w.A.w;ball.vy=dy*k/w.A.h;ball.moving=true;sfx('hit',.7);
+          },
+          progress:()=>m.done?1:0,
+          tick(dt){
+            t+=dt;if(cheer>0)cheer-=dt;
+            if(!ball.moving)return;
+            ball.x+=ball.vx*dt;ball.y+=ball.vy*dt;
+            const f=Math.pow(.55,dt);ball.vx*=f;ball.vy*=f;
+            const rx=R()/w.A.w;
+            if(ball.x<rx){ball.x=rx;ball.vx=Math.abs(ball.vx);sfx('rail',.5);}
+            if(ball.x>1-rx){ball.x=1-rx;ball.vx=-Math.abs(ball.vx);sfx('rail',.5);}
+            const gx=goalX();
+            if(ball.y<.14){
+              if(Math.abs(ball.x-gx)<P.gw/2-rx*.5){m.done=true;ball.moving=false;ball.y=.08;sfx('goal',.8);}
+              else{ball.y=.14;ball.vy=Math.abs(ball.vy)*.6;sfx('wood',.6);}
+            }
+            if(ball.y>1.02||Math.hypot(ball.vx*w.A.w,ball.vy*w.A.h)<R()*.6)reset();
+          },
+          draw(g){
+            const gx=goalX(),u=flUnit(w.A),L=flAt(w.A,gx-P.gw/2,.02),Rt=flAt(w.A,gx+P.gw/2,.14);
+            g.fillStyle='#2b9a5e';g.fillRect(w.A.x,w.A.y,w.A.w,w.A.h);
+            g.strokeStyle='rgba(255,255,255,.5)';g.lineWidth=Math.max(2,u*.01);g.beginPath();g.moveTo(w.A.x,w.A.y+w.A.h*.14);g.lineTo(w.A.x+w.A.w,w.A.y+w.A.h*.14);g.stroke();
+            g.fillStyle='rgba(255,255,255,.35)';g.fillRect(L.x,L.y,Rt.x-L.x,Rt.y-L.y);
+            g.strokeStyle='#fff';g.lineWidth=Math.max(4,u*.02);g.strokeRect(L.x,L.y,Rt.x-L.x,Rt.y-L.y);
+            g.strokeStyle='rgba(255,255,255,.4)';g.lineWidth=1;
+            for(let k=1;k<6;k++){const x=L.x+(Rt.x-L.x)*k/6;g.beginPath();g.moveTo(x,L.y);g.lineTo(x,Rt.y);g.stroke();}
+            const b=px();
+            if(pull){
+              const dx=b.x-pull.p.x,dy=b.y-pull.p.y;
+              g.strokeStyle='#fff6e0';g.lineWidth=u*.012;g.setLineDash([u*.025,u*.02]);
+              g.beginPath();g.moveTo(b.x,b.y);g.lineTo(b.x+dx*1.6,b.y+dy*1.6);g.stroke();g.setLineDash([]);
+              g.strokeStyle='rgba(42,26,14,.6)';g.lineWidth=u*.01;g.beginPath();g.moveTo(b.x,b.y);g.lineTo(pull.p.x,pull.p.y);g.stroke();
+            }else if(!ball.moving&&!m.done){
+              g.strokeStyle='rgba(255,246,224,.8)';g.lineWidth=u*.008;g.beginPath();g.arc(b.x,b.y,R()*(1.5+Math.sin(t*5)*.15),0,Math.PI*2);g.stroke();
+            }
+            paDraw(g,'ball',b.x,b.y,R()*2);
+          }};
+        return m;
+      }},
+    dodge:{word:'피해요!',hint:'호자를 끌고 다니며 떨어지는 돌을 끝까지 피해요',time:.75,
+      plan(lvl){return {gap:Math.max(.42,.62-lvl*.04),seed:Math.random()};},
+      make(w,P){
+        let x=.5,t=0,wait=.4,hit=0,n=0;const rocks=[],img=flPortrait('HOJA');
+        const R=()=>flUnit(w.A)*.08;
+        const m={done:false,survive:true,failed:false,rocks,get x(){return x;},
+          down(p){x=clamp((p.x-w.A.x)/w.A.w,.05,.95);},
+          move(p){x=clamp((p.x-w.A.x)/w.A.w,.05,.95);},
+          progress:()=>clamp(t/P.limit,0,1),
+          tick(dt){
+            t+=dt;wait-=dt;
+            if(wait<=0){wait=P.gap;n++;
+              // Every third rock comes down where Hoja stands, so standing still is not enough.
+              rocks.push({x:n%3===1?clamp(x+(Math.random()-.5)*.08,.06,.94):.06+Math.random()*.88,y:-.08,pic:'met'+paRand(4),spin:Math.random()*6});}
+            const me=flAt(w.A,x,.84);
+            for(const r of rocks){
+              r.y+=dt*.5;r.spin+=dt*2;
+              const q=flAt(w.A,r.x,r.y);
+              if(!m.failed&&flDist(q,me)<(R()+flUnit(w.A)*.06)*.6){m.failed=true;hit=.6;sfx('boom',.8);}
+            }
+            while(rocks.length&&rocks[0].y>1.1)rocks.shift();
+          },
+          draw(g){
+            const me=flAt(w.A,x,.84),u=flUnit(w.A);
+            g.fillStyle='rgba(0,0,0,.06)';g.fillRect(w.A.x,w.A.y+w.A.h*.72,w.A.w,w.A.h*.28);
+            for(const r of rocks){const q=flAt(w.A,r.x,r.y);g.save();g.translate(q.x,q.y);g.rotate(r.spin);paDraw(g,r.pic,0,0,u*.13);g.restore();}
+            if(img.complete&&img.naturalWidth){const k=R()*3.4/img.naturalHeight;g.drawImage(img,me.x-img.naturalWidth*k/2,me.y-R()*1.9,img.naturalWidth*k,img.naturalHeight*k);}
+            if(m.failed)paDraw(g,'burst',me.x,me.y,R()*3);
+            g.fillStyle='rgba(47,74,72,.35)';g.font='900 '+Math.round(u*.06)+'px "HojaBody",sans-serif';g.textAlign='center';g.textBaseline='middle';
+            g.fillText('← 끌어서 움직여요 →',w.A.x+w.A.w/2,w.A.y+w.A.h*.06);
+          }};
+        return m;
+      }},
+    still:{word:'참아요!',hint:'무엇이 나와도 아무것도 누르지 말고 참아요',time:.7,
+      plan(){return {pics:paShuffle(['icecream','cherry','strawberry','star','balloon','peach','starGold','music']).slice(0,5)};},
+      make(w,P){
+        let t=0,oops=0;
+        const m={done:false,survive:true,failed:false,
+          down(){if(!m.failed){m.failed=true;oops=1;sfx('boom',.7);}},
+          progress:()=>clamp(t/P.limit,0,1),
+          tick(dt){t+=dt;},
+          draw(g){
+            const u=flUnit(w.A),c=flAt(w.A,.5,.5);
+            P.pics.forEach((pic,i)=>{
+              const a=t*1.4+i*Math.PI*2/P.pics.length,r=u*(.3+.06*Math.sin(t*3+i));
+              const pop=1+.15*Math.sin(t*8+i*2);
+              paDraw(g,pic,c.x+Math.cos(a)*r*1.4,c.y+Math.sin(a)*r,u*.17*pop);
+            });
+            const pulse=1+.06*Math.sin(t*9);
+            g.fillStyle=m.failed?'#7a7a7a':'#e0584a';g.strokeStyle='#5a1a14';g.lineWidth=u*.015;
+            g.beginPath();g.arc(c.x,c.y,u*.15*pulse,0,Math.PI*2);g.fill();g.stroke();
+            g.fillStyle='#fff6e0';g.font='900 '+Math.round(u*.06)+'px "HojaBody",sans-serif';g.textAlign='center';g.textBaseline='middle';
+            g.fillText(m.failed?'앗!':'누르지 마!',c.x,c.y);
+          }};
+        return m;
+      }},
+    puzzle:{word:'맞춰요!',hint:'빈자리에 맞는 조각을 끌어다 끼워요',
+      plan(){
+        const ids=paShuffle(CHARACTERS.map(c=>c.id));
+        return {who:ids[0],other:ids[1],hole:paRand(9),order:paShuffle([0,1,2]),decoy:paRand(9)};
+      },
+      make(w,P){
+        const img=flPortrait(P.who),img2=flPortrait(P.other);let drag=null,shake=0,shakeI=-1;
+        // Each piece: which picture and which ninth of it.
+        const pieces=[{im:img,cell:P.hole,right:true},{im:img2,cell:P.hole,right:false},{im:img,cell:(P.hole+1+P.decoy%8)%9,right:false}];
+        const slots=P.order.map(i=>pieces[i]);
+        const box=()=>{const s=Math.min(w.A.h*.94,w.A.w*.56);return {x:w.A.x+w.A.w*.04,y:w.A.y+(w.A.h-s)/2,s};};
+        const slotAt=i=>{const b=box(),room=w.A.x+w.A.w-b.x-b.s,cs=Math.min(w.A.h*.27,room*.8,b.s/3*1.05);return {x:b.x+b.s+room/2,y:w.A.y+w.A.h*(.17+i*.33),s:cs};};
+        const holeAt=()=>{const b=box(),cs=b.s/3;return {x:b.x+(P.hole%3+.5)*cs,y:b.y+(Math.floor(P.hole/3)+.5)*cs,s:cs};};
+        function cut(g,im,cell,x,y,s){
+          if(!(im.complete&&im.naturalWidth))return;
+          const S=Math.max(im.naturalWidth,im.naturalHeight),ox=(S-im.naturalWidth)/2,oy=(S-im.naturalHeight)/2,cs=S/3;
+          const sx=(cell%3)*cs-ox,sy=Math.floor(cell/3)*cs-oy;
+          g.save();g.beginPath();g.rect(x-s/2,y-s/2,s,s);g.clip();
+          g.fillStyle='#f3e4c4';g.fillRect(x-s/2,y-s/2,s,s);
+          g.drawImage(im,0,0,im.naturalWidth,im.naturalHeight,x-s/2-sx*s/cs,y-s/2-sy*s/cs,im.naturalWidth*s/cs,im.naturalHeight*s/cs);
+          g.restore();
+        }
+        const m={done:false,
+          down(p,id){
+            if(drag)return;
+            for(let i=0;i<3;i++){const q=slotAt(i);if(Math.abs(p.x-q.x)<q.s/2&&Math.abs(p.y-q.y)<q.s/2){drag={id,i,p};sfx('tap',.35);return;}}
+          },
+          move(p,id){if(drag&&drag.id===id)drag.p=p;},
+          up(p,id){
+            if(!drag||drag.id!==id)return;
+            const h=holeAt(),i=drag.i;drag=null;
+            if(flDist(p,h)<h.s*.7){
+              if(slots[i].right){m.done=true;sfx('goal',.6);}
+              else{shake=.5;shakeI=i;sfx('soft',.8);}
+            }
+          },
+          progress:()=>m.done?1:0,
+          tick(dt){if(shake>0)shake-=dt;},
+          draw(g){
+            const b=box(),h=holeAt();
+            g.fillStyle='#f3e4c4';g.fillRect(b.x,b.y,b.s,b.s);
+            for(let c=0;c<9;c++){if(c===P.hole&&!m.done)continue;cut(g,img,c,b.x+(c%3+.5)*b.s/3,b.y+(Math.floor(c/3)+.5)*b.s/3,b.s/3);}
+            g.strokeStyle='#5a3a1c';g.lineWidth=Math.max(3,b.s*.012);g.strokeRect(b.x,b.y,b.s,b.s);
+            if(!m.done){g.fillStyle='rgba(42,26,14,.55)';g.fillRect(h.x-h.s/2,h.y-h.s/2,h.s,h.s);g.strokeStyle='#ffd24a';g.setLineDash([h.s*.08,h.s*.06]);g.strokeRect(h.x-h.s/2,h.y-h.s/2,h.s,h.s);g.setLineDash([]);}
+            for(let i=0;i<3;i++){
+              if(m.done&&slots[i].right)continue;
+              let q=slotAt(i);if(drag&&drag.i===i)q={...q,x:drag.p.x,y:drag.p.y};
+              const dx=shake>0&&shakeI===i?(Math.random()-.5)*q.s*.1:0;
+              cut(g,slots[i].im,slots[i].cell,q.x+dx,q.y,q.s);
+              g.strokeStyle='#5a3a1c';g.lineWidth=3;g.strokeRect(q.x+dx-q.s/2,q.y-q.s/2,q.s,q.s);
+            }
+          }};
+        return m;
+      }},
+    count:{word:'세어요!',hint:'지나가는 나한상이 몇 명인지 세어 숫자를 눌러요',
+      plan(lvl){
+        const n=3+paRand(3+Math.min(2,lvl)),k=2+paRand(2);
+        const others=CHARACTERS.map(c=>c.id).filter(id=>id!=='NAHANSANG');
+        const line=paShuffle([...Array(n).fill('NAHANSANG'),...Array.from({length:k},()=>others[paRand(others.length)])]);
+        const opts=paShuffle([n-1,n,n+1].map(v=>Math.max(1,v))).filter((v,i,a)=>a.indexOf(v)===i);
+        while(opts.length<3)opts.push(n+opts.length);
+        return {n,line,opts:paShuffle(opts)};
+      },
+      make(w,P){
+        let t=0,wrong=-1;
+        const walk=Math.min(3.2,P.limit*.55),gap=walk/(P.line.length+1.2),cross=gap*2.4;
+        const askAt=gap*(P.line.length-1)+cross;
+        const btn=i=>{const bw=w.A.w*.22;return {x:w.A.x+w.A.w*(.2+i*.3),y:w.A.y+w.A.h*.78,w:bw,h:w.A.h*.28};};
+        const m={done:false,failed:false,
+          down(p){
+            if(t<askAt)return;
+            for(let i=0;i<3;i++){const b=btn(i);if(Math.abs(p.x-b.x)<b.w/2&&Math.abs(p.y-b.y)<b.h/2){
+              if(P.opts[i]===P.n){m.done=true;sfx('goal',.6);}else{m.failed=true;wrong=i;sfx('soft',.9);}
+              return;}}
+          },
+          progress:()=>m.done?1:0,
+          tick(dt){t+=dt;},
+          draw(g){
+            const u=flUnit(w.A),y=w.A.y+w.A.h*.32;
+            g.fillStyle='rgba(0,0,0,.08)';g.fillRect(w.A.x,y+u*.13,w.A.w,u*.04);
+            P.line.forEach((id,i)=>{
+              const k=(t-i*gap)/cross;if(k<0||k>1)return;
+              const im=flPortrait(id),x=w.A.x-u*.15+(w.A.w+u*.3)*k,bob=Math.abs(Math.sin(k*Math.PI*6))*u*.03;
+              if(im.complete&&im.naturalWidth){const s=u*.28/im.naturalHeight;g.drawImage(im,x-im.naturalWidth*s/2,y-u*.14-bob,im.naturalWidth*s,im.naturalHeight*s);}
+            });
+            if(t>=askAt){
+              for(let i=0;i<3;i++){
+                const b=btn(i);
+                g.fillStyle=i===wrong?'#f3b0a2':m.done&&P.opts[i]===P.n?'#ffe08a':'#fff6e0';g.strokeStyle='#5a3a1c';g.lineWidth=4;
+                g.beginPath();g.roundRect(b.x-b.w/2,b.y-b.h/2,b.w,b.h,b.h*.2);g.fill();g.stroke();
+                g.fillStyle='#2f4a48';g.font='900 '+Math.round(b.h*.6)+'px "HojaBody",sans-serif';g.textAlign='center';g.textBaseline='middle';
+                g.fillText(String(P.opts[i]),b.x,b.y);
+              }
+            }else{
+              g.fillStyle='rgba(47,74,72,.5)';g.font='900 '+Math.round(u*.07)+'px "HojaBody",sans-serif';g.textAlign='center';g.textBaseline='middle';
+              g.fillText('나한상만 세어요',w.A.x+w.A.w/2,w.A.y+w.A.h*.78);
+            }
+          }};
+        return m;
+      }}
+  });
   const FL_KEYS=Object.keys(FL_MISSIONS);
 
   function makeFlash(stage,host){
@@ -5833,7 +6127,7 @@ var qrcode = function() {
     const worlds=paEachSide(stage,host,(box,side)=>{
       box.classList.add('pa-flash-box');
       const v=paCanvas(box),w={v,box,side,A:{x:0,y:0,w:1,h:1},pointers:new Map(),m:null,state:'wait',burst:0};
-      const live=()=>PS.live&&!PS.ended&&w.state==='play'&&w.m&&!w.m.done;
+      const live=()=>PS.live&&!PS.ended&&w.state==='play'&&w.m&&!w.m.done&&!w.m.failed;
       v.c.addEventListener('pointerdown',e=>{
         e.preventDefault();if(!live())return;try{v.c.setPointerCapture(e.pointerId);}catch{}
         const p=paPos(v,e);w.pointers.set(e.pointerId,p);w.m.down&&w.m.down(p,e.pointerId);
@@ -5862,9 +6156,8 @@ var qrcode = function() {
     function next(){
       F.round++;F.key=pick();F.first=-1;
       const def=FL_MISSIONS[F.key],lvl=level(),plan=def.plan(lvl);F.plan=plan;
-      const before=F.limit;
-      F.limit=solo?Math.max(3.5,6.5-lvl*.5):Math.max(5,6.5-F.round*.15);
-      F.speedNote=solo&&F.round>1&&F.limit<before;
+      F.limit=(solo?Math.max(3.5,6.5-lvl*.5):Math.max(5,6.5-F.round*.15))*(def.time||1);plan.limit=F.limit;
+      F.speedNote=solo&&F.round>1&&lvl>(F.lastLvl||0)&&lvl<=6;F.lastLvl=lvl;
       for(const w of worlds){w.pointers.clear();w.m=def.make(w,plan);w.state='intro';w.burst=0;}
       F.phase='intro';F.t=F.round===1?1.2:.95;
       paHint(def.hint);
@@ -5875,11 +6168,16 @@ var qrcode = function() {
       if(solo)paTime(F.phase==='play'?sec+'초':'');
       else paTime(F.round+' / '+total+'판'+(F.phase==='play'?' · '+sec+'초':''));
     }
+    function win(w,bonusOk){
+      w.state='win';w.burst=0;
+      if(solo){F.cleared++;paScore(0,1);sfx('coin',.8);}
+      else{const bonus=bonusOk&&F.first<0;if(bonus)F.first=w.side;paScore(w.side,bonus?2:1);sfx('coin',.8,bonus?1.2:1);}
+    }
+    function lose(w){w.state='fail';w.burst=0;if(solo){F.lives--;sfx('low',.8);}else sfx('soft',.6);}
     function settle(){
       F.phase='result';F.t=1.1;
-      for(const w of worlds){
-        if(w.state==='play'){w.state='fail';if(solo){F.lives--;sfx('low',.8);}else sfx('soft',.6);}
-      }
+      // Holding-out missions are won by lasting to the end; there is no "first" in them.
+      for(const w of worlds)if(w.state==='play'){if(w.m.survive&&!w.m.failed)win(w,false);else lose(w);}
       if(solo&&F.lives<=0){F.t=1.4;}
     }
     function layout(w){
@@ -5929,11 +6227,8 @@ var qrcode = function() {
         }else if(F.phase==='play'){
           F.t-=dt;
           for(const w of worlds){
-            if(w.state==='play'&&w.m.done){
-              w.state='win';w.burst=0;
-              if(solo){F.cleared++;paScore(0,1);sfx('coin',.8);}
-              else{const bonus=F.first<0;if(bonus)F.first=w.side;paScore(w.side,bonus?2:1);sfx('coin',.8,bonus?1.2:1);}
-            }
+            if(w.state!=='play')continue;
+            if(w.m.failed)lose(w);else if(w.m.done)win(w,true);
           }
           if(F.t<=0||worlds.every(w=>w.state!=='play'))settle();
         }else if(F.phase==='result'){
