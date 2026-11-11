@@ -6536,6 +6536,26 @@ var qrcode = function() {
   const puck={x:W/2,y:H/2,vx:0,vy:0,stall:0};
   const SPEED_CAP=1750,SMASH_SWIPE=850,SPECIAL_SWIPE=380,GAUGE_MAX=100;
   const possession={side:-1,time:0,warned:false};let lastPossSide=-1;
+  // Small center-only penalty box (the decorative goal arc is intentionally ignored).
+  const GOAL_CAMP_SECONDS=3,GOAL_PENALTY_SCALE=1.5;
+  const GOAL_CAMP_DEPTH=MALLET_R*3,GOAL_CAMP_HALF=GOAL_HALF*.7;
+  const goalCamp=[{time:0,penalty:false},{time:0,penalty:false}];
+  const goalHalfFor=side=>GOAL_HALF*(goalCamp[side].penalty?GOAL_PENALTY_SCALE:1);
+  function resetGoalCamp(){goalCamp.forEach(c=>{c.time=0;c.penalty=false;});}
+  function updateGoalCamp(dt){
+    for(let i=0;i<2;i++){
+      const m=mallets[i],c=goalCamp[i];
+      const inBox=(i===0?m.x<=GOAL_CAMP_DEPTH:m.x>=W-GOAL_CAMP_DEPTH)
+        &&Math.abs(m.y-H/2)<=GOAL_CAMP_HALF;
+      if(!inBox){c.time=0;c.penalty=false;continue;}
+      c.time+=dt;
+      if(!c.penalty&&c.time>GOAL_CAMP_SECONDS){
+        c.penalty=true;
+        floatText(i===0?190:W-190,H/2-GOAL_HALF-55,'골대 지키기 경고!','#ef5848',30,1.2);
+        sfx('item',.8,.8);
+      }
+    }
+  }
   let gauge=[0,0],specialCut={time:0,attacker:-1,aim:null};
   const CUT_TIME=1.5,CANNON_SPEED=1750,CANNON_PERFECT=38,TIMED_SPECIAL_DURATION=8;
   const shot={cannon:null,curve:null,zig:null};
@@ -6626,7 +6646,7 @@ var qrcode = function() {
     rallyHits=0;lastHitBy=-1;bestRally=0;stats=[{smash:0,special:0},{smash:0,special:0}];
     gauge=[0,0];shields=[0,0];slowField={side:-1,time:0};conquer={side:-1,time:0};midX=W/2;
     trail=[];particles=[];floats=[];rings=[];flash=null;shake=0;updateRally();syncGauge();
-    resetPositions();phase='ready';updateClock();
+    resetPositions();resetGoalCamp();phase='ready';updateClock();
     syncCharacterUI();
     setMood(0,'neutral','손가락을 올려!');setMood(1,'neutral',aiLevel?'컴퓨터 상대':'손가락을 올려!');
     for(let i=0;i<2;i++)teamEls[i].classList.toggle('champion',streak.side===i&&streak.id===choices[i]&&streak.count>0);
@@ -6642,7 +6662,7 @@ var qrcode = function() {
   }
   function setupServe(side){
     // Conceding player gets the puck and the first swing, like a real table.
-    resetShots();boosted=false;zoneContact=false;
+    resetShots();boosted=false;zoneContact=false;resetGoalCamp();
     rallyHits=0;lastHitBy=-1;trail=[];updateRally();
     Object.assign(puck,{x:W/2+(side===0?-300:300),y:H/2,vx:0,vy:0,stall:0});
     possession.side=side;possession.time=0;possession.warned=false;
@@ -6674,7 +6694,7 @@ var qrcode = function() {
     phase=resumePhase;hideOverlay();syncStrip();setBgmTempo(clock<=15?1.05:1);
   }
   function finish(){
-    resetShots();closeCut();hideGoalBanner();floats=[];phase='finished';releaseTouches();
+    resetShots();closeCut();hideGoalBanner();floats=[];resetGoalCamp();phase='finished';releaseTouches();
     const winner=scores[0]>scores[1]?0:1;
     const repeat=streak.side===winner&&streak.id===choices[winner];
     streak={side:winner,id:choices[winner],count:repeat?streak.count+1:1};
@@ -6694,7 +6714,7 @@ var qrcode = function() {
   }
   function scoreGoal(scorer){
     if(phase!=='playing')return;
-    resetShots();serve=null;
+    resetShots();serve=null;resetGoalCamp();
     scores[scorer]++;lastScored=scorer;scoreEls[scorer].textContent=String(scores[scorer]);
     const el=scoreEls[scorer];el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop');
     const goalX=scorer===0?W:0;
@@ -7183,12 +7203,13 @@ var qrcode = function() {
         else shot.zig=null;
       }else wallFx(puck.x,puck.y,speed);
     }
-    const inMouth=Math.abs(puck.y-H/2)<GOAL_HALF;
-    if(puck.x<R&&(!inMouth||shields[0]>0)){
-      if(inMouth)bounceShield(0);else{cancelZoneBoost();puck.x=R;puck.vx=Math.abs(puck.vx)*.96;puck.vy*=.985;wallFx(puck.x,puck.y,speed);}
+    const inLeftMouth=Math.abs(puck.y-H/2)<goalHalfFor(0);
+    const inRightMouth=Math.abs(puck.y-H/2)<goalHalfFor(1);
+    if(puck.x<R&&(!inLeftMouth||shields[0]>0)){
+      if(inLeftMouth)bounceShield(0);else{cancelZoneBoost();puck.x=R;puck.vx=Math.abs(puck.vx)*.96;puck.vy*=.985;wallFx(puck.x,puck.y,speed);}
     }
-    if(puck.x>W-R&&(!inMouth||shields[1]>0)){
-      if(inMouth)bounceShield(1);else{cancelZoneBoost();puck.x=W-R;puck.vx=-Math.abs(puck.vx)*.96;puck.vy*=.985;wallFx(puck.x,puck.y,speed);}
+    if(puck.x>W-R&&(!inRightMouth||shields[1]>0)){
+      if(inRightMouth)bounceShield(1);else{cancelZoneBoost();puck.x=W-R;puck.vx=-Math.abs(puck.vx)*.96;puck.vy*=.985;wallFx(puck.x,puck.y,speed);}
     }
     if(puck.x<-R*.4){scoreGoal(1);return;}
     if(puck.x>W+R*.4){scoreGoal(0);return;}
@@ -7268,7 +7289,10 @@ var qrcode = function() {
       if(specialCut.time<=0)fireSpecial();
       return;
     }
-    if(phase==='playing')stepPlaying(dt);
+    if(phase==='playing'){
+      if(!serve)updateGoalCamp(dt);else resetGoalCamp();
+      stepPlaying(dt);
+    }
   }
 
   /* ---------- Visual effects ---------- */
@@ -7348,6 +7372,25 @@ var qrcode = function() {
     arenaCache=c;arenaDirty=false;
   }
 
+  function drawGoalCamp(){
+    for(let i=0;i<2;i++){
+      if(!goalCamp[i].penalty)continue;
+      const half=goalHalfFor(i),x=i===0?0:W;
+      ctx.save();
+      ctx.fillStyle='#14211f';
+      ctx.fillRect(i===0?-RM:x-5,H/2-half,RM+5,half*2);
+      ctx.fillStyle='#ef5848';
+      ctx.fillRect(i===0?-5:W-1,H/2-half,6,half*2);
+      ctx.fillStyle='#ffe1a3';
+      for(const yy of [H/2-half,H/2+half]){
+        ctx.beginPath();ctx.arc(x,yy,9,0,Math.PI*2);ctx.fill();
+      }
+      ctx.strokeStyle='#ef5848';ctx.lineWidth=4;ctx.setLineDash([12,9]);ctx.globalAlpha=.85;
+      ctx.beginPath();ctx.moveTo(x,H/2-half);ctx.lineTo(i===0?GOAL_CAMP_DEPTH:W-GOAL_CAMP_DEPTH,H/2-half);
+      ctx.moveTo(x,H/2+half);ctx.lineTo(i===0?GOAL_CAMP_DEPTH:W-GOAL_CAMP_DEPTH,H/2+half);ctx.stroke();
+      ctx.restore();
+    }
+  }
   function drawStage(){
     if(activeStage==='posts'||activeStage==='patrol'){
       for(const o of getPosts()){
@@ -7398,7 +7441,7 @@ var qrcode = function() {
     for(let i=0;i<2;i++)if(shields[i]>0){
       const gx=i===0?2:W-2,blink=shields[i]<1.5&&Math.floor(shields[i]*8)%2;
       ctx.save();ctx.globalAlpha=blink?.35:.95;ctx.lineCap='round';
-      ctx.strokeStyle='#ffd25a';ctx.lineWidth=12;ctx.beginPath();ctx.moveTo(gx,H/2-GOAL_HALF);ctx.lineTo(gx,H/2+GOAL_HALF);ctx.stroke();
+      ctx.strokeStyle='#ffd25a';ctx.lineWidth=12;ctx.beginPath();ctx.moveTo(gx,H/2-goalHalfFor(i));ctx.lineTo(gx,H/2+goalHalfFor(i));ctx.stroke();
       ctx.strokeStyle='#fff7cf';ctx.lineWidth=4;ctx.stroke();ctx.restore();
     }
     if(darkTime>0){
@@ -7512,6 +7555,7 @@ var qrcode = function() {
     ctx.drawImage(arenaCache,sx,sy);
     ctx.setTransform(sc,0,0,canvas.height/LH,RM*sc+sx,RM*(canvas.height/LH)+sy);
     if(TABLET)drawTabletHud();
+    drawGoalCamp();
     drawStage();
 
     for(const tr of trail){
