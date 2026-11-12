@@ -49,13 +49,13 @@
   const SIDE_COLOR=['#2f9c8c','#e0694f'], SIDE_GLOW=['#7ff0da','#ffb59c'];
   // Every character gets one special. Attack shots test the defender; support ones change the field.
   const SPECIALS={
-    HOJA:{kind:'cannon',name:'사랑의 캐논',tip:'가이드선 없이 날아온다!',short:'경로를 미리 보여주지 않는 가장 빠른 슛'},
-    NAHANSANG:{kind:'ghost',name:'급식 세 판',tip:'진짜 퍽은 하나뿐!',short:'가짜 퍽 둘과 함께 골대로 날아가는 슛'},
+    HOJA:{kind:'cannon',name:'사랑의 캐논',tip:'골대가 넓어진다! 어디로 올지 몰라!',short:'상대 골대를 넓히고 가이드선 없이 날아가는 가장 빠른 슛'},
+    NAHANSANG:{kind:'lunch',name:'급식 세 판',tip:'우리 진영에 급식 상자 셋!',short:'내 진영에 사라지지 않는 아이템 상자 3개를 놓는 슛'},
     SUMAKSAE:{kind:'curve',name:'기와 커브',tip:'휘어 오는 길을 읽어!',short:'물결처럼 휘어 골대로 가는 슛'},
     CHILJIDO_ELDER:{kind:'zig',name:'일곱 갈래 번개',tip:'튕길수록 빨라져!',short:'벽을 튕기며 빨라져 골대로 가는 슛'},
     MURYEONG_KING:{kind:'shield',name:'왕관 방패',tip:'왕의 골대는 8초간 무적!',short:'8초 동안 내 골대를 막는 방패'},
-    BANGASAYUSANG:{kind:'slow',name:'사유의 시간',tip:'우리 진영의 시간이 느려져!',short:'8초 동안 내 진영에서 퍽이 느려짐'},
-    GWANGGAETO_KING:{kind:'conquer',name:'영토 정복',tip:'중앙선이 밀려난다!',short:'8초 동안 중앙선을 상대 쪽으로 밀어냄'}
+    BANGASAYUSANG:{kind:'slow',name:'사유의 시간',tip:'우리 쪽은 느리게, 너희 쪽은 빠르게!',short:'8초 동안 내 진영에선 퍽이 느려지고 상대 진영에선 빨라짐'},
+    GWANGGAETO_KING:{kind:'conquer',name:'만주 상륙 작전',tip:'너희 골대 앞은 이제 우리 땅!',short:'8초 동안 상대 골대 앞을 우리 영토로 만들어 상대가 막지 못함'}
   };
   let choices=['HOJA','NAHANSANG'];
   const STAGES=[

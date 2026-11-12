@@ -61,6 +61,7 @@
     window.__hoja={
       bakery:{SH,SH_DAYS,SH_UP,SH_SP,shStep,shTapMold,shServe,shBuy,shNextDay,shCovers,shCookTime,shTarget,shNewGame,shSpecial,shTrayCap,shGold,shBurn,setStage(v){shopStage=v;},setChoice(i,id){choices[i]=id;}},
       menuBg:MB,
+      items:{ITEMS,ITEM_KINDS,GOOD_ITEMS,applyItem,placeLunch,fieldRate,goalHalfFor,wallPosts,get lunch(){return lunch;},get twin(){return twin;},get goalWide(){return goalWide;},get walls(){return walls;},get iceTime(){return iceTime;},get cannonWide(){return cannonWide;},get landR(){return LAND_R;},landedOn,get midX(){return midX;}},
       party:{PS,PARTY_GAMES,paStart,fourAi,RH},
       step,draw,mallets,puck,get phase(){return phase;},get scores(){return scores;},get gauge(){return gauge;},set gauge(v){gauge=v;syncGauge();},
       get clock(){return clock;},set clock(v){clock=v;},get serve(){return serve;},get shot(){return shot;},get ghosts(){return ghosts;},get shields(){return shields;},

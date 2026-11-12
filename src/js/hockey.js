@@ -10,7 +10,7 @@
   let countdown=0,countdownShown=0,goalSeconds=0,freeze=0,lastScored=0,serve=null,serveFirst=0,puckHidden=false;
   let rallyHits=0,lastHitBy=-1,bestRally=0,stats=[{smash:0,special:0},{smash:0,special:0}];
   let streak={side:-1,id:null,count:0};
-  const mk=(x)=>({x,y:H/2,tx:x,ty:H/2,vx:0,vy:0,svx:0,svy:0,id:null,lastMove:0,grab:0,r:MALLET_R,big:0,hitT:0,idle:0});
+  const mk=(x)=>({x,y:H/2,tx:x,ty:H/2,vx:0,vy:0,svx:0,svy:0,id:null,lastMove:0,grab:0,r:MALLET_R,big:0,small:0,frozen:0,sticky:0,hitT:0,idle:0});
   const mallets=[mk(170),mk(W-170)];
   const puck={x:W/2,y:H/2,vx:0,vy:0,stall:0};
   const SPEED_CAP=1750,SMASH_SWIPE=850,SPECIAL_SWIPE=380,GAUGE_MAX=100;
@@ -19,7 +19,7 @@
   const GOAL_CAMP_SECONDS=3,GOAL_PENALTY_SCALE=1.5;
   const GOAL_CAMP_DEPTH=MALLET_R*3,GOAL_CAMP_HALF=GOAL_HALF*.7;
   const goalCamp=[{time:0,penalty:false},{time:0,penalty:false}];
-  const goalHalfFor=side=>GOAL_HALF*(goalCamp[side].penalty?GOAL_PENALTY_SCALE:1);
+  const goalHalfFor=side=>GOAL_HALF*(goalCamp[side].penalty||goalWide[side]>0||cannonWide===side?GOAL_PENALTY_SCALE:1);
   function resetGoalCamp(){goalCamp.forEach(c=>{c.time=0;c.penalty=false;});}
   function updateGoalCamp(dt){
     for(let i=0;i<2;i++){
@@ -39,6 +39,18 @@
   const CUT_TIME=1.5,CANNON_SPEED=1750,CANNON_PERFECT=38,TIMED_SPECIAL_DURATION=8;
   const shot={cannon:null,curve:null,zig:null};
   let ghosts=[],shields=[0,0],slowField={side:-1,time:0},conquer={side:-1,time:0},midX=W/2;
+  // 광개토대왕's landing: the half-circle in front of the other side's goal becomes his ground,
+  // so the defender's mallet is kept out of it and cannot stand guard there.
+  const LAND_R=GOAL_HALF+58,SLOW_OWN=.45,SLOW_FOE=1.5;
+  const landedOn=()=>conquer.time>0?1-conquer.side:-1;
+  function keepOffLanding(i,o,xk,yk){
+    if(landedOn()!==i)return;
+    const gx=i===0?0:W,dx=o[xk]-gx,dy=o[yk]-H/2,d=Math.hypot(dx,dy),min=LAND_R+mallets[i].r+2;
+    if(d>=min)return;
+    const k=d>.001?min/d:1;o[xk]=gx+(d>.001?dx*k:(i===0?min:-min));o[yk]=H/2+(d>.001?dy*k:0);
+  }
+  // Item effects that last a while. goalWide: that side's goal is wider; walls: posts in front of that side's goal.
+  let goalWide=[0,0],walls=[0,0],iceTime=0,twin=null,cannonWide=-1,lunch=[];
   // Stage state
   let stageTime=0,boosted=false,zoneContact=false,drop=null,dropCooldown=4,darkTime=0,darkSide=-1,smashSide=-1;
   // Pure visuals
@@ -50,7 +62,7 @@
   let arenaCache=null,arenaDirty=true;
   faceImages.forEach(im=>im.addEventListener('load',()=>{arenaDirty=true;}));
 
-  function resetShots(){shot.cannon=null;shot.curve=null;shot.zig=null;ghosts=[];}
+  function resetShots(){shot.cannon=null;shot.curve=null;shot.zig=null;ghosts=[];twin=null;cannonWide=-1;}
   function setMood(player,mood='neutral',note=''){
     portraitEls[player].src=portraitFor(player,mood);
     teamEls[player].classList.toggle('react',mood==='happy'||mood==='surprised');
@@ -113,10 +125,10 @@
     Object.assign(puck,{x:W/2,y:H/2,vx:0,vy:0,stall:0});
     mallets.forEach((m,i)=>{
       const x=i===0?170:W-170;
-      Object.assign(m,{x,y:H/2,tx:x,ty:H/2,vx:0,vy:0,svx:0,svy:0,r:MALLET_R,big:0,idle:0});
+      Object.assign(m,{x,y:H/2,tx:x,ty:H/2,vx:0,vy:0,svx:0,svy:0,r:MALLET_R,big:0,small:0,frozen:0,sticky:0,idle:0});
     });
   }
-  function resetStage(){stageTime=0;boosted=false;zoneContact=false;drop=null;dropCooldown=4;darkTime=0;darkSide=-1;smashSide=-1;}
+  function resetStage(){stageTime=0;boosted=false;zoneContact=false;drop=null;dropCooldown=4;darkTime=0;darkSide=-1;smashSide=-1;goalWide=[0,0];walls=[0,0];iceTime=0;twin=null;cannonWide=-1;lunch=[];}
   function resetMatch(){
     resetStage();resetShots();closeCut();
     scores=[0,0];scoreEls[0].textContent='0';scoreEls[1].textContent='0';
@@ -255,6 +267,7 @@
     const m=mallets[i],pad=m.r+4;
     m.tx=clamp(m.tx,i===0?pad:midX+m.r+2,i===0?midX-m.r-2:W-pad);
     m.ty=clamp(m.ty,pad,H-pad);
+    keepOffLanding(i,m,'tx','ty');
   }
   function setTarget(i,p){const m=mallets[i];m.tx=p.x;m.ty=p.y;clampTarget(i);m.lastMove=performance.now();m.idle=0;}
   const acceptsInput=()=>inGame&&phase!=='paused'&&phase!=='finished';
@@ -407,7 +420,11 @@
     specialCut={time:CUT_TIME,attacker:i,aim:null};
     puck.vx=0;puck.vy=0;phase='special';
     if(sp.kind==='cannon'){
-      const gx=dir>0?W+R:-R,gy=mouthY();
+      // The defender's goal opens as wide as the goal-camping penalty, and the shot picks a random line
+      // into that wider mouth, off the centre, so standing in the middle is not a sure block.
+      cannonWide=1-i;
+      const half=GOAL_HALF*GOAL_PENALTY_SCALE-R*1.4,off=half*(.35+Math.random()*.65)*(Math.random()<.5?-1:1);
+      const gx=dir>0?W+R:-R,gy=H/2+off;
       const dx=gx-puck.x,dy=gy-puck.y,len=Math.hypot(dx,dy);
       specialCut.aim={x0:puck.x,y0:puck.y,vx:dx/len*CANNON_SPEED,vy:dy/len*CANNON_SPEED};
     }
@@ -431,15 +448,10 @@
     sfx('shot',1.05);
     const launch=(vx,vy)=>{puck.vx=vx;puck.vy=vy;};
     if(sp.kind==='cannon'){shot.cannon={...aim,attacker:i,broken:false};launch(aim.vx,aim.vy);}
-    else if(sp.kind==='ghost'){
-      // The real one heads into the goal from any place in the fan, so its place gives nothing away.
-      const real=Math.floor(Math.random()*3),realY=mouthY(),spread=H*.26,dist=goalDist(dir);
-      for(let k=0;k<3;k++){
-        const dy=realY+(k-real)*spread-puck.y,travel=aimTime(dist,1020);
-        const vy=dy/travel;
-        if(k===real)launch(dir*1020,vy);
-        else ghosts.push({x:puck.x,y:puck.y,vx:dir*1020,vy,ttl:Math.max(2.4,travel*2.2+.4),grace:.18,attacker:i});
-      }
+    else if(sp.kind==='lunch'){
+      launch(dir*1120,(mouthY()-puck.y)/aimTime(goalDist(dir),1120));
+      placeLunch(i);sfx('item',1,1.3);
+      for(const b of lunch)rings.push({x:b.x,y:b.y,r:20,grow:160,ttl:.5,life:.5,color:SIDE_GLOW[i],w:8});
     }
     else if(sp.kind==='curve'){const T=aimTime(goalDist(dir),980),ty=mouthY();
       // One full wave that returns to the straight line just as it reaches the goal, kept clear of the walls.
@@ -497,33 +509,86 @@
   }
   const ZONES=[{x:W/2-250,y:72},{x:W/2+250,y:72},{x:W/2-250,y:H-72},{x:W/2+250,y:H-72}];
   function cancelZoneBoost(){if(boosted){puck.vx*=.6;puck.vy*=.6;boosted=false;}}
-  function itemHit(){
-    const effects=['speed','half','smash','big','gauge'];
-    const kind=effects[Math.floor(Math.random()*effects.length)];
-    const owner=lastHitBy>=0?lastHitBy:(drop.x<W/2?0:1);
-    const x=drop.x,y=drop.y;
-    drop=null;dropCooldown=5+Math.random()*3;
+  // Item mode: a ? box appears; the puck touching it gives a random effect to whoever hit the puck last.
+  // good: helps the side that gets it, so 나한상's lunch boxes draw only from these.
+  const ITEMS={
+    speed:{text:'퍽 가속!'},
+    half:{text:'상대 쪽 암전!',good:true},
+    smash:{text:'다음 타격 강타!',good:true},
+    big:{text:'큰 말렛 7초!',good:true},
+    gauge:{text:'기세 +50!',good:true},
+    small:{text:'상대 말렛 작게!',good:true},
+    wide:{text:'상대 골대 넓게!',good:true},
+    wall:{text:'수비벽!',good:true},
+    ice:{text:'얼음판!'},
+    freeze:{text:'상대 꽁꽁!',good:true},
+    twin:{text:'쌍둥이 퍽!'},
+    sticky:{text:'상대 끈끈이!',good:true},
+    warp:{text:'순간이동!'}
+  };
+  const ITEM_KINDS=Object.keys(ITEMS),GOOD_ITEMS=ITEM_KINDS.filter(k=>ITEMS[k].good);
+  function applyItem(kind,owner,x,y){
+    const foe=1-owner;
     if(kind==='speed'){puck.vx*=1.4;puck.vy*=1.4;}
-    if(kind==='half'){darkTime=2.4;darkSide=1-owner;}
+    if(kind==='half'){darkTime=2.4;darkSide=foe;}
     if(kind==='smash'){smashSide=owner;}
     if(kind==='big'){mallets[owner].big=7;}
     if(kind==='gauge'){addGauge(owner,50);}
+    if(kind==='small'){mallets[foe].small=6;}
+    if(kind==='wide'){goalWide[foe]=6;}
+    if(kind==='wall'){walls[owner]=6;}
+    if(kind==='ice'){iceTime=6;}
+    // Short on purpose: a slow board already makes a frozen hand feel long.
+    if(kind==='freeze'){mallets[foe].frozen=1.2;}
+    if(kind==='sticky'){mallets[foe].sticky=5;}
+    if(kind==='twin'){
+      const a=Math.atan2(puck.vy,puck.vx)+(Math.random()<.5?-1:1)*.45,s=Math.max(520,Math.hypot(puck.vx,puck.vy));
+      twin={x:puck.x,y:puck.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,ttl:6};
+    }
+    if(kind==='warp'){
+      const toLeft=puck.x>=W/2;
+      puck.x=toLeft?W*.12+Math.random()*W*.3:W*.58+Math.random()*W*.3;puck.y=R+40+Math.random()*(H-2*R-80);
+      puck.vx*=.6;puck.vy*=.6;rings.push({x:puck.x,y:puck.y,r:R,grow:220,ttl:.4,life:.4,color:'#ffffff',w:8});
+    }
     burst(x,y,22,['#ffe69b','#ffffff'],420);sfx('item',1);
-    const text={speed:'퍽 가속!',half:'상대 쪽 암전!',smash:'다음 타격 강타!',big:'큰 말렛 7초!',gauge:'기세 +50!'}[kind];
+    const text=ITEMS[kind].text;
     floatText(x,y-46,text,SIDE_COLOR[owner],32,1.3);noteEls[owner].textContent=text;
+  }
+  function itemHit(){
+    const kind=ITEM_KINDS[Math.floor(Math.random()*ITEM_KINDS.length)];
+    const owner=lastHitBy>=0?lastHitBy:(drop.x<W/2?0:1);
+    const x=drop.x,y=drop.y;
+    drop=null;dropCooldown=5+Math.random()*3;
+    applyItem(kind,owner,x,y);
+  }
+  // 나한상's lunch: three different boxes on 나한상's own half that stay until the puck reaches them.
+  function placeLunch(owner){
+    const kinds=GOOD_ITEMS.slice().sort(()=>Math.random()-.5).slice(0,3),ys=[.22,.5,.78].sort(()=>Math.random()-.5);
+    lunch=kinds.map((kind,k)=>({kind,owner,x:owner===0?W*(.14+Math.random()*.24):W*(.62+Math.random()*.24),y:H*ys[k]+(Math.random()-.5)*H*.08,born:stageTime}));
+  }
+  function wallPosts(i){
+    if(walls[i]<=0)return [];
+    const x=i===0?72:W-72,d=GOAL_HALF*.55;
+    return [{x,y:H/2-d,r:22,vy:0},{x,y:H/2+d,r:22,vy:0}];
+  }
+  function bounceOffPosts(b,list){
+    for(const o of list){
+      const dx=b.x-o.x,dy=b.y-o.y,dist=Math.hypot(dx,dy),min=R+o.r;
+      if(dist>=min)continue;
+      const nx=dist>.001?dx/dist:1,ny=dist>.001?dy/dist:0;
+      b.x=o.x+nx*(min+.6);b.y=o.y+ny*(min+.6);
+      const proj=b.vx*nx+(b.vy-o.vy)*ny;
+      if(proj<0){b.vx=(b.vx-2*proj*nx)*.97;b.vy=(b.vy-2*proj*ny+o.vy*.08)*.97;sfx('rail',.8);burst(b.x,b.y,5,['#ffeeab'],220);}
+    }
   }
   function stageStep(dt){
     stageTime+=dt;
     if(darkTime>0)darkTime=Math.max(0,darkTime-dt);
-    if(activeStage==='posts'||activeStage==='patrol'){
-      for(const o of getPosts()){
-        const dx=puck.x-o.x,dy=puck.y-o.y,dist=Math.hypot(dx,dy),min=R+o.r;
-        if(dist>=min)continue;
-        const nx=dist>.001?dx/dist:1,ny=dist>.001?dy/dist:0;
-        puck.x=o.x+nx*(min+.6);puck.y=o.y+ny*(min+.6);
-        const proj=puck.vx*nx+(puck.vy-o.vy)*ny;
-        if(proj<0){puck.vx=(puck.vx-2*proj*nx)*.97;puck.vy=(puck.vy-2*proj*ny+o.vy*.08)*.97;sfx('rail',.8);burst(puck.x,puck.y,5,['#ffeeab'],220);}
-      }
+    if(activeStage==='posts'||activeStage==='patrol')bounceOffPosts(puck,getPosts());
+    bounceOffPosts(puck,[...wallPosts(0),...wallPosts(1)]);
+    for(let k=lunch.length-1;k>=0;k--){
+      const b=lunch[k];
+      if(Math.hypot(puck.x-b.x,puck.y-b.y)<R+30){lunch.splice(k,1);applyItem(b.kind,b.owner,b.x,b.y);}
     }
     if(activeStage==='speed'){
       const inside=ZONES.some(z=>Math.abs(puck.x-z.x)<62&&Math.abs(puck.y-z.y)<38);
@@ -547,13 +612,15 @@
     const m=mallets[i],human=!(aiLevel&&i===1);
     m.grab=Math.max(0,m.grab-dt);m.hitT=Math.max(0,m.hitT-dt);m.pinned=Math.max(0,(m.pinned||0)-dt);m.noHit=Math.max(0,(m.noHit||0)-dt);
     if(m.big>0){m.big-=dt;}
-    const targetR=m.big>0?MALLET_R*1.4:MALLET_R;m.r+=(targetR-m.r)*Math.min(1,dt*10);
+    if(m.small>0)m.small-=dt;if(m.frozen>0)m.frozen-=dt;if(m.sticky>0)m.sticky-=dt;
+    const targetR=MALLET_R*(m.big>0?1.4:1)*(m.small>0?.65:1);m.r+=(targetR-m.r)*Math.min(1,dt*10);
     if(m.id===null)m.idle+=dt;
     clampTarget(i);
     // Touchdown glides instead of teleporting, so tapping cannot replace actually moving.
-    const speed=human?(m.grab>0?1700:3000):AI_LEVELS[aiLevel].speed;
+    const speed=(human?(m.grab>0?1700:3000):AI_LEVELS[aiLevel].speed)*(m.sticky>0?.35:1);
     const ox=m.x,oy=m.y,dx=m.tx-ox,dy=m.ty-oy,dist=Math.hypot(dx,dy);
-    if(dist>.0001){const s=Math.min(dist,speed*dt);m.x+=dx/dist*s;m.y+=dy/dist*s;}
+    if(dist>.0001&&!(m.frozen>0)){const s=Math.min(dist,speed*dt);m.x+=dx/dist*s;m.y+=dy/dist*s;}
+    keepOffLanding(i,m,'x','y');
     m.vx=(m.x-ox)/dt;m.vy=(m.y-oy)/dt;
     // Board touch samples arrive unevenly, so swing power reads a smoothed velocity.
     const a=1-Math.exp(-dt/.04);m.svx+=(m.vx-m.svx)*a;m.svy+=(m.vy-m.svy)*a;
@@ -623,6 +690,38 @@
     burst(x,y,Math.min(6,s/220),['#ffffff','#bfe9df'],200);
     sfx('rail',.3+Math.min(.6,s/1800));
   }
+  // 반가사유상: time runs slow on the owner's half and fast on the other half.
+  function fieldRate(x){
+    if(slowField.time<=0)return 1;
+    const own=slowField.side===0?x<W/2:x>=W/2;
+    return own?SLOW_OWN:SLOW_FOE;
+  }
+  // The second puck from the twin item: real (it scores), simpler physics, gone after a few seconds.
+  function stepTwin(dt){
+    const b=twin,bdt=dt*fieldRate(b.x);
+    b.ttl-=dt;
+    if(b.ttl<=0){burst(b.x,b.y,12,['#ffffff','#d9d2bf'],300);sfx('soft',.6);twin=null;return false;}
+    b.x+=b.vx*bdt;b.y+=b.vy*bdt;
+    const drag=Math.pow(iceTime>0?.985:.88,bdt);b.vx*=drag;b.vy*=drag;
+    if(b.y<R||b.y>H-R){b.y=clamp(b.y,R,H-R);b.vy*=-.96;}
+    bounceOffPosts(b,[...wallPosts(0),...wallPosts(1),...(activeStage==='posts'||activeStage==='patrol'?getPosts():[])]);
+    for(let i=0;i<2;i++){
+      const m=mallets[i],dx=b.x-m.x,dy=b.y-m.y,dist=Math.hypot(dx,dy),min=R+m.r;
+      if(dist>=min||m.noHit>0)continue;
+      const nx=dist>.0001?dx/dist:(i===0?1:-1),ny=dist>.0001?dy/dist:0;
+      b.x=m.x+nx*(min+.35);b.y=m.y+ny*(min+.35);
+      const rel=(b.vx-m.svx)*nx+(b.vy-m.svy)*ny;
+      if(rel<0){const fwd=Math.max(0,m.svx*nx+m.svy*ny),vn=Math.min(SPEED_CAP,Math.max(300,-rel*.8+fwd*1.1));
+        const tx=-ny,ty=nx,vt=b.vx*tx+b.vy*ty;b.vx=nx*vn+tx*vt*.8;b.vy=ny*vn+ty*vt*.8;sfx('tap',.6);}
+    }
+    for(const side of [0,1]){
+      const out=side===0?b.x<R:b.x>W-R;if(!out)continue;
+      if(Math.abs(b.y-H/2)<goalHalfFor(side)&&!(shields[side]>0)){
+        if(side===0?b.x<-R*.4:b.x>W+R*.4){const x=b.x,y=b.y;twin=null;puck.x=clamp(x,0,W);puck.y=y;scoreGoal(1-side);return true;}
+      }else{b.x=side===0?R:W-R;b.vx=-b.vx*.96;}
+    }
+    return false;
+  }
   function stepPlaying(dt){
     if(freeze>0){freeze-=dt;return;}
     if(serve){serve.time-=dt;if(serve.time<=0)launchServe();}
@@ -641,11 +740,11 @@
     for(let i=0;i<2;i++)if(shields[i]>0)shields[i]=Math.max(0,shields[i]-dt);
     if(slowField.time>0)slowField.time=Math.max(0,slowField.time-dt);
     if(conquer.time>0)conquer.time=Math.max(0,conquer.time-dt);
-    const wantMid=conquer.time>0?W/2+(conquer.side===0?190:-190):W/2;
-    midX+=(wantMid-midX)*Math.min(1,dt*6);
+    for(let i=0;i<2;i++){if(goalWide[i]>0)goalWide[i]=Math.max(0,goalWide[i]-dt);if(walls[i]>0)walls[i]=Math.max(0,walls[i]-dt);}
+    if(iceTime>0)iceTime=Math.max(0,iceTime-dt);
+    if(cannonWide>=0&&!shot.cannon)cannonWide=-1;
 
-    const inSlow=slowField.time>0&&(slowField.side===0?puck.x<W/2:puck.x>=W/2);
-    const pdt=dt*(inSlow?.45:1);
+    const pdt=dt*fieldRate(puck.x);
     const ox=puck.x,oy=puck.y;
     puck.x+=puck.vx*pdt;puck.y+=puck.vy*pdt;
 
@@ -667,8 +766,9 @@
       if(c.t>c.T*1.3)shot.curve=null;
     }
     // Light air drag: a soft shot slows down enough to be wound up on, a hard one still crosses the rink.
-    const drag=Math.pow(.88,pdt);puck.vx*=drag;puck.vy*=drag;
+    const drag=Math.pow(iceTime>0?.985:.88,pdt);puck.vx*=drag;puck.vy*=drag;
     stageStep(dt);
+    if(twin&&stepTwin(dt))return;
 
     const speed=Math.hypot(puck.vx,puck.vy);
     if(puck.y<R||puck.y>H-R){
@@ -699,8 +799,7 @@
     for(let k=ghosts.length-1;k>=0;k--){
       const g=ghosts[k];
       // The decoys survive launch next to the attacker's mallet, and follow the real puck's air drag.
-      const slowed=slowField.time>0&&(slowField.side===0?g.x<W/2:g.x>=W/2);
-      const gdt=dt*(slowed?.45:1);
+      const gdt=dt*fieldRate(g.x);
       g.x+=g.vx*gdt;g.y+=g.vy*gdt;g.ttl-=dt;g.grace=Math.max(0,g.grace-dt);
       const drag=Math.pow(.88,gdt);g.vx*=drag;g.vy*=drag;
       if(g.y<R||g.y>H-R){g.y=clamp(g.y,R,H-R);g.vy*=-1;}
@@ -853,8 +952,15 @@
 
   function drawGoalCamp(){
     for(let i=0;i<2;i++){
-      if(!goalCamp[i].penalty)continue;
       const half=goalHalfFor(i),x=i===0?0:W;
+      if(half<=GOAL_HALF+.5)continue;
+      // Widened by an item or Hoja's cannon rather than by camping: same mouth, gold edge, no penalty lines.
+      if(!goalCamp[i].penalty){
+        ctx.save();ctx.fillStyle='#14211f';ctx.fillRect(i===0?-RM:x-5,H/2-half,RM+5,half*2);
+        ctx.fillStyle=Math.floor(performance.now()/180)%2?'#ffd25a':'#ffb02e';ctx.fillRect(i===0?-5:W-1,H/2-half,6,half*2);
+        ctx.fillStyle='#ffe1a3';for(const yy of [H/2-half,H/2+half]){ctx.beginPath();ctx.arc(x,yy,9,0,Math.PI*2);ctx.fill();}
+        ctx.restore();continue;
+      }
       ctx.save();
       ctx.fillStyle='#14211f';
       ctx.fillRect(i===0?-RM:x-5,H/2-half,RM+5,half*2);
@@ -894,6 +1000,31 @@
         ctx.restore();
       });
     }
+    for(let i=0;i<2;i++)for(const o of wallPosts(i)){
+      const sz=(o.r+7)*2,blink=walls[i]<1.5&&Math.floor(walls[i]*8)%2;
+      ctx.save();ctx.globalAlpha=blink?.4:1;
+      if(obstacleSprite.complete&&obstacleSprite.naturalWidth)ctx.drawImage(obstacleSprite,o.x-sz/2,o.y-sz/2,sz,sz);
+      else{ctx.beginPath();ctx.arc(o.x,o.y,o.r,0,Math.PI*2);ctx.fillStyle='#f1cc7a';ctx.fill();}
+      ctx.strokeStyle=SIDE_COLOR[i];ctx.lineWidth=4;ctx.beginPath();ctx.arc(o.x,o.y,o.r+4,0,Math.PI*2);ctx.stroke();ctx.restore();
+    }
+    for(const b of lunch){
+      const bob=Math.sin(stageTime*4+b.x)*3;
+      ctx.save();ctx.translate(b.x,b.y+bob);
+      ctx.globalAlpha=.5+.3*Math.sin(stageTime*5+b.y);ctx.fillStyle=SIDE_GLOW[b.owner];ctx.beginPath();ctx.arc(0,0,42,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+      if(itemBoxSprite.complete&&itemBoxSprite.naturalWidth)ctx.drawImage(itemBoxSprite,-34,-34,68,68);
+      else{ctx.fillStyle='#e9a64d';ctx.fillRect(-24,-24,48,48);}
+      ctx.strokeStyle=SIDE_COLOR[b.owner];ctx.lineWidth=5;ctx.beginPath();ctx.arc(0,0,40,0,Math.PI*2);ctx.stroke();
+      ctx.font='32px "HojaTitle",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.lineWidth=5;ctx.strokeStyle='#4c3432';ctx.strokeText('?',0,-2);ctx.fillStyle='#fff4cb';ctx.fillText('?',0,-2);
+      ctx.restore();
+    }
+    if(iceTime>0){
+      const blink=iceTime<1.5&&Math.floor(iceTime*8)%2;
+      ctx.save();ctx.globalAlpha=blink?.08:.2;ctx.fillStyle='#bfefff';ctx.fillRect(0,0,W,H);
+      ctx.globalAlpha=blink?.15:.35;ctx.strokeStyle='#ffffff';ctx.lineWidth=6;
+      for(let k=0;k<7;k++){const x=((k*230+stageTime*40)%(W+300))-150;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x+140,H);ctx.stroke();}
+      ctx.restore();
+    }
     if(activeStage==='items'&&drop){
       const bob=Math.sin(stageTime*4)*3,warn=drop.ttl<1.6&&Math.floor(stageTime*8)%2;
       ctx.save();ctx.translate(drop.x,drop.y+bob);ctx.globalAlpha=warn?.45:1;
@@ -904,18 +1035,29 @@
       ctx.restore();
     }
     if(slowField.time>0){
-      const i=slowField.side,x=i===0?0:W/2;
+      const i=slowField.side,x=i===0?0:W/2,fx=i===0?W/2:0,dir=i===0?1:-1;
       ctx.save();ctx.globalAlpha=.16;ctx.fillStyle='#6f7fd8';ctx.fillRect(x,0,W/2,H);
       ctx.globalAlpha=.3;ctx.strokeStyle='#5a6bd0';ctx.lineWidth=3;
       for(let k=0;k<3;k++){const r=((stageTime*50+k*90)%270)+20;ctx.beginPath();ctx.arc(i===0?W/4:W*.75,H/2,r,0,Math.PI*2);ctx.stroke();}
+      // The other half runs fast: warm tint and streaks rushing toward that side's goal.
+      ctx.globalAlpha=.13;ctx.fillStyle='#ff9a3d';ctx.fillRect(fx,0,W/2,H);
+      ctx.globalAlpha=.35;ctx.strokeStyle='#ff8a2a';ctx.lineWidth=5;ctx.lineCap='round';
+      for(let k=0;k<9;k++){const y=H*(k+.5)/9,len=90,base=fx+((stageTime*520+k*137)%(W/2));const sx=dir>0?base:fx+W/2-(base-fx);
+        ctx.beginPath();ctx.moveTo(sx,y);ctx.lineTo(sx-dir*len,y);ctx.stroke();}
       ctx.restore();
     }
-    if(conquer.time>0||Math.abs(midX-W/2)>2){
-      const c=conquer.side>=0?conquer.side:0;
-      ctx.save();ctx.globalAlpha=.24;ctx.fillStyle=SIDE_COLOR[c];
-      ctx.fillRect(Math.min(W/2,midX),0,Math.abs(midX-W/2),H);
-      ctx.globalAlpha=.95;ctx.strokeStyle=SIDE_COLOR[c];ctx.lineWidth=7;ctx.setLineDash([18,12]);
-      ctx.beginPath();ctx.moveTo(midX,0);ctx.lineTo(midX,H);ctx.stroke();ctx.restore();
+    if(conquer.time>0){
+      const c=conquer.side,gx=c===0?W:0,blink=conquer.time<1.5&&Math.floor(conquer.time*8)%2;
+      ctx.save();ctx.globalAlpha=blink?.2:.45;ctx.fillStyle=SIDE_COLOR[c];
+      ctx.beginPath();ctx.arc(gx,H/2,LAND_R,0,Math.PI*2);ctx.fill();
+      ctx.globalAlpha=.95;ctx.strokeStyle=SIDE_COLOR[c];ctx.lineWidth=8;ctx.setLineDash([18,12]);ctx.lineDashOffset=-stageTime*40;
+      ctx.beginPath();ctx.arc(gx,H/2,LAND_R,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+      // A small flag planted on the far side of the half-circle.
+      const fx=c===0?W-LAND_R*.55:LAND_R*.55,fy=H/2-LAND_R*.55;
+      ctx.globalAlpha=blink?.4:1;ctx.strokeStyle='#4c3432';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(fx,fy+34);ctx.lineTo(fx,fy-30);ctx.stroke();
+      ctx.fillStyle=SIDE_COLOR[c];ctx.beginPath();ctx.moveTo(fx,fy-30);ctx.lineTo(fx+(c===0?-40:40),fy-18);ctx.lineTo(fx,fy-6);ctx.closePath();ctx.fill();
+      ctx.restore();
+      text('우리 땅!',fx,fy+62,28,SIDE_COLOR[c]);
     }
     for(let i=0;i<2;i++)if(shields[i]>0){
       const gx=i===0?2:W-2,blink=shields[i]<1.5&&Math.floor(shields[i]*8)%2;
@@ -947,6 +1089,14 @@
       if(TABLET){ctx.translate(m.x,m.y-1);ctx.rotate(FACE[i]);ctx.drawImage(im,-fr*1.25,-fr*1.25,fr*2.5,fr*2.5);}
       else ctx.drawImage(im,m.x-fr*1.25,m.y-1-fr*1.25,fr*2.5,fr*2.5);
       ctx.restore();
+    }
+    if(m.frozen>0){
+      ctx.save();ctx.globalAlpha=.55;ctx.fillStyle='#bfefff';ctx.beginPath();ctx.arc(m.x,m.y,r+10,0,Math.PI*2);ctx.fill();
+      ctx.globalAlpha=1;ctx.strokeStyle='#6fd0f0';ctx.lineWidth=5;ctx.stroke();ctx.restore();
+    }
+    if(m.sticky>0){
+      ctx.save();ctx.globalAlpha=.6;ctx.strokeStyle='#8bc34a';ctx.lineWidth=8;ctx.setLineDash([6,10]);
+      ctx.beginPath();ctx.arc(m.x,m.y,r+12,stageTime,stageTime+Math.PI*2);ctx.stroke();ctx.restore();
     }
     // Gauge at the child's fingertip, where they are actually looking.
     ctx.save();ctx.lineCap='round';ctx.lineWidth=TABLET?10:6;
@@ -1061,6 +1211,7 @@
     }
     mallets.forEach(drawMallet);
     for(const g of ghosts)drawPuck(g.x,g.y,g.attacker);
+    if(twin&&!(twin.ttl<1.5&&Math.floor(twin.ttl*8)%2))drawPuck(twin.x,twin.y,lastHitBy);
     if(!puckHidden){
       drawPuck(puck.x,puck.y,lastHitBy);
       if(smashSide>=0&&!serve){
