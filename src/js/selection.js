@@ -53,7 +53,7 @@
     clearIntro();$('choiceScreen').hidden=true;
     if(!inGame&&!O.on&&!GO.on&&!BB.on&&!SH.on&&!ST.on&&!VB.on&&!TT.on&&!GX.on&&!PS.on)launchSelected();
   }
-  function launchSelected(){roundBegin();if(PARTY_GAMES[currentGame])enterParty();else if(currentGame==='othello')enterOthello();else if(currentGame==='gomoku')enterGomoku();else if(currentGame==='bubble')enterBubble();else if(currentGame==='shop')enterShop();else if(currentGame==='stairs')enterStairs();else if(currentGame==='volley')enterVolley();else if(currentGame==='ttt')enterTtt();else if(currentGame==='germ')enterGerm();else enterGame();}
+  function launchSelected(){if(PARTY_GAMES[currentGame])enterParty();else if(currentGame==='othello')enterOthello();else if(currentGame==='gomoku')enterGomoku();else if(currentGame==='bubble')enterBubble();else if(currentGame==='shop')enterShop();else if(currentGame==='stairs')enterStairs();else if(currentGame==='volley')enterVolley();else if(currentGame==='ttt')enterTtt();else if(currentGame==='germ')enterGerm();else enterGame();}
   function nameFor(player){return CHARACTERS.find(c=>c.id===choices[player]).name;}
   function portraitFor(player,mood='neutral'){return EMBED_ASSETS['portraits/'+choices[player].toLowerCase()+'_'+(MOOD_FILE[mood]||MOOD_FILE.neutral)+'.webp'];}
   function characterPortrait(id,mood='neutral'){return EMBED_ASSETS['portraits/'+id.toLowerCase()+'_'+(MOOD_FILE[mood]||MOOD_FILE.neutral)+'.webp'];}

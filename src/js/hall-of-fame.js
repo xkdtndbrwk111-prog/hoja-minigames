@@ -7,9 +7,16 @@
     {id:'hockey',name:'에어하키',unit:'승'},{id:'volley',name:'호자 배구',unit:'승'},{id:'bubble',name:'퍼즐버블',unit:'승'},
     {id:'othello',name:'오셀로',unit:'승'},{id:'gomoku',name:'오목',unit:'승'},{id:'ttt',name:'틱택토',unit:'승'},{id:'germ',name:'세균전',unit:'승'},{id:'rally',name:'파티 랠리',unit:'승'},
   ];
-  const HOF_PERIODS=[['day','오늘'],['week','이번 주'],['month','이번 달'],['year','올해']];
+  const HOF_PERIODS=[['day','오늘'],['week','이번 주'],['lastweek','지난주'],['month','이번 달'],['year','올해']];
+  // Weekly settlement prizes: 1st, 2nd, 3rd of each game last week.
+  const HOF_PRIZE={1:1,2:.5,3:.5};
   const HOF_MAX=40;
-  const HOF={cfg:null,pending:[],board:null,period:'day',players:[null,null],pollT:0,flushing:false,online:true};
+  const HOF={cfg:null,pending:[],board:null,last:null,lastAt:0,period:'day',players:[null,null],pollT:0,flushing:false,online:true};
+  // Monday of last week on this PC's calendar, as YYYY-MM-DD.
+  function hofLastMonday(now=new Date()){
+    const d=new Date(now.getFullYear(),now.getMonth(),now.getDate());d.setDate(d.getDate()-((d.getDay()+6)%7)-7);
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
   function hofLoad(){
     try{HOF.cfg=JSON.parse(preference('hof','null'));}catch{HOF.cfg=null;}
     try{HOF.pending=JSON.parse(preference('hof-pending','[]'));}catch{HOF.pending=[];}

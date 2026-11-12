@@ -149,7 +149,7 @@
   }
   function startCountdown(){
     if(phase!=='ready')return;
-    phase='countdown';countdown=2.4;countdownShown=0;syncStrip();neutralMoods();
+    phase='countdown';countdown=2.4;countdownShown=0;syncStrip();neutralMoods();roundBegin();
   }
   function setupServe(side){
     // Conceding player gets the puck and the first swing, like a real table.

@@ -24,7 +24,9 @@
   if(EMBED){
     $('fullscreenButton').hidden=true;
     $('dashboardBack').hidden=false;
-    $('dashboardBack').addEventListener('click',()=>{sfx('menu',.7);window.parent.postMessage({type:'hoja-close'},DASHBOARD_ORIGIN);});
+    // Leaving straight to the dashboard settles the round first, so a game never started is refunded.
+    $('dashboardBack').addEventListener('click',()=>{sfx('menu',.7);roundClose();window.parent.postMessage({type:'hoja-close'},DASHBOARD_ORIGIN);});
+    window.addEventListener('pagehide',()=>roundClose());
     window.parent.postMessage({type:'hoja-ready'},DASHBOARD_ORIGIN);
   }
   $('deviceButton').addEventListener('click',()=>{remember('device',TABLET?'board':'tablet');location.reload();});
@@ -56,6 +58,11 @@
   document.addEventListener('visibilitychange',()=>{
     if(document.hidden&&inGame&&phase!=='paused'&&phase!=='finished'&&phase!=='ready'&&location.hash!=='#debug')pause();
   });
+  // A new line pops the bubble once, so the change is noticed during play.
+  const noteSeen=new WeakMap();
+  const noteObs=new MutationObserver(list=>{for(const m of list){const el=m.target.nodeType===1?m.target:m.target.parentElement;if(!el||!el.classList.contains('emotion-note'))continue;
+    const t=el.textContent;if(noteSeen.get(el)===t)continue;noteSeen.set(el,t);el.classList.remove('say');void el.offsetWidth;if(t)el.classList.add('say');}});
+  document.querySelectorAll('.emotion-note').forEach(el=>{noteSeen.set(el,el.textContent);noteObs.observe(el,{childList:true,characterData:true,subtree:true});});
   syncMode();
   if(location.hash==='#debug'){
     window.__hoja={

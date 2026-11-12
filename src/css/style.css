@@ -1235,3 +1235,19 @@ html[data-device=tablet] .sx-stage{transform-origin:50% 50%}
 .menu-pages .control,.menu-foot .control{font-family:"HojaTitle","HojaBody",sans-serif;font-weight:400;text-shadow:none;letter-spacing:.01em}
 .menu-pages .control:not(.primary){color:#4a3b2c;filter:none}
 .menu-foot .control.soft{color:#fff}
+/* V5.5: in-game lines as speech bubbles, big enough to read from the back of the room. Display only, never a touch target. */
+.emotion-note{align-self:flex-start;display:inline-block;max-width:100%;box-sizing:border-box;min-height:0;font-size:clamp(15px,1.9vw,38px);font-weight:950;line-height:1.2;color:#2f2a24;background:#fffaf0;border:clamp(2px,.22vw,4px) solid #2f9c8c;border-radius:.7em;padding:.16em .6em;box-shadow:0 .12em 0 rgba(60,40,20,.2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transform-origin:left center}
+.team.right .emotion-note{align-self:flex-end;border-color:#e0694f;transform-origin:right center}
+.emotion-note:empty{visibility:hidden}
+.emotion-note.say{animation:noteSay .34s cubic-bezier(.3,1.6,.5,1)}
+@keyframes noteSay{0%{transform:scale(.55);opacity:.2}100%{transform:scale(1);opacity:1}}
+@media (prefers-reduced-motion:reduce){.emotion-note.say{animation:none}}
+.hof-line .hof-plus{margin-left:.4em;font-weight:950;color:#b4661f}
+.hof-sum{font-weight:950;color:#4a3a20}
+.control.hof-settle{animation:hofSettlePulse 1.4s ease-in-out infinite}
+@keyframes hofSettlePulse{50%{filter:brightness(1.12);transform:scale(1.04)}}
+/* A weekly settlement is waiting: the hall of fame button flashes until it is done. */
+#openHall.hof-due{position:relative;z-index:2;animation:hofDue 1s steps(2,jump-none) infinite;box-shadow:0 0 0 5px #fff3b0,0 0 34px 12px #ff8a2a}
+#openHall.hof-due::after{content:'결산!';position:absolute;top:-.95em;right:-.6em;padding:.12em .5em;border-radius:1em;background:#e0584a;color:#fff;font-size:.72em;font-weight:950;line-height:1.2;box-shadow:0 2px 0 rgba(0,0,0,.25);animation:hofDueTag .5s ease-in-out infinite alternate}
+@keyframes hofDue{0%{filter:none;transform:scale(1)}100%{filter:brightness(1.35) saturate(1.4);background:#ffd24a;color:#3a2418;transform:scale(1.1)}}
+@keyframes hofDueTag{to{transform:scale(1.18) rotate(-6deg)}}

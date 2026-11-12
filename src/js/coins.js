@@ -14,15 +14,24 @@
   function playsToday(){try{const v=JSON.parse(preference('plays','null'));return v&&v.day===dayKey()?v.count:0;}catch{return 0;}}
   function setPlays(n){remember('plays',JSON.stringify({day:dayKey(),count:Math.max(0,n)}));}
   const limited=()=>!EMBED&&isStudentDevice();
+  // A round starts when play really starts (the first touch on the play area, or a game's own start),
+  // not when the game screen opens, so waiting on a ready screen and leaving costs nothing.
   function roundBegin(){if(round&&!round.t0)round.t0=Date.now();}
-  // Called when a game ends or is left. A round under ten seconds costs nothing.
+  document.addEventListener('pointerdown',e=>{
+    if(!round||round.t0||!e.target.closest)return;
+    const screen=e.target.closest('.screen-game');
+    if(!screen||screen.hidden||e.target.closest('button,a,input,.o-overlay,.pa-overlay,#boardOverlay,.display-zone,#hofPicker'))return;
+    roundBegin();
+  },true);
+  // Called when a game ends or is left. Not started, or under ten seconds of play, costs nothing.
   function roundClose(){
     if(!round)return;
     const r=round;round=null;
     if(r.tries)return;
     if(r.t0&&Date.now()-r.t0>=REFUND_MS)return;
-    if(r.charge){window.parent.postMessage({type:'hoja-coin-refund',charge:r.charge},DASHBOARD_ORIGIN);hofToast('10초 안에 끝나서 코인을 돌려줬어요');COIN.lastIds.forEach(id=>{const st=COIN.students.find(x=>x.id===id);if(st)st.balance+=r.price;});}
-    else if(r.day){setPlays(playsToday()-1);hofToast('10초 안에 끝나서 횟수를 돌려줬어요');}
+    const why=r.t0?'10초 안에 끝나서':'시작하기 전에 나가서';
+    if(r.charge){window.parent.postMessage({type:'hoja-coin-refund',charge:r.charge},DASHBOARD_ORIGIN);hofToast(why+' 코인을 돌려줬어요');COIN.lastIds.forEach(id=>{const st=COIN.students.find(x=>x.id===id);if(st)st.balance+=r.price;});}
+    else if(r.day){setPlays(playsToday()-1);hofToast(why+' 횟수를 돌려줬어요');}
   }
   function playersNeeded(){
     if(PARTY_GAMES[currentGame]){const g=PARTY_GAMES[currentGame];return (g.stages.find(st=>st.id===g.sel)||{}).people||2;}
@@ -97,12 +106,12 @@
     roundClose();
     if(tryOpen()){TRY.left--;round={tries:true,t0:Date.now()};hofToast(TRY.left?`남은 판 ${TRY.left}`:'마지막 판이에요');fn();return;}
     if(EMBED&&COIN.on){
-      coinSpend(COIN.lastIds,()=>{round.t0=Date.now();fn();},text=>hofToast(text));
+      coinSpend(COIN.lastIds,fn,text=>hofToast(text));
       return;
     }
     if(limited()){
       if(playsToday()>=DAY_LIMIT){dayLimitReached();return;}
-      setPlays(playsToday()+1);round={day:true,t0:Date.now(),tries:tryStart()};
+      setPlays(playsToday()+1);round={day:true,t0:null,tries:tryStart()};
     }
     fn();
   }
@@ -112,13 +121,15 @@
     if(msg.type==='hoja-roster'){
       COIN.students=msg.students||[];COIN.floor=typeof msg.floor==='number'?msg.floor:-3;
       COIN.on=Boolean(msg.enabled)&&COIN.students.length>0;COIN.enabled=Boolean(msg.enabled);
+      COIN.hofWeeks=Array.isArray(msg.hofWeeks)?msg.hofWeeks:null;
+      setTimeout(hofSyncDue,0);
       if(msg.version>=2)hofUseRoster(msg);
       else if(HOF.cfg&&COIN.students.length){
         const names=Array(20).fill('');
         for(const st of COIN.students)if(st.number>=1&&st.number<=20)names[st.number-1]=String(st.name).slice(0,12);
         HOF.cfg.names=names;hofSaveCfg();
       }
-    }else if(msg.type==='hoja-coin-result'){
+    }else if(msg.type==='hoja-coin-result'||msg.type==='hoja-hof-week-result'){
       const cb=COIN.pending.get(msg.req);if(cb){COIN.pending.delete(msg.req);cb(msg);}
     }
   });
@@ -268,9 +279,11 @@
   }
   /* Ranking */
   function hofRank(rows,game){
-    const list=rows.filter(r=>r.game===game).sort((a,b)=>b.value-a.value);
+    // Rows from a finished week carry 'reached': equal values are then ordered by who got there first.
+    const strict=rows.some(r=>r.reached);
+    const list=rows.filter(r=>r.game===game&&r.value>0).sort((a,b)=>b.value-a.value||(strict?String(a.reached).localeCompare(String(b.reached)):0));
     let place=0,last=null;
-    list.forEach((r,i)=>{if(r.value!==last){place=i+1;last=r.value;}r.place=place;});
+    list.forEach((r,i)=>{if(strict||r.value!==last){place=i+1;last=r.value;}r.place=place;});
     return list;
   }
   function hofChampion(rows){
@@ -437,13 +450,13 @@
     hofSet('학급에 연결하기',input,hofEl('p','hof-note','QR을 찍지 못하는 기기는 링크를 붙여 넣으세요. 코드만 넣으면 이름 대신 번호로 보여요.'),msg,row);
   }
   function hofDrawMain(){
-    const rows=(HOF.board&&HOF.board.periods&&HOF.board.periods[HOF.period])||[];
+    const rows=HOF.period==='lastweek'?(HOF.last&&HOF.last.week===hofLastMonday()?HOF.last.rows||[]:[]):(HOF.board&&HOF.board.periods&&HOF.board.periods[HOF.period])||[];
     const label=HOF_PERIODS.find(p=>p[0]===HOF.period)[1],champ=hofChampion(rows);
     const head=$('hofChampion');head.replaceChildren();
     head.append(hofEl('small','',label+' 챔피언'),hofEl('strong','',champ.seats.length?champ.seats.map(hofName).join(' · '):'아직 기록이 없어요'));
     if(champ.seats.length)head.append(hofEl('small','',champ.best+'점'));
     const tabs=hofEl('div','hof-tabs');
-    HOF_PERIODS.forEach(([id,name])=>{const b=hofEl('button','hof-tab'+(HOF.period===id?' on':''),name);b.type='button';b.addEventListener('click',()=>{sfx('menu',.6);HOF.period=id;hofDrawMain();});tabs.append(b);});
+    HOF_PERIODS.forEach(([id,name])=>{const b=hofEl('button','hof-tab'+(HOF.period===id?' on':''),name);b.type='button';b.addEventListener('click',()=>{sfx('menu',.6);HOF.period=id;hofDrawMain();if(id==='lastweek')hofLoadLastWeek();});tabs.append(b);});
     const grid=hofEl('div','hof-grid');
     for(const g of HOF_GAMES){
       const card=hofEl('div','hof-card');card.append(hofEl('b','',g.name));
@@ -458,7 +471,9 @@
     let hold=0;const stop=()=>clearTimeout(hold);
     teach.addEventListener('pointerdown',()=>{stop();hold=setTimeout(()=>{sfx('menu',.8);hofGate();},800);});
     ['pointerup','pointerleave','pointercancel'].forEach(n=>teach.addEventListener(n,stop));
-    row.append(status,hofBtn('기기 연결 QR','',hofShowQr),teach,hofBtn('← 모음집','primary',hofHome));
+    row.append(status);
+    if(hofSettleReady())row.append(hofBtn('🏆 지난주 결산','primary hof-settle',hofSettle));
+    row.append(hofBtn('기기 연결 QR','',hofShowQr),teach,hofBtn('← 모음집','primary',hofHome));
     $('hofTitle').textContent='명예의 전당';
     $('hofBody').replaceChildren(tabs,grid,row);
   }
@@ -470,6 +485,77 @@
       HOF.board=res;HOF.online=true;remember('hof-board',JSON.stringify(res));
     }catch{HOF.online=false;}
     if(HOF.view==='main'&&!$('hallScreen').hidden)hofDrawMain();
+  }
+  async function hofLoadLastWeek(force){
+    if(!HOF.cfg)return null;
+    const week=hofLastMonday();
+    if(!force&&HOF.last&&HOF.last.week===week&&Date.now()-HOF.lastAt<60000)return HOF.last;
+    try{
+      const res=await hofRpc('hof_week',{p_code:HOF.cfg.code,p_start:week});
+      if(res&&res.rows){HOF.last={week,rows:res.rows};HOF.lastAt=Date.now();}
+    }catch{HOF.online=false;}
+    if(HOF.view==='main'&&!$('hallScreen').hidden&&HOF.period==='lastweek')hofDrawMain();
+    return HOF.last&&HOF.last.week===week?HOF.last:null;
+  }
+  /* Weekly settlement: from Monday, last week's top three of each game get bonus coins, once per week.
+     Only inside the dashboard, which keeps the coins and remembers which weeks it has paid. */
+  function hofSettleReady(){
+    return EMBED&&COIN.v2&&COIN.on&&COIN.mapped&&HOF.cfg&&Array.isArray(COIN.hofWeeks)&&!COIN.hofWeeks.includes(hofLastMonday());
+  }
+  // The menu's hall of fame button flashes while a settlement is waiting (checked again each minute for Monday).
+  function hofSyncDue(){const b=$('openHall');if(b)b.classList.toggle('hof-due',Boolean(hofSettleReady()));}
+  setInterval(hofSyncDue,60000);
+  function hofWeekText(week){const [y,m,d]=week.split('-').map(Number);const e=new Date(y,m-1,d+6);return `${m}월 ${d}일 ~ ${e.getMonth()+1}월 ${e.getDate()}일`;}
+  async function hofSettle(){
+    HOF.view='settle';clearInterval(HOF.pollT);
+    const week=hofLastMonday(),msg=hofEl('p','hof-note','지난주 기록을 불러오는 중이에요…');
+    hofSet('지난주 결산',msg,hofEl('div','hof-row'));
+    const last=await hofLoadLastWeek(true);
+    if(!last){msg.textContent='지난주 기록을 불러오지 못했어요. 인터넷 연결을 확인해 주세요.';$('hofBody').append(hofBtn('← 명예의 전당','primary',hofShowMain));return;}
+    const person=seat=>COIN.everyone.find(s=>s.number===seat);
+    const awards=[],wins=[];
+    for(const g of HOF_GAMES){
+      for(const r of hofRank(last.rows,g.id).slice(0,3)){
+        const st=person(r.seat);
+        wins.push({g,r,st});
+        if(st)awards.push({id:st.id,game:g.id,place:r.place});
+      }
+    }
+    msg.textContent='코인을 주는 중이에요…';
+    const req=++COIN.seq;
+    const reply=await new Promise(res=>{
+      const timer=setTimeout(()=>{COIN.pending.delete(req);res(null);},8000);
+      COIN.pending.set(req,m=>{clearTimeout(timer);res(m);});
+      window.parent.postMessage({type:'hoja-hof-week',req,week,awards},DASHBOARD_ORIGIN);
+    });
+    if(!reply||!reply.ok){msg.textContent=(reply&&reply.message)||'대시보드 응답이 없어요. 다시 해 주세요.';$('hofBody').append(hofBtn('← 명예의 전당','primary',hofShowMain));return;}
+    for(const [id,b] of Object.entries(reply.balances||{})){const st=COIN.students.find(x=>x.id===id);if(st)st.balance=b;}
+    if(Array.isArray(reply.hofWeeks))COIN.hofWeeks=reply.hofWeeks;else if(COIN.hofWeeks)COIN.hofWeeks.push(week);
+    hofSyncDue();
+    hofShowSettled(week,wins,reply);
+  }
+  function hofShowSettled(week,wins,reply){
+    HOF.view='settled';
+    const given=new Map((reply.given||[]).map(x=>[x.id,x]));
+    const head=hofEl('p','hof-note',reply.already?`${hofWeekText(week)} 결산은 이미 했어요. 결과만 보여 줄게요.`:`${hofWeekText(week)} · 게임마다 1등 1코인, 2등·3등 0.5코인`);
+    const grid=hofEl('div','hof-grid');
+    for(const g of HOF_GAMES){
+      const card=hofEl('div','hof-card');card.append(hofEl('b','',g.name));
+      const mine=wins.filter(w=>w.g===g);
+      if(!mine.length)card.append(hofEl('span','hof-empty','-'));
+      for(const {r,st} of mine){
+        const line=hofEl('div','hof-line');
+        line.append(hofEl('i','',r.place+''),hofEl('span','',st?st.name:hofName(r.seat)),hofEl('em','',hofValue(g,r.value)),hofEl('small','hof-plus',st?'+'+coinText(HOF_PRIZE[r.place]):''));
+        card.append(line);
+      }
+      grid.append(card);
+    }
+    const sum=hofEl('p','hof-note hof-sum');
+    const totals=[...given.values()].filter(x=>x.given>0).map(x=>`${x.name} +${coinText(x.given)}${x.capped?'(상한)':''}`);
+    sum.textContent=reply.already?'':totals.length?'받은 코인: '+totals.join(' · '):'지난주에는 받을 사람이 없어요.';
+    const row=hofEl('div','hof-row');row.append(hofBtn('← 명예의 전당','primary',hofShowMain));
+    hofSet('🏆 지난주 결산',head,grid,sum,row);
+    if(!reply.already){sfx('coin',1);cheer(.6);}
   }
   function hofShowMain(){
     HOF.view='main';hofDrawMain();hofRefresh();
