@@ -79,7 +79,7 @@
   /* ---------- Bungeoppang shop: flow ---------- */
   function shNewGame(){
     const st=SH_STAGES.find(s=>s.id===shopStage);
-    // Old co3 selections can remain open across a hot reload. Never start a removed mode.
+    // A removed selection must never launch an undefined stage.
     SH.mode=st?st.id:'solo';SH.people=st?st.people||0:0;
     SH.money=0;SH.totalEarned=0;SH.day=0;SH.retries=0;SH.up=Object.fromEntries(SH_UP.map(u=>[u.id,0]));
     SH.floats=[];SH.sparks=[];SH.bgKey='';$('shOverlay').hidden=true;
@@ -659,7 +659,7 @@
       shTicket(g,s,t,rightX,y,rightW,th,now,ready?'주기!':'',ready,(cx,cy)=>shServe(s,t,cx,cy));
     }
   }
-  const SH_CO_COLORS={2:['#2f9c8c','#2f9c8c','#e0694f','#e0694f'],3:['#2f9c8c','#2f9c8c','#d6a01f','#e0694f'],4:['#2f9c8c','#3f8ee0','#d6a01f','#e0694f']};
+  const SH_CO_COLORS={2:['#2f9c8c','#2f9c8c','#e0694f','#e0694f'],4:['#2f9c8c','#3f8ee0','#d6a01f','#e0694f']};
   function shDrawCo(g,now){
     const {TZ,H,W}=SH,c=SH.co,s=SH.shops[0],colors=SH_CO_COLORS[SH.people],names=['① 반죽','② 굽기','③ 포장','④ 계산'];
     const pad=10,top=TZ+8,bot=H-72,cw=(W-pad*5)/4,head=46;
