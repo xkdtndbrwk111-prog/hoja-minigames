@@ -36,7 +36,7 @@
   function playersNeeded(){
     if(PARTY_GAMES[currentGame]){const g=PARTY_GAMES[currentGame];return (g.stages.find(st=>st.id===g.sel)||{}).people||2;}
     if(currentGame==='stairs')return ST_STAGES.find(st=>st.id===stairsStage).n;
-    if(currentGame==='shop'){const st=SH_STAGES.find(x=>x.id===shopStage);return st.people||(shopStage==='versus'?2:1);}
+    if(currentGame==='shop'){const st=SH_STAGES.find(x=>x.id===shopStage);return st?(st.people||(shopStage==='versus'?2:1)):1;}
     return aiLevel?1:2;
   }
   function coinSpend(ids,done,fail){
@@ -50,13 +50,13 @@
       round={charge:msg.charge,price:msg.price,t0:null,tries:tryStart()};
       done(msg);
     });
-    const game=(HOF_GAMES.find(g=>g.id===currentGame)||{}).name||(PARTY_GAMES[currentGame]||{}).name||currentGame;
+    const game=currentGame==='shop'?'붕어빵 가게':(HOF_GAMES.find(g=>g.id===currentGame)||{}).name||(PARTY_GAMES[currentGame]||{}).name||currentGame;
     window.parent.postMessage({type:'hoja-coin-spend',req,game,ids},DASHBOARD_ORIGIN);
   }
   const coinText=v=>Number.isInteger(v)?String(v):v.toFixed(1);
   function coinPick(n,done){
     const box=$('hofPicker'),picked=[];
-    HOF.players=[null,null];
+    HOF.players=Array(4).fill(null);
     const price=n>1?0.5:1;
     const draw=(note)=>{
       const head=document.createElement('div');head.className='hof-pick-title';
@@ -79,7 +79,7 @@
       const head=document.createElement('div');head.className='hof-pick-title';head.textContent='코인을 확인하는 중이에요';
       box.replaceChildren(head);
       coinSpend(picked,msg=>{
-        picked.slice(0,2).forEach((id,i)=>{const st=COIN.students.find(x=>x.id===id);HOF.players[i]=HOF.cfg&&COIN.mapped&&st&&st.number>=1&&st.number<=HOF_MAX?st.number:null;});
+        picked.slice(0,4).forEach((id,i)=>{const st=COIN.students.find(x=>x.id===id);HOF.players[i]=HOF.cfg&&COIN.mapped&&st&&st.number>=1&&st.number<=HOF_MAX?st.number:null;});
         box.hidden=true;
         const names=picked.map(id=>COIN.students.find(x=>x.id===id));
         hofToast(names.map(x=>x.name+' '+coinText(x.balance)+'코인').join(' · '));
@@ -250,16 +250,16 @@
   function hofNeeded(){
     if(!HOF.cfg)return 0;if(currentGame==='rally')return 2;if(PARTY_GAMES[currentGame])return 0;
     if(currentGame==='stairs'){const st=ST_STAGES.find(s=>s.id===stairsStage);return st.n<=2?st.n:0;}
-    if(currentGame==='shop')return shopStage==='solo'?1:shopStage==='versus'?2:0;
+    if(currentGame==='shop')return shopStage==='solo'?1:shopStage==='versus'||shopStage==='co2'?2:shopStage==='co4'?4:0;
     return aiLevel?0:2;
   }
   function hofPick(n,done){
-    HOF.players=[null,null];
+    HOF.players=Array(4).fill(null);
     if(!HOF.cfg||!n){done();return;}
     const box=$('hofPicker');let side=0;
     const finish=()=>{box.hidden=true;done();};
     const draw=()=>{
-      const title=n===1?'누가 하나요?':side===0?'왼쪽(아래쪽) 사람, 이름을 골라요':'오른쪽(위쪽) 사람, 이름을 골라요';
+      const title=n===1?'누가 하나요?':n>2?`${side+1}번째 팀원 (총 ${n}명)`:side===0?'왼쪽(아래쪽) 사람, 이름을 골라요':'오른쪽(위쪽) 사람, 이름을 골라요';
       const grid=document.createElement('div');grid.className='hof-seats';
       for(let seat=1;seat<=HOF_MAX;seat++){
         const given=HOF.cfg.names[seat-1];if(!given)continue;
@@ -288,11 +288,15 @@
   }
   function hofChampion(rows){
     const points=new Map();
-    for(const g of HOF_GAMES)if(g.id!=='rally')for(const r of hofRank(rows,g.id))if(r.place<=3)points.set(r.seat,(points.get(r.seat)||0)+4-r.place);
+    for(const g of HOF_GAMES)if(g.id!=='rally'&&!g.legacy)
+      for(const r of hofRank(rows,g.id))if(r.place<=3)
+        for(const seat of hofEntrySeats(r))points.set(seat,(points.get(seat)||0)+4-r.place);
     let best=0;for(const v of points.values())best=Math.max(best,v);
     return {best,seats:[...points.entries()].filter(([,v])=>v===best&&best>0).map(([s])=>s)};
   }
-  function hofValue(g,v){return g.id==='shop'?shWon(v):v+g.unit;}
+  function hofEntrySeats(r){return Array.isArray(r.members)&&r.members.length?r.members:[r.seat];}
+  function hofEntryName(r){return hofEntrySeats(r).map(hofName).join(' · ');}
+  function hofValue(g,v){return g.id==='shop'||g.id.startsWith('shop_')?shWon(v):v+g.unit;}
   /* Height markers: each student's best of this week, and the year's top climb, placed on the floor they reached. */
   let hofMarkCache={};
   function hofMarks(game){
@@ -462,7 +466,7 @@
       const card=hofEl('div','hof-card');card.append(hofEl('b','',g.name));
       const top=hofRank(rows,g.id).slice(0,3);
       if(!top.length)card.append(hofEl('span','hof-empty','-'));
-      for(const r of top){const line=hofEl('div','hof-line');line.append(hofEl('i','',r.place+''),hofEl('span','',hofName(r.seat)),hofEl('em','',hofValue(g,r.value)));card.append(line);}
+      for(const r of top){const line=hofEl('div','hof-line');line.append(hofEl('i','',r.place+''),hofEl('span','',hofEntryName(r)),hofEl('em','',hofValue(g,r.value)));card.append(line);}
       grid.append(card);
     }
     const row=hofEl('div','hof-row');
@@ -515,10 +519,11 @@
     const person=seat=>COIN.everyone.find(s=>s.number===seat);
     const awards=[],wins=[];
     for(const g of HOF_GAMES){
+      if(g.legacy)continue; // Never pay old mixed-mode scores as another new game.
       for(const r of hofRank(last.rows,g.id).slice(0,3)){
-        const st=person(r.seat);
-        wins.push({g,r,st});
-        if(st)awards.push({id:st.id,game:g.id,place:r.place});
+        const sts=hofEntrySeats(r).map(person);
+        wins.push({g,r,sts});
+        for(const st of sts)if(st)awards.push({id:st.id,game:g.id,place:r.place});
       }
     }
     msg.textContent='코인을 주는 중이에요…';
@@ -540,12 +545,15 @@
     const head=hofEl('p','hof-note',reply.already?`${hofWeekText(week)} 결산은 이미 했어요. 결과만 보여 줄게요.`:`${hofWeekText(week)} · 게임마다 1등 1코인, 2등·3등 0.5코인`);
     const grid=hofEl('div','hof-grid');
     for(const g of HOF_GAMES){
+      if(g.legacy)continue;
       const card=hofEl('div','hof-card');card.append(hofEl('b','',g.name));
       const mine=wins.filter(w=>w.g===g);
       if(!mine.length)card.append(hofEl('span','hof-empty','-'));
-      for(const {r,st} of mine){
+      for(const {r,sts} of mine){
         const line=hofEl('div','hof-line');
-        line.append(hofEl('i','',r.place+''),hofEl('span','',st?st.name:hofName(r.seat)),hofEl('em','',hofValue(g,r.value)),hofEl('small','hof-plus',st?'+'+coinText(HOF_PRIZE[r.place]):''));
+        line.append(hofEl('i','',r.place+''),hofEl('span','',hofEntryName(r)),
+          hofEl('em','',hofValue(g,r.value)),
+          hofEl('small','hof-plus',sts.filter(Boolean).length?'각 +'+coinText(HOF_PRIZE[r.place]):''));
         card.append(line);
       }
       grid.append(card);
@@ -644,7 +652,7 @@
         for(const r of rows){
           const g=HOF_GAMES.find(x=>x.id===r.game),line=hofEl('div','hof-line');
           const when=new Date(r.played_at);
-          line.append(hofEl('span','',`${when.getMonth()+1}/${when.getDate()} ${String(when.getHours()).padStart(2,'0')}:${String(when.getMinutes()).padStart(2,'0')}`),hofEl('span','',hofName(r.seat)),hofEl('span','',g?g.name:r.game),hofEl('em','',g?hofValue(g,r.score):r.score));
+          line.append(hofEl('span','',`${when.getMonth()+1}/${when.getDate()} ${String(when.getHours()).padStart(2,'0')}:${String(when.getMinutes()).padStart(2,'0')}`),hofEl('span','',hofEntryName(r)),hofEl('span','',g?g.name:r.game),hofEl('em','',g?hofValue(g,r.score):r.score));
           const del=hofEl('button','hof-del','삭제');del.type='button';del.addEventListener('click',async()=>{try{await call('hof_delete_record',{p_id:r.id});line.remove();}catch{msg.textContent='삭제하지 못했어요.';}});
           line.append(del);list.append(line);
         }
