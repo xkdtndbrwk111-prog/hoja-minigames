@@ -13911,7 +13911,10 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
       const card=hofEl('div','hof-card');card.append(hofEl('b','',g.name));
       const top=hofRank(rows,g.id).slice(0,3);
       if(!top.length)card.append(hofEl('span','hof-empty','-'));
-      for(const r of top){const line=hofEl('div','hof-line');line.append(hofEl('i','',r.place+''),hofEl('span','',hofEntryName(r)),hofEl('em','',hofValue(g,r.value)));card.append(line);}
+      for(const r of top){
+        const line=hofEl('div','hof-line'+(g.team?' hof-team-line':''));line.title=hofEntryName(r);
+        line.append(hofEl('i','',r.place+''),hofEl('span','',hofEntryName(r)),hofEl('em','',hofValue(g,r.value)));card.append(line);
+      }
       grid.append(card);
     }
     const row=hofEl('div','hof-row');
