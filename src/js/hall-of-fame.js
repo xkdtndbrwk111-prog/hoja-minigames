@@ -21,7 +21,7 @@
   // Weekly settlement prizes: 1st, 2nd, 3rd of each game last week.
   const HOF_PRIZE={1:1,2:.5,3:.5};
   const HOF_MAX=40;
-  const HOF={cfg:null,pending:[],board:null,last:null,lastAt:0,period:'day',players:Array(6).fill(null),pollT:0,flushing:false,online:true,lastError:null};
+  const HOF={cfg:null,pending:[],board:null,last:null,lastAt:0,period:'day',players:Array(6).fill(null),playerNames:Array(6).fill(null),pollT:0,flushing:false,online:true,lastError:null};
   // Monday of last week on this PC's calendar, as YYYY-MM-DD.
   function hofLastMonday(now=new Date()){
     const d=new Date(now.getFullYear(),now.getMonth(),now.getDate());d.setDate(d.getDate()-((d.getDay()+6)%7)-7);
@@ -44,6 +44,17 @@
     const t=$('hofToast');t.textContent=text;t.hidden=false;clearTimeout(t._h);t._h=setTimeout(()=>{t.hidden=true;},2600);
   }
   function hofName(seat){const n=HOF.cfg&&HOF.cfg.names&&HOF.cfg.names[seat-1];return n||seat+'번';}
+  // Names belong to selected students, not their character artwork. The slot order
+  // is the actual coin-paying/roster-picking order, including 3-6 player races.
+  function gamePlayerName(player){
+    if(!Number.isInteger(player)||player<0||player>=6)return '플레이어';
+    const chosen=HOF.playerNames&&HOF.playerNames[player];
+    if(chosen)return chosen;
+    const seat=HOF.players&&HOF.players[player];
+    if(seat&&HOF.cfg)return hofName(seat);
+    if(player===1&&aiLevel&&!PARTY_GAMES[currentGame]&&!['stairs','shop','jump'].includes(currentGame))return '컴퓨터';
+    return (player+1)+'P';
+  }
   /* Links carry the names after the #, which browsers never send to any server. */
   function hofEncode(names){
     const bytes=new TextEncoder().encode(JSON.stringify(names));let bin='';bytes.forEach(b=>{bin+=String.fromCharCode(b);});
