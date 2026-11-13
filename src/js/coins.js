@@ -56,7 +56,7 @@
   const coinText=v=>Number.isInteger(v)?String(v):v.toFixed(1);
   function coinPick(n,done){
     const box=$('hofPicker'),picked=[];
-    HOF.players=Array(4).fill(null);
+    HOF.players=Array(6).fill(null);
     const price=n>1?0.5:1;
     const draw=(note)=>{
       const head=document.createElement('div');head.className='hof-pick-title';
@@ -79,7 +79,7 @@
       const head=document.createElement('div');head.className='hof-pick-title';head.textContent='코인을 확인하는 중이에요';
       box.replaceChildren(head);
       coinSpend(picked,msg=>{
-        picked.slice(0,4).forEach((id,i)=>{const st=COIN.students.find(x=>x.id===id);HOF.players[i]=HOF.cfg&&COIN.mapped&&st&&st.number>=1&&st.number<=HOF_MAX?st.number:null;});
+        picked.slice(0,6).forEach((id,i)=>{const st=COIN.students.find(x=>x.id===id);HOF.players[i]=HOF.cfg&&COIN.mapped&&st&&st.number>=1&&st.number<=HOF_MAX?st.number:null;});
         box.hidden=true;
         const names=picked.map(id=>COIN.students.find(x=>x.id===id));
         hofToast(names.map(x=>x.name+' '+coinText(x.balance)+'코인').join(' · '));
@@ -249,12 +249,12 @@
   /* Who is playing */
   function hofNeeded(){
     if(!HOF.cfg)return 0;if(currentGame==='rally')return 2;if(PARTY_GAMES[currentGame])return 0;
-    if(currentGame==='stairs'){const st=ST_STAGES.find(s=>s.id===stairsStage);return st.n<=2?st.n:0;}
+    if(currentGame==='stairs'){const st=ST_STAGES.find(s=>s.id===stairsStage);return st.n;}
     if(currentGame==='shop')return shopStage==='solo'?1:shopStage==='versus'||shopStage==='co2'?2:shopStage==='co4'?4:0;
     return aiLevel?0:2;
   }
   function hofPick(n,done){
-    HOF.players=Array(4).fill(null);
+    HOF.players=Array(6).fill(null);
     if(!HOF.cfg||!n){done();return;}
     const box=$('hofPicker');let side=0;
     const finish=()=>{box.hidden=true;done();};
