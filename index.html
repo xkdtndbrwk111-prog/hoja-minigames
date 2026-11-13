@@ -11221,7 +11221,7 @@ var qrcode = function() {
   function stGameOver(p){
     p.over=true;p.fallV=-500;
     ST.phase='over';stopBgm(.4);
-    hofRecord('stairs',0,p.idx);
+    hofRecord('stairs_solo',0,p.idx);
     const prev=+preference('stairs-best','0');
     ST.record=p.idx>prev;if(ST.record)remember('stairs-best',String(p.idx));
     setTimeout(()=>{
@@ -11232,7 +11232,7 @@ var qrcode = function() {
   }
   function stRaceEnd(){
     ST.phase='over';
-    if(ST.n===2)ST.players.forEach(p=>hofRecord('stairs',p.i,p.idx));
+    ST.players.forEach(p=>hofRecord('stairs_race',p.i,p.idx));
     const rank=[...ST.players].sort((a,b)=>b.idx-a.idx),top=rank[0].idx,leaders=rank.filter(p=>p.idx===top);
     let title='';
     if(leaders.length>1)title='공동 1등!';
@@ -11348,7 +11348,7 @@ var qrcode = function() {
       const [c1,c2]=stSky(p.idx),sky=g.createLinearGradient(0,0,0,btnY);
       sky.addColorStop(0,`rgb(${c1})`);sky.addColorStop(1,`rgb(${c2})`);g.fillStyle=sky;g.fillRect(x,0,w,H);
     }
-    const marks=ST.n<=2?hofMarks('stairs'):null;
+    const marks=hofMarks(ST.solo?'stairs_solo':'stairs_race');
     for(let i=Math.max(0,p.idx-6);i<p.idx+22;i++){
       const sx=px+(ST.xs[i]-p.camX)*stepX,sy=py+(p.camY-i)*sh;
       if(sy<-sh||sy>btnY+sh)continue;
@@ -12930,14 +12930,14 @@ function respawn(L){
 function endSolo(L){
   G.phase='over';G.overT=0;const n=Math.floor(L.maxAlt/FLOOR),b=readBest();
   if(n>b){remember('jump-best',String(n));G.best=n;}
-  hofRecord('jump',0,n);
+  hofRecord('jump_solo',0,n);
   showResult(n+'층까지 올라갔어요!',n>b&&b>0?'새 기록!':(b?'최고 기록 '+Math.max(n,b)+'층':''));
   beep(200,.3,'triangle',.08);stopBgm(.4);
 }
 function endDuel(){
   G.phase='over';G.overT=0;$('cjTimer').style.display='none';
   const [a,b]=G.lanes,na=Math.floor(a.maxAlt/FLOOR),nb=Math.floor(b.maxAlt/FLOOR);
-  hofRecord('jump',0,na);hofRecord('jump',1,nb);
+  hofRecord('jump_duel',0,na);hofRecord('jump_duel',1,nb);
   showResult(na===nb?'무승부!':(na>nb?'왼쪽 승리!':'오른쪽 승리!'),na+'층 : '+nb+'층');
   victoryJingle();
 }
@@ -13096,7 +13096,7 @@ function drawGauge(L){
   if(G.rush){g.fillStyle='#3a2418';g.fillRect(x0+n*w+2,y-4,32,22);g.fillStyle='#ffe27a';g.font='18px HojaBody,sans-serif';g.textAlign='left';g.fillText('×2',x0+n*w+6,y+13);}
 }
 function drawBestLine(L,cam){
-  const marks=hofMarks('jump');
+  const marks=hofMarks(G.mode==='solo'?'jump_solo':'jump_duel');
   if(marks){
     g.font='13px HojaBody,sans-serif';g.textAlign='center';g.textBaseline='alphabetic';
     for(const [floor,m] of marks){
@@ -13506,7 +13506,7 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
   const coinText=v=>Number.isInteger(v)?String(v):v.toFixed(1);
   function coinPick(n,done){
     const box=$('hofPicker'),picked=[];
-    HOF.players=Array(4).fill(null);
+    HOF.players=Array(6).fill(null);
     const price=n>1?0.5:1;
     const draw=(note)=>{
       const head=document.createElement('div');head.className='hof-pick-title';
@@ -13529,7 +13529,7 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
       const head=document.createElement('div');head.className='hof-pick-title';head.textContent='코인을 확인하는 중이에요';
       box.replaceChildren(head);
       coinSpend(picked,msg=>{
-        picked.slice(0,4).forEach((id,i)=>{const st=COIN.students.find(x=>x.id===id);HOF.players[i]=HOF.cfg&&COIN.mapped&&st&&st.number>=1&&st.number<=HOF_MAX?st.number:null;});
+        picked.slice(0,6).forEach((id,i)=>{const st=COIN.students.find(x=>x.id===id);HOF.players[i]=HOF.cfg&&COIN.mapped&&st&&st.number>=1&&st.number<=HOF_MAX?st.number:null;});
         box.hidden=true;
         const names=picked.map(id=>COIN.students.find(x=>x.id===id));
         hofToast(names.map(x=>x.name+' '+coinText(x.balance)+'코인').join(' · '));
@@ -13699,12 +13699,12 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
   /* Who is playing */
   function hofNeeded(){
     if(!HOF.cfg)return 0;if(currentGame==='rally')return 2;if(PARTY_GAMES[currentGame])return 0;
-    if(currentGame==='stairs'){const st=ST_STAGES.find(s=>s.id===stairsStage);return st.n<=2?st.n:0;}
+    if(currentGame==='stairs'){const st=ST_STAGES.find(s=>s.id===stairsStage);return st.n;}
     if(currentGame==='shop')return shopStage==='solo'?1:shopStage==='versus'||shopStage==='co2'?2:shopStage==='co4'?4:0;
     return aiLevel?0:2;
   }
   function hofPick(n,done){
-    HOF.players=Array(4).fill(null);
+    HOF.players=Array(6).fill(null);
     if(!HOF.cfg||!n){done();return;}
     const box=$('hofPicker');let side=0;
     const finish=()=>{box.hidden=true;done();};
