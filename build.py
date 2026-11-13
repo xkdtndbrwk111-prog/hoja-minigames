@@ -29,6 +29,7 @@ MAIN_JS = [
     'js/party/page3.js',
     'js/party/flash.js',      # lightning missions (one-word missions in a row)
     'js/rhythm.js',           # rhythm games
+    'js/dance.js',            # Hoja + Nahan 2D alternating orbital rhythm
     'js/menu-background.js',  # seasonal museum scene behind the menu
     'js/selection.js',        # character and stage selection
     'js/hockey.js',           # air hockey, and entering/leaving games, fullscreen

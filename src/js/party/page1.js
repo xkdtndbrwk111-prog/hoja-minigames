@@ -81,10 +81,13 @@
   function paOpenMenu(){
     if(!PS.on||PS.ended)return;
     PS.resume=PS.live||PS.counting>0;PS.live=false;PS.paused=true;
+    if(PS.run&&typeof PS.run.pause==='function')PS.run.pause();
     const label=()=>soundMode==='all'?'♪ 소리 전체':soundMode==='sfx'?'♪ 효과음만':'소리 끔';
     const sound=button(label(),'',()=>{cycleSound();sound.textContent=label();});
     paOverlay('잠깐 쉬는 중','',[
-      button('▶ 계속','primary',()=>{$('paOverlay').hidden=true;PS.paused=false;if(!PS.counting)PS.live=true;}),
+      button('▶ 계속','primary',()=>{$('paOverlay').hidden=true;PS.paused=false;
+        if(PS.run&&typeof PS.run.resume==='function')PS.run.resume();
+        if(!PS.counting)PS.live=true;}),
       ...(RALLY.on?[]:[button('↻ 다시 하기','',paStart)]),
       button('인물 변경','',()=>{leaveParty();enterSelection();}),
       button('← 모음집','',paHome),sound
@@ -102,6 +105,7 @@
     RALLY.on=false;
     PS.on=false;PS.live=false;PS.ended=true;PS.counting=0;PS.timers=[];PS.paused=false;
     cancelAnimationFrame(PS.raf);
+    if(PS.run&&typeof PS.run.stop==='function')PS.run.stop();
     $('partyScreen').hidden=true;$('paOverlay').hidden=true;$('paStage').replaceChildren();PS.run=null;RH.sess=null;
   }
   const RALLY={on:false,list:[],idx:0,wins:[0,0],total:5};
@@ -147,6 +151,7 @@
     $('paCaption').textContent=RALLY.on?`파티 랠리 ${RALLY.idx+1}판 · ${RALLY.wins[0]} : ${RALLY.wins[1]} · ${def.name}`:def.name+' · '+stage.name;
     paHint(stage.desc);paTime('');
     RH.sess=null;
+    if(PS.run&&typeof PS.run.stop==='function')PS.run.stop();
     PS.run=def.make(stage,host)||{};
     PS.counting=def.noCount?0:3;PS.lastCount=0;
     if(PS.counting){$('paCount').hidden=false;}else{$('paCount').hidden=true;PS.live=true;PS.run.begin&&PS.run.begin();}

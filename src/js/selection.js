@@ -61,7 +61,7 @@
     for(let side=0;side<2;side++){
       const target=$(side?'choiceRight':'choiceLeft');
       target.replaceChildren();
-      CHARACTERS.forEach(ch=>{
+      (currentGame==='dance'?CHARACTERS.filter(ch=>ch.id===(side?'NAHANSANG':'HOJA')):CHARACTERS).forEach(ch=>{
         const b=document.createElement('button');b.type='button';b.className='character-card'+(choices[side]===ch.id?' selected':'');
         b.dataset.id=ch.id;b.dataset.side=side;b.setAttribute('aria-pressed',choices[side]===ch.id?'true':'false');
         const im=document.createElement('img');im.src=characterPortrait(ch.id);im.alt='';
@@ -81,12 +81,20 @@
   }
   function syncSelectionHint(){
     const hint=$('selectionHint');
+    if(currentGame==='dance'){
+      hint.textContent='호자와 나한상 고정 · 1인과 2인 협동 중 선택한 뒤 시작하세요.';
+      hint.classList.remove('hot');kbSyncGuide();return;
+    }
     if(streak.count>=1&&streak.side>=0&&choices[streak.side]===streak.id){
       hint.textContent=streak.count>=2?nameFor(streak.side)+' '+streak.count+'연승 중! 도전자 나와라':'챔피언 '+nameFor(streak.side)+'! 도전자 나와라';hint.classList.add('hot');
     }else{hint.textContent='각자 캐릭터와 경기장을 고르고 시작';hint.classList.remove('hot');}
     kbSyncGuide();
   }
   function enterSelection(){
+    // The dance is always performed by Hoja and Nahan, irrespective of characters
+    // selected in a different minigame.
+    if(currentGame==='dance'){choices[0]='HOJA';choices[1]='NAHANSANG';}
+    $('choiceScreen').classList.toggle('dance-choice',currentGame==='dance');
     $('menuScreen').hidden=true;$('gameScreen').hidden=true;$('choiceScreen').hidden=false;
     renderChoices();renderStages();syncMode();$('modeButton').hidden=currentGame==='shop'||currentGame==='stairs'||Boolean(PARTY_GAMES[currentGame]);syncSelectionHint();playBgm('menu',{gain:.8});
   }

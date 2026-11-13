@@ -1276,3 +1276,41 @@ html[data-device=tablet] .sx-stage{transform-origin:50% 50%}
 .hof-mode .hof-line em{white-space:nowrap;font-size:.9em}
 @media(max-width:1000px){.hof-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hof-family{grid-column:span 2}}
 @media(max-width:560px){.hof-grid{grid-template-columns:minmax(0,1fr)}.hof-family{grid-column:span 1}.hof-mode-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* 호자와 나한상의 춤 — isolated 2D rhythm game */
+.da-stage{position:absolute!important;inset:0;background:#112331!important;padding:0!important;overflow:hidden;touch-action:none}
+.da-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.da-keys{position:absolute;z-index:3;left:clamp(10px,1vw,24px);right:clamp(10px,1vw,24px);bottom:clamp(8px,1vh,22px);height:clamp(74px,21%,160px);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(14px,2vw,40px);pointer-events:auto}
+.da-keys.da-one{grid-template-columns:minmax(0,1fr);max-width:720px;width:72%;left:50%;right:auto;transform:translateX(-50%)}
+.da-key{display:flex;align-items:center;justify-content:center;border-radius:clamp(16px,2vw,32px);border:clamp(3px,.35vw,7px) solid #163b34;background:linear-gradient(#50d5b4,#249479);box-shadow:0 8px 0 #12372e,inset 0 5px 0 rgba(255,255,255,.24);color:#fffaf1;font:900 clamp(17px,2vw,37px) "HojaBody",sans-serif;line-height:1.2;text-align:center;touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer;opacity:.64;transition:opacity .08s,filter .08s}
+.da-key-b{border-color:#663b26;background:linear-gradient(#f6b17e,#d77f51);box-shadow:0 8px 0 #69371f,inset 0 5px 0 rgba(255,255,255,.3)}
+.da-key.da-turn{opacity:1;filter:brightness(1.1);outline:clamp(2px,.25vw,4px) solid #fff4ad;outline-offset:2px}
+.da-key.da-hit{animation:daKeyPop .2s ease-out}
+@keyframes daKeyPop{50%{transform:translateY(4px);filter:brightness(1.4)}}
+.da-picker{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(8px,1.6vh,18px);padding:clamp(12px,2vw,35px);background:linear-gradient(150deg,#102b39,#263b55);box-sizing:border-box}
+.da-picker-title{margin:0;color:#fff5c9;font:400 clamp(26px,3.6vw,62px)/1.2 "HojaTitle","HojaBody",sans-serif;text-align:center}
+.da-picker-desc{margin:0;color:#c5eadf;font:700 clamp(13px,1.35vw,24px)/1.3 "HojaBody",sans-serif;text-align:center}
+.da-song-grid{width:min(100%,1200px);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(10px,1.2vw,24px)}
+.da-song{min-height:clamp(65px,11vh,118px);background:#fcf2d9;border:3px solid #7bc2ae;border-bottom-width:7px;border-radius:18px;font:900 clamp(16px,1.6vw,29px) "HojaBody",sans-serif;color:#284c43;touch-action:manipulation}
+.da-menu-card .game-name{font-size:clamp(15px,1.8vw,35px)}
+.da-orbit-icon{position:relative;display:block;width:min(72px,9vh);height:min(72px,9vh);margin:auto;border-radius:50%;border:3px dashed #417967;transform:rotate(-32deg)}
+.da-orbit-icon i{position:absolute;width:42%;height:42%;border:3px solid #3d2a22;border-radius:50%;box-sizing:border-box}
+.da-orbit-icon i:first-child{top:-13%;left:29%;background:#57d7af}
+.da-orbit-icon i:last-child{bottom:-13%;left:29%;background:#efa470}
+@media(max-width:700px){.da-song-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.da-key{font-size:clamp(14px,2.8vw,26px)}.da-keys{gap:10px}.da-picker-desc{font-size:13px}}
+@media(orientation:portrait){.da-keys{height:clamp(74px,14vh,120px)}.da-picker{overflow-y:auto}.da-song{min-height:75px}}
+
+/* Rhythm page now has ten games. Keep exactly five playable cards per row. */
+#rhythmGrid{grid-template-columns:repeat(10,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr))}
+#rhythmGrid .game-card{grid-column:span 2!important}
+#rhythmGrid .game-card:nth-child(6){grid-column:span 2!important}
+#rhythmGrid .game-card.da-menu-card .game-name{white-space:normal;word-break:keep-all;text-align:center;font-size:clamp(14px,1.7vw,30px)}
+
+/* The dance has a fixed cast; show their portraits at a useful size instead
+   of leaving each one in a tiny cell of the seven-character selector. */
+#choiceScreen.dance-choice .choice-grid{grid-template-columns:minmax(0,1fr)}
+#choiceScreen.dance-choice .character-card{width:min(100%,260px);justify-self:center;cursor:default}
+
+/* The dance needs the entire bottom edge for reliable touch timing.
+   Put the pause/menu button at the top-right, away from both pads. */
+#partyScreen #paStage.pa-game-dance~#paMenu{left:auto!important;right:clamp(8px,1.4vw,24px)!important;top:8px!important;bottom:auto!important;margin:0!important;transform:none!important;min-height:44px!important}

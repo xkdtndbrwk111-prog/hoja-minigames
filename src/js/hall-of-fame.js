@@ -16,6 +16,8 @@
     {id:'flash_solo',name:'번개미션 · 혼자 도전',family:'번개미션',mode:'혼자 도전',unit:'개',noPrize:true},
     {id:'flash_r8',name:'번개미션 · 8판 대결',family:'번개미션',mode:'8판 대결',unit:'점',noPrize:true},
     {id:'flash_r12',name:'번개미션 · 12판 대결',family:'번개미션',mode:'12판 대결',unit:'점',noPrize:true},
+    {id:'dance_solo',name:'호자와 나한상의 춤 · 1인',family:'호자와 나한상의 춤',mode:'1인',unit:'점',noPrize:true},
+    {id:'dance_duo',name:'호자와 나한상의 춤 · 2인 협동',family:'호자와 나한상의 춤',mode:'2인 협동',unit:'점',team:true,noPrize:true},
     {id:'hockey',name:'에어하키',unit:'승'},{id:'volley',name:'호자 배구',unit:'승'},{id:'bubble',name:'퍼즐버블',unit:'승'},
     {id:'othello',name:'오셀로',unit:'승'},{id:'gomoku',name:'오목',unit:'승'},{id:'ttt',name:'틱택토',unit:'승'},{id:'germ',name:'세균전',unit:'승'},{id:'rally',name:'파티 랠리',unit:'승'},
   ];
@@ -98,7 +100,7 @@
   // member as if they had independently earned the whole revenue.
   function hofRecordTeam(game,seats,score){
     roundClose();
-    const expected=game==='shop_co2'?2:game==='shop_co4'?4:0;
+    const expected=game==='shop_co2'||game==='dance_duo'?2:game==='shop_co4'?4:0;
     if(!HOF.cfg||!expected||!Array.isArray(seats)||seats.length!==expected
       ||seats.some(n=>!Number.isInteger(n)||n<1||n>HOF_MAX)
       ||new Set(seats).size!==expected){
