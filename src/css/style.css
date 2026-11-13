@@ -1261,3 +1261,18 @@ html[data-device=tablet] .sx-stage{transform-origin:50% 50%}
 .hof-card .hof-team-line{white-space:normal;align-items:flex-start}
 .hof-card .hof-team-line span{overflow:visible;text-overflow:clip;word-break:keep-all}
 @media(orientation:portrait){.hof-grid{grid-template-rows:none;grid-auto-rows:minmax(120px,auto)}}
+
+/* Hall of fame: each game has a single family card and clear mode subsections.
+   Use the actual viewport width, rather than the old fixed 5/6-column layouts. */
+.hof-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:none;grid-auto-rows:auto;gap:clamp(8px,1vw,16px);align-items:start;flex:none}
+.hof-card{height:auto;min-height:112px;gap:clamp(4px,.6vh,9px);padding:clamp(8px,1vw,14px)}
+.hof-family{grid-column:span 2}
+.hof-family>b{font-size:clamp(17px,1.45vw,27px)}
+.hof-mode-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(6px,.65vw,12px)}
+.hof-mode{display:flex;flex-direction:column;min-width:0;gap:3px;padding:6px 7px;border-radius:8px;background:rgba(63,106,100,.065)}
+.hof-mode-title{font-family:"HojaBody",sans-serif;font-size:clamp(12px,1.03vw,19px);font-weight:950;color:#3f6a64;border-bottom:1px solid #c2d5c9;padding-bottom:4px;margin-bottom:2px}
+.hof-mode .hof-line{font-size:clamp(11px,1.0vw,19px);white-space:normal;align-items:baseline}
+.hof-mode .hof-line span{overflow:visible;text-overflow:clip;white-space:normal;overflow-wrap:anywhere;word-break:keep-all}
+.hof-mode .hof-line em{white-space:nowrap;font-size:.9em}
+@media(max-width:1000px){.hof-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hof-family{grid-column:span 2}}
+@media(max-width:560px){.hof-grid{grid-template-columns:minmax(0,1fr)}.hof-family{grid-column:span 1}.hof-mode-grid{grid-template-columns:minmax(0,1fr)}}
