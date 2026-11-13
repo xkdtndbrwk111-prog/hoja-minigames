@@ -28,6 +28,7 @@ jobs:
           (async()=>{
             const browser=await chromium.launch({headless:true,executablePath:'/usr/bin/google-chrome',args:['--no-sandbox']});
             const page=await browser.newPage({viewport:{width:1600,height:900},hasTouch:true});
+            page.setDefaultTimeout(10000);
             const errors=[];
             page.on('pageerror',err=>errors.push(err.message));
             const base='http://127.0.0.1:8765/';
@@ -61,7 +62,7 @@ jobs:
             }
             assert.deepEqual(errors,[],'Uncaught browser errors');
             await browser.close();
-          })().catch(e=>{console.error(e);process.exitCode=1;});
+          })().catch(e=>{console.error(e);process.exit(1);});
           JS
       - uses: actions/upload-artifact@v4
         if: always()
