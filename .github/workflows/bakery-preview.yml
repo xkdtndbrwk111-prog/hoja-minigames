@@ -1,0 +1,42 @@
+name: Build bakery score preview
+on:
+  push:
+    branches:
+      - feature/bakery-team-hof-audit-20261113
+    paths:
+      - "src/**"
+      - "build.py"
+      - ".github/workflows/bakery-preview.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Compile published single-file app
+        run: python3 build.py
+      - name: Verify and syntax-check
+        run: |
+          python3 build.py --check
+          for f in src/js/*.js src/js/party/*.js; do node --check "$f"; done
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('src/js/bakery.js').read_text()
+          assert "id:'co3'" not in s
+          assert "hofRecordTeam(" in s and "shop_solo" in s
+          h=Path('index.html').read_text()
+          assert 'hofRecordTeam(' in h and "id:'co3'" not in h
+          PY
+      - name: Update generated index on preview branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if ! git diff --staged --quiet; then
+            git commit -m "build: refresh bakery team-score preview [skip ci]"
+            git push
+          fi
