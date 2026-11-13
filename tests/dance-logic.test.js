@@ -4,10 +4,10 @@ const fs=require('node:fs');
 const assert=require('node:assert/strict');
 const dance=fs.readFileSync('src/js/dance.js','utf8');
 const noop=()=>{};
-function harness(lag=0){
+function harness(lag=0,cast=['HOJA','NAHANSANG']){
   let now=1000;
   const nodeList={};
-  const scores=[0,0],stored=[],ended=[];let begun=0;
+  const scores=[0,0],stored=[],ended=[],images=[];let begun=0;
   const canvasContext=new Proxy({},{
     get(target,key){
       if(key==='createLinearGradient')return ()=>({addColorStop:noop});
@@ -28,7 +28,7 @@ function harness(lag=0){
   }
   const env={
     rhSeed:seed=>()=>((seed=Math.imul(seed,1664525)+1013904223|0)>>>0)/4294967296,
-    rhCompose:song=>({notes:[],bass:[],drums:[],stepLen:60/song.bpm/4}),
+    rhCompose:song=>({notes:[{step:4,midi:72,len:2}],bass:[],drums:[{step:0,kind:'kick'}],totalSteps:64,stepLen:60/song.bpm/4}),
     RH_SONGS:[
       {id:'march',name:'호자 행진곡',bpm:108,seed:11},
       {id:'break',name:'쉬는 시간',bpm:96,seed:27},
@@ -39,8 +39,9 @@ function harness(lag=0){
     ],
     paEl:el,PARTY_GAMES:{},$:(id)=>nodeList[id]||(nodeList[id]=el('div')),
     roundBegin:()=>{begun++;},
-    Image:class {constructor(){this.complete=false;this.naturalWidth=0;}},
-    characterPortrait:()=>'',clamp:(n,a,b)=>Math.min(b,Math.max(a,n)),
+    Image:class {constructor(){this.complete=false;this.naturalWidth=0;images.push(this);}},
+    choices:cast,nameFor:i=>({HOJA:'호자',NAHANSANG:'나한상',SUMAKSAE:'수막새',GWANGGAETO_KING:'광개토대왕'})[cast[i]]||cast[i],
+    characterPortrait:id=>'/portraits/'+id+'.webp',clamp:(n,a,b)=>Math.min(b,Math.max(a,n)),
     gamePlayerName:i=>['민수','서연'][i],
     performance:{now:()=>now,timeOrigin:Date.now()-now},window:{devicePixelRatio:1},
     document:{addEventListener:noop,removeEventListener:noop},
@@ -62,12 +63,14 @@ function harness(lag=0){
     const songPicker=host.children[2].children[2],song=songPicker.children[0];
     assert.ok(song);
     song.listeners.pointerdown[0]({preventDefault:noop,stopPropagation:noop});
-    assert.equal(run.state.chart.events.length,stage.steps);
+    assert.ok(run.state.chart.events.length>60);
+    assert.ok(run.state.chart.duration>=stage.targetSeconds);
+    assert.ok(run.state.chart.duration<=stage.targetSeconds+run.state.chart.beat*2.01);
     assert.equal(begun,1,'round must begin only when a song is selected');
     return {run,buttons:host.children[1].children};
   };
   const tap=(button,when)=>button.listeners.pointerdown[0]({timeStamp:when,preventDefault:noop,stopPropagation:noop});
-  return {api,env,scores,stored,ended,start,tap,advance,get now(){return now;}};
+  return {api,env,scores,stored,ended,images,start,tap,advance,get now(){return now;}};
 }
 function validateCharts(){
   const t=harness();
@@ -75,8 +78,10 @@ function validateCharts(){
   for(const stage of t.api.DA_STAGES){
     for(const song of t.env.RH_SONGS){
       const chart=t.api.daChart(song,stage);
-      assert.equal(chart.events.length,stage.steps);
-      assert.equal(chart.path.length,stage.steps+2);
+      assert.ok(chart.duration>=stage.targetSeconds,'stage too short');
+      assert.ok(chart.duration<=stage.targetSeconds+chart.beat*2.01,'stage too long');
+      assert.equal(chart.path.length,chart.events.length+2);
+      assert.ok(chart.events.length<400,'chart must have bounded complexity');
       assert.ok(Math.abs(chart.beat-60/song.bpm)<1e-10);
       for(let i=0;i<chart.events.length;i++){
         const e=chart.events[i];
@@ -107,8 +112,8 @@ function validateMode(mode,lag){
     t.tap(buttons[side],now);
     assert.equal(s.next,i+1,'each beat increments exactly once');
   }
-  assert.equal(s.score,stage.steps*3);
-  assert.equal(s.perfect,stage.steps);
+  assert.equal(s.score,300,'every PERFECT run must score 300 regardless of mode or BPM');
+  assert.equal(s.perfect,s.chart.events.length);
   t.advance(s.startPerf+(s.chart.end+.7)*1000);
   s.lastTick=t.now-16;
   run.frame(.016); // Includes Canvas draw and final result path.
@@ -116,9 +121,12 @@ function validateMode(mode,lag){
   assert.equal(t.stored.length,1);
   assert.equal(t.stored[0].kind,stage.people===1?'solo':'duo');
   if(stage.people===2)assert.deepEqual(t.stored[0].args[1],[10,11]);
-  assert.match(t.ended[0].detail,/팀 점수/);
+  assert.match(t.ended[0].detail,/기록 300\/300점/);
+  assert.equal(t.stored[0].args[2],300,'normalized leaderboard score');
+  const musicSeconds=64*60/108/4;
+  assert.ok(s.cues.some(c=>c.kind==='tone'&&c.time>1.8+musicSeconds),'music must repeat for longer stages');
   run.stop();
-  console.log('PASS: '+mode+' ('+stage.steps+' beats) score, result, leaderboard');
+  console.log('PASS: '+mode+' ('+s.chart.events.length+' notes) normalized score, result, leaderboard');
 }
 function validateMiss(){
   const t=harness(),stage=t.api.DA_STAGES.find(x=>x.id==='d-easy');
@@ -149,7 +157,23 @@ function validatePause(){
   run.stop();
   console.log('PASS: paused song resumes from exact beat with calibration');
 }
+function validateCharacterChoices(){
+  const cast=['SUMAKSAE','GWANGGAETO_KING'],t=harness(0,cast);
+  const stage=t.api.DA_STAGES.find(x=>x.id==='d-easy');
+  const {run,buttons}=t.start(stage);
+  assert.deepEqual(t.images.slice(0,2).map(im=>im.src),cast.map(id=>'/portraits/'+id+'.webp'));
+  assert.match(buttons[0].textContent,/수막새/);
+  assert.match(buttons[1].textContent,/광개토대왕/);
+  assert.match(run.state.message,/^$/);
+  run.stop();
+  const duplicate=harness(0,['HOJA','HOJA']);
+  const other=duplicate.start(stage);
+  assert.equal(duplicate.images[0].src,duplicate.images[1].src);
+  other.run.stop();
+  console.log('PASS: 7-character cast selection, team labels and identical picks');
+}
 validateCharts();
+validateCharacterChoices();
 validatePause();
 validateMode('s-easy',0);
 validateMode('s-normal',.08);
