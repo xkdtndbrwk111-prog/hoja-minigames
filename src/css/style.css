@@ -1310,3 +1310,7 @@ html[data-device=tablet] .sx-stage{transform-origin:50% 50%}
    of leaving each one in a tiny cell of the seven-character selector. */
 #choiceScreen.dance-choice .choice-grid{grid-template-columns:minmax(0,1fr)}
 #choiceScreen.dance-choice .character-card{width:min(100%,260px);justify-self:center;cursor:default}
+
+/* The dance needs the entire bottom edge for reliable touch timing.
+   Put the pause/menu button at the top-right, away from both pads. */
+#partyScreen #paStage.pa-game-dance~#paMenu{left:auto!important;right:clamp(8px,1.4vw,24px)!important;top:8px!important;bottom:auto!important;margin:0!important;transform:none!important;min-height:44px!important}
