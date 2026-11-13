@@ -2,7 +2,7 @@ name: Dance real-browser visual smoke
 on:
   push:
     branches: [feature/hoja-nahan-dance-solo-coop-20261113]
-    paths: ['.github/workflows/dance-browser-preview.yml']
+    paths: ['src/**','.github/workflows/dance-browser-preview.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check chrome and standalone bundle
         run: |
-          python3 build.py --check
+          python3 build.py && python3 build.py --check
           which google-chrome || which google-chrome-stable || which chromium
           node --version
       - name: Install browser automation library
