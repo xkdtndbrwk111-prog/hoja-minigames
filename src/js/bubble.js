@@ -150,7 +150,7 @@
     BB.result=null;BB.time=0;BB.phase='countdown';BB.countdown=2.4;BB.cShown=0;BB.acc=0;
     $('bOverlay').hidden=true;
     for(let i=0;i<2;i++){
-      $('bName'+i).textContent=nameFor(i);
+      $('bName'+i).textContent=gamePlayerName(i);
       $('bLabel'+i).textContent=aiLevel&&i===1?'COMPUTER · '+AI_LEVELS[aiLevel].label:i?'2P':'1P';
       bNote(i,'neutral','');
       const champ=streak.side===i&&streak.id===choices[i]&&streak.count>0;
@@ -249,7 +249,7 @@
     hofWin('bubble',w);
     bNote(w,'happy','이겼다!');bNote(1-w,'sad','아쉬워…');
     sfx('goal',1.1);sfx('boom',.9);cheer(1.1);victoryJingle();
-    const title=streak.count>=2?`${nameFor(w)} ${streak.count}연승!`:`${nameFor(w)} 승리!`;
+    const title=streak.count>=2?`${gamePlayerName(w)} ${streak.count}연승!`:`${gamePlayerName(w)} 승리!`;
     const detail=`${BB.fields[0].score} : ${BB.fields[1].score}점 · ${Math.ceil(BB.time)}초`;
     const next=button('다음 도전자 ▶','primary',()=>{leaveBubble();enterSelection();});
     const again=button('↻ 바로 재대결','',()=>{bNewMatch();});

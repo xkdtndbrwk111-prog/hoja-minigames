@@ -980,7 +980,7 @@ html[data-device=tablet] #partyScreen .score-caption{display:none}
 html[data-device=tablet] #partyScreen .score-box{display:flex;align-items:center;gap:6px}
 html[data-device=tablet] #partyScreen .score-digit{font-size:clamp(24px,4.4vmin,44px);min-width:1.3em;box-shadow:none;border-width:2px}
 html[data-device=tablet] #partyScreen .game-time{font-size:clamp(11px,1.7vmin,16px);min-height:0}
-html[data-device=tablet] #paHint{font-size:clamp(10px,1.6vmin,15px);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+html[data-device=tablet] #paHint{font-size:clamp(10px,1.6vmin,15px);line-height:1.2;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;word-break:keep-all;max-width:100%}
 html[data-device=tablet] .pa-stage.pa-two,html[data-device=tablet] .pa-tug-row{gap:clamp(30px,5vw,60px)}
 @media(orientation:portrait){html[data-device=tablet] #partyScreen .team-name{display:none}html[data-device=tablet] .pa-holes{grid-template-rows:repeat(3,minmax(0,1fr))}}
 @media(max-width:700px){.rh-songs{grid-template-columns:repeat(2,minmax(0,1fr))}.pa-stage.pa-two{gap:30px}.menu-pages .control{min-width:0;padding:0 8px}}
@@ -1239,6 +1239,10 @@ html[data-device=tablet] .sx-stage{transform-origin:50% 50%}
 .emotion-note{align-self:flex-start;display:inline-block;max-width:100%;box-sizing:border-box;min-height:0;font-size:clamp(15px,1.9vw,38px);font-weight:950;line-height:1.2;color:#2f2a24;background:#fffaf0;border:clamp(2px,.22vw,4px) solid #2f9c8c;border-radius:.7em;padding:.16em .6em;box-shadow:0 .12em 0 rgba(60,40,20,.2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transform-origin:left center}
 .team.right .emotion-note{align-self:flex-end;border-color:#e0694f;transform-origin:right center}
 .emotion-note:empty{visibility:hidden}
+/* Do not clip speech by character count or narrow text boxes. Fit a line when
+   possible and wrap the entire sentence when the actual available space is small. */
+.team-text{flex:1 1 auto;min-width:0}
+.emotion-note{width:max-content;max-width:100%;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;word-break:keep-all}
 .emotion-note.say{animation:noteSay .34s cubic-bezier(.3,1.6,.5,1)}
 @keyframes noteSay{0%{transform:scale(.55);opacity:.2}100%{transform:scale(1);opacity:1}}
 @media (prefers-reduced-motion:reduce){.emotion-note.say{animation:none}}

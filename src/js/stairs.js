@@ -24,7 +24,7 @@
     const rest=SH_FACES.filter(id=>!choices.includes(id));
     return rest[(i-2)%rest.length];
   }
-  const stName=i=>CHARACTERS.find(c=>c.id===stWho(i)).name;
+  const stName=i=>gamePlayerName(i);
   function stNew(){
     hofRefresh();
     const st=ST_STAGES.find(s=>s.id===stairsStage);

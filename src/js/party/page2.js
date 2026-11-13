@@ -285,7 +285,7 @@
     const n=stage.n,grid=paEl('div','pa-dots');grid.style.setProperty('--n',n);host.append(grid);
     const svgNS='http://www.w3.org/2000/svg',svg=document.createElementNS(svgNS,'svg');svg.setAttribute('viewBox','-0.5 -0.5 '+(n+1)+' '+(n+1));grid.append(svg);
     let turn=0;const lines=new Map(),boxes=new Map();
-    const show=()=>{paHint(nameFor(turn)+' 차례 · 선을 눌러요');$('partyScreen').dataset.turn=turn;};
+    const show=()=>{paHint(gamePlayerName(turn)+' 차례 · 선을 눌러요');$('partyScreen').dataset.turn=turn;};
     const keyH=(r,c)=>'h'+r+','+c,keyV=(r,c)=>'v'+r+','+c;
     function completed(r,c){return lines.has(keyH(r,c))&&lines.has(keyH(r+1,c))&&lines.has(keyV(r,c))&&lines.has(keyV(r,c+1));}
     function claim(key,el){

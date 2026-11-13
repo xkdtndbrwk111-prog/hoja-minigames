@@ -67,7 +67,7 @@
     if(RALLY.on){rallyLeg(winner,detail);return;}
     roundClose();
     if(winner===-1){sfx('soft',.8);}else{victoryJingle();cheer(.7);}
-    const title=winner===null?'끝!':winner===-1?'무승부!':nameFor(winner)+' 승리!';
+    const title=winner===null?'끝!':winner===-1?'무승부!':gamePlayerName(winner)+' 승리!';
     paOverlay(title,detail||'',[
       button('↻ 다시 하기','primary',paStart),
       button('인물 변경','',()=>{leaveParty();enterSelection();}),
@@ -114,7 +114,7 @@
     if(!finished){
       sfx('soft',.8);
       const extra=RALLY.idx+1>=RALLY.total;
-      paOverlay((winner===0||winner===1?nameFor(winner)+' 이번 판 승리!':'무승부!'),`랠리 ${a} : ${b}`+(extra?' · 동점이라 한 판 더!':` · ${RALLY.idx+1}/${RALLY.total}판`),[
+      paOverlay((winner===0||winner===1?gamePlayerName(winner)+' 이번 판 승리!':'무승부!'),`랠리 ${a} : ${b}`+(extra?' · 동점이라 한 판 더!':` · ${RALLY.idx+1}/${RALLY.total}판`),[
         button('다음 게임 ▶','primary',()=>{RALLY.idx++;PS.game=RALLY.list[RALLY.idx];paStart();}),
         button('← 모음집','',paHome)
       ]);
@@ -124,7 +124,7 @@
     RALLY.on=false;
     victoryJingle();cheer(.7);
     hofRecord('rally',w,1);
-    paOverlay(nameFor(w)+' 랠리 우승!',`${a} : ${b}`,[
+    paOverlay(gamePlayerName(w)+' 랠리 우승!',`${a} : ${b}`,[
       button('↻ 다시 하기','primary',()=>{PS.game='rally';paStart();}),
       button('인물 변경','',()=>{leaveParty();enterSelection();}),
       button('← 모음집','',paHome)
@@ -141,7 +141,7 @@
     $('partyScreen').classList.toggle('solo',solo);
     $('partyScreen').classList.toggle('rh-stage',Boolean(def.rhythm));$('partyScreen').classList.remove('rh-full');
     for(let i=0;i<2;i++){
-      $('paPortrait'+i).src=portraitFor(i);$('paName'+i).textContent=nameFor(i);$('paLabel'+i).textContent=i?'오른쪽':solo?'':'왼쪽';
+      $('paPortrait'+i).src=portraitFor(i);$('paName'+i).textContent=gamePlayerName(i);$('paLabel'+i).textContent=i?'오른쪽':solo?'':'왼쪽';
       $('paScore'+i).textContent='0';
     }
     $('paCaption').textContent=RALLY.on?`파티 랠리 ${RALLY.idx+1}판 · ${RALLY.wins[0]} : ${RALLY.wins[1]} · ${def.name}`:def.name+' · '+stage.name;
@@ -283,7 +283,7 @@
     const deck=paShuffle(faces.slice(0,pairs).flatMap(f=>[f,f]));
     const board=paEl('div','pa-cards');board.style.setProperty('--cols',stage.cols);host.append(board);
     let open=[],lock=false,turn=0,found=0,flips=0;
-    const showTurn=()=>{if(!solo){paHint(nameFor(turn)+' 차례');$('partyScreen').dataset.turn=turn;}};
+    const showTurn=()=>{if(!solo){paHint(gamePlayerName(turn)+' 차례');$('partyScreen').dataset.turn=turn;}};
     deck.forEach(([id,mood])=>{
       const card=paEl('button','pa-card'),img=paEl('img');img.alt='';img.draggable=false;img.src=characterPortrait(id,mood);card.append(img);board.append(card);
       card.dataset.key=id+mood;
@@ -352,8 +352,8 @@
       paAfter(1.2,round);
     }
     sides.forEach((box,side)=>paTap(box,()=>{
-      if(state==='go'){sfx('goal',.9);score(side,nameFor(side)+' 빨랐어요!');}
-      else if(state==='wait'){sfx('soft',1);paFlash(box,'pa-bad');score(1-side,nameFor(side)+' 먼저 눌렀어요');}
+      if(state==='go'){sfx('goal',.9);score(side,gamePlayerName(side)+' 빨랐어요!');}
+      else if(state==='wait'){sfx('soft',1);paFlash(box,'pa-bad');score(1-side,gamePlayerName(side)+' 먼저 눌렀어요');}
     }));
     return {begin:round};
   }
@@ -421,15 +421,15 @@
     function miss(){
       listening=false;sfx('soft',1);paFlash(pads,'pa-bad');
       if(solo)paSoloEnd(Math.max(0,seq.length-1),'단계',stage.id);
-      else paEnd(1-turn,paSubject(nameFor(turn))+' '+seq.length+'단계에서 틀렸어요');
+      else paEnd(1-turn,paSubject(gamePlayerName(turn))+' '+seq.length+'단계에서 틀렸어요');
     }
     function grow(){
       seq.push(paRand(4));
       if(!solo&&seq.length>1)turn=1-turn;
       if(solo)paSetScore(0,seq.length-1);else{paSetScore(0,turn===0?seq.length:PS.scores[0]);paSetScore(1,turn===1?seq.length:PS.scores[1]);$('partyScreen').dataset.turn=turn;}
-      paHint(solo?'잘 보고 따라 눌러요':nameFor(turn)+' 차례 · 잘 보고 따라 눌러요');
+      paHint(solo?'잘 보고 따라 눌러요':gamePlayerName(turn)+' 차례 · 잘 보고 따라 눌러요');
       seq.forEach((v,k)=>paAfter(.3+k*beat,()=>light(v,beat*.7)));
-      paAfter(.3+seq.length*beat,()=>{input=0;listening=true;paHint(solo?'이제 눌러요!':nameFor(turn)+' 눌러요!');});
+      paAfter(.3+seq.length*beat,()=>{input=0;listening=true;paHint(solo?'이제 눌러요!':gamePlayerName(turn)+' 눌러요!');});
     }
     PS.simon={seq,get listening(){return listening;},els};
     return {begin:grow};
@@ -511,7 +511,7 @@
     let turn=0,busy=false;
     const bar=paEl('div','pa-four-tops');host.append(bar,board);
     for(let i=0;i<FOUR_W*FOUR_H;i++){const c=paEl('div','pa-slot');board.append(c);cells.push(c);}
-    const show=()=>{paHint(nameFor(turn)+' 차례');$('partyScreen').dataset.turn=turn;};
+    const show=()=>{paHint(gamePlayerName(turn)+' 차례');$('partyScreen').dataset.turn=turn;};
     function play(c){
       const r=fourDrop(b,c,turn+1);if(r<0)return false;
       const cell=cells[r*FOUR_W+c];cell.classList.add('p'+turn,'drop');cell.style.setProperty('--rows',r+1);sfx('wood',.9);
@@ -540,13 +540,13 @@
     const n=stage.n,bomb=1+paRand(n),grid=paEl('div','pa-bomb');grid.style.setProperty('--cols',stage.cols);host.append(grid);
     let lo=1,hi=n,turn=0;
     const btns=[];
-    const show=()=>{paHint(nameFor(turn)+' 차례 · 남은 범위 '+lo+'~'+hi);$('partyScreen').dataset.turn=turn;};
+    const show=()=>{paHint(gamePlayerName(turn)+' 차례 · 남은 범위 '+lo+'~'+hi);$('partyScreen').dataset.turn=turn;};
     for(let v=1;v<=n;v++){
       const b=paTap(paEl('button','pa-bomb-num',v),()=>{
         if(v<lo||v>hi)return;
         if(v===bomb){
           sfx('goal',1);b.classList.add('boom');b.textContent='💥';paSetScore(turn,1);paSetScore(1-turn,0);
-          paEnd(1-turn,paSubject(nameFor(turn))+' 폭탄 '+bomb+'번을 눌렀어요!');
+          paEnd(1-turn,paSubject(gamePlayerName(turn))+' 폭탄 '+bomb+'번을 눌렀어요!');
           return;
         }
         sfx('wood',.8);

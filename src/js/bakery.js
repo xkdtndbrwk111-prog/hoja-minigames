@@ -358,7 +358,7 @@
       if(w>=0){
         const repeat=streak.side===w&&streak.id===choices[w];
         streak={side:w,id:choices[w],count:repeat?streak.count+1:1};
-        title=streak.count>=2?`${nameFor(w)} ${streak.count}연승!`:`${nameFor(w)} 승리!`;
+        title=streak.count>=2?`${gamePlayerName(w)} ${streak.count}연승!`:`${gamePlayerName(w)} 승리!`;
       }
       SH.winner=w;sfx('goal',1.1);cheer(1);victoryJingle();
       shResult(title,`${shWon(a)} : ${shWon(b)}`,[['다음 도전자 ▶','primary',()=>{leaveShop();enterSelection();}],['↻ 바로 재대결','',shNewGame],['← 모음집','',shHome]]);
@@ -368,7 +368,7 @@
     SH.stars=stars;
     hofRecordTeam(SH.people===2?'shop_co2':'shop_co4',HOF.players.slice(0,SH.people),SH.earned);
     sfx('goal',1);cheer(.5+stars*.25);victoryJingle();
-    shResult(['조금 아쉬워요','잘했어요!','훌륭해요!','최고의 팀!'][stars]+'  '+'★'.repeat(stars)+'☆'.repeat(3-stars),`매출 ${shWon(SH.earned)} · 손님 ${SH.shops[0].served}명 · 다음 별 ${stars<3?shWon(tg[stars]):'완성!'}`,[['↻ 한 번 더','primary',()=>replayGate(shNewGame)],['인물 변경','',()=>{leaveShop();enterSelection();}],['← 모음집','',shHome]]);
+    shResult(['조금 아쉬워요','잘했어요!','훌륭해요!','최고의 팀!'][stars]+'  '+'★'.repeat(stars)+'☆'.repeat(3-stars),`팀원 ${Array.from({length:SH.people},(_,i)=>gamePlayerName(i)).join(' · ')} · 매출 ${shWon(SH.earned)} · 손님 ${SH.shops[0].served}명 · 다음 별 ${stars<3?shWon(tg[stars]):'완성!'}`,[['↻ 한 번 더','primary',()=>replayGate(shNewGame)],['인물 변경','',()=>{leaveShop();enterSelection();}],['← 모음집','',shHome]]);
   }
   function shFinishSolo(){
     SH.phase='over';
@@ -661,7 +661,9 @@
   }
   const SH_CO_COLORS={2:['#2f9c8c','#2f9c8c','#e0694f','#e0694f'],4:['#2f9c8c','#3f8ee0','#d6a01f','#e0694f']};
   function shDrawCo(g,now){
-    const {TZ,H,W}=SH,c=SH.co,s=SH.shops[0],colors=SH_CO_COLORS[SH.people],names=['① 반죽','② 굽기','③ 포장','④ 계산'];
+    const {TZ,H,W}=SH,c=SH.co,s=SH.shops[0],colors=SH_CO_COLORS[SH.people],
+      names=['① 반죽','② 굽기','③ 포장','④ 계산'].map((label,i)=>
+        SH.people===4?label+' · '+gamePlayerName(i):label);
     const pad=10,top=TZ+8,bot=H-72,cw=(W-pad*5)/4,head=46;
     for(let i=0;i<4;i++){
       const x=pad+i*(cw+pad);
@@ -763,8 +765,8 @@
       shText(g,value,cx+Math.min(46,w*.14),H-36,30,color);
     };
     if(SH.mode==='versus'){
-      panel(W*.25,430,nameFor(0),shWon(SH.shops[0].earned),SIDE_COLOR[0]);
-      panel(W*.75,430,nameFor(1),shWon(SH.shops[1].earned),SIDE_COLOR[1]);
+      panel(W*.25,430,gamePlayerName(0),shWon(SH.shops[0].earned),SIDE_COLOR[0]);
+      panel(W*.75,430,gamePlayerName(1),shWon(SH.shops[1].earned),SIDE_COLOR[1]);
     }else if(SH.mode==='solo'){
       const tg=shTarget();
       panel(W*.2,500,(SH.day+1)+'일째',`${shWon(SH.earned)} / ${shWon(tg)}`,SH.earned>=tg?'#1f8a58':'#3b3229');
@@ -783,8 +785,10 @@
     }
     // Sign above the customers
     if(SH.mode!=='versus'&&!shFaced()){
-      shRound(g,W/2-118,8,236,48,12,'#d9573f','#7a2a1b',4);
-      shText(g,'호자네 붕어빵',W/2,33,28,'#fff6e3');
+      const sign=SH.co?'팀원 '+Array.from({length:SH.people},(_,i)=>gamePlayerName(i)).join(' · '):'호자네 붕어빵';
+      const sw=Math.min(W*.8,Math.max(236,sign.length*27));
+      shRound(g,W/2-sw/2,8,sw,48,12,'#d9573f','#7a2a1b',4);
+      shText(g,sign,W/2,33,Math.min(28,Math.max(19,900/Math.max(20,sign.length))),'#fff6e3');
     }
   }
   function shDrawUpgrades(g,now){
