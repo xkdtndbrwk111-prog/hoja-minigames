@@ -67,7 +67,7 @@
     portraitEls[player].src=portraitFor(player,mood);
     teamEls[player].classList.toggle('react',mood==='happy'||mood==='surprised');
     teamEls[player].classList.toggle('sad',mood==='sad'||mood==='angry');
-    noteEls[player].textContent=note||nameFor(player);
+    noteEls[player].textContent=note||gamePlayerName(player);
   }
   function neutralMoods(){setMood(0,'neutral','집중 중!');setMood(1,'neutral',aiLevel?'컴퓨터 상대':'집중 중!');}
   function button(label,cls,fn){
@@ -139,6 +139,8 @@
     trail=[];particles=[];floats=[];rings=[];flash=null;shake=0;updateRally();syncGauge();
     resetPositions();resetGoalCamp();phase='ready';updateClock();
     syncCharacterUI();
+    $('teamNameLeft').textContent=gamePlayerName(0);
+    $('teamNameRight').textContent=gamePlayerName(1);
     setMood(0,'neutral','손가락을 올려!');setMood(1,'neutral',aiLevel?'컴퓨터 상대':'손가락을 올려!');
     for(let i=0;i<2;i++)teamEls[i].classList.toggle('champion',streak.side===i&&streak.id===choices[i]&&streak.count>0);
     for(let i=0;i<2;i++)$(i?'streakRight':'streakLeft').textContent=(streak.side===i&&streak.id===choices[i]&&streak.count>0)?(streak.count>=2?streak.count+'연승 중':'챔피언'):'';
@@ -159,7 +161,7 @@
     possession.side=side;possession.time=0;possession.warned=false;
     puckHidden=false;serve={side,time:4.5};
     phase='playing';neutralMoods();hideOverlay();syncStrip();
-    floatText(puck.x,puck.y-70,aiLevel&&side===1?'컴퓨터 서브':nameFor(side)+' 서브!',SIDE_COLOR[side],28,1.3);
+    floatText(puck.x,puck.y-70,aiLevel&&side===1?'컴퓨터 서브':gamePlayerName(side)+' 서브!',SIDE_COLOR[side],28,1.3);
     rings.push({x:puck.x,y:puck.y,r:28,grow:150,ttl:.5,life:.5,color:SIDE_COLOR[side],w:6});
   }
   function launchServe(){
@@ -192,7 +194,7 @@
     hofWin('hockey',winner);
     setMood(winner,'happy','이겼다!');setMood(1-winner,'sad','아쉬워…');
     const line=`${scores[0]} : ${scores[1]}   ·   최고 랠리 ${bestRally}   ·   강타 ${stats[0].smash} : ${stats[1].smash}`;
-    const crown=streak.count>=2?`${nameFor(winner)} ${streak.count}연승!`:`${nameFor(winner)} 승리!`;
+    const crown=streak.count>=2?`${gamePlayerName(winner)} ${streak.count}연승!`:`${gamePlayerName(winner)} 승리!`;
     const next=button('다음 도전자 ▶','primary',()=>{leaveGame();enterSelection();});
     const again=button('↻ 바로 재대결','',()=>{resetMatch();});
     const home=button('← 모음집','',()=>{streak={side:-1,id:null,count:0};leaveGame();$('menuScreen').hidden=false;$('gameScreen').hidden=true;});
@@ -223,7 +225,7 @@
   }
   function showGoalBanner(scorer){
     if(TABLET){
-      const line=Math.max(...scores)===4?'매치 포인트!':nameFor(scorer)+' 득점!';
+      const line=Math.max(...scores)===4?'매치 포인트!':gamePlayerName(scorer)+' 득점!';
       floatText(W*.3,H/2,line,SIDE_COLOR[scorer],64,1.3);floatText(W*.7,H/2,line,SIDE_COLOR[scorer],64,1.3);
       return;
     }
@@ -429,7 +431,7 @@
       specialCut.aim={x0:puck.x,y0:puck.y,vx:dx/len*CANNON_SPEED,vy:dy/len*CANNON_SPEED};
     }
     $('comicAttacker').src=portraitFor(i,'angry');$('comicDefender').src=portraitFor(1-i,'surprised');
-    $('comicAttackName').textContent=nameFor(i);$('comicDefendName').textContent=nameFor(1-i);
+    $('comicAttackName').textContent=gamePlayerName(i);$('comicDefendName').textContent=gamePlayerName(1-i);
     $('comicAttacker').closest('.comic-panel').style.order=String(i===0?0:2);
     $('comicDefender').closest('.comic-panel').style.order=String(i===0?2:0);
     $('comicName').textContent=sp.name;$('comicTip').textContent=sp.tip;
@@ -1163,7 +1165,7 @@
       if(phase!=='ready'){ctx.save();ctx.globalAlpha=.62;text(String(scores[i]),W/2+dir*92,H/2,150,SIDE_COLOR[i]);ctx.restore();}
       ctx.save();ctx.globalAlpha=.75;
       text(time,W/2+dir*204,H/2,38,clock<=15?'#c0532f':'#4a4037');
-      text(nameFor(i),W/2+dir*256,H/2,30,SIDE_COLOR[i]);
+      text(gamePlayerName(i),W/2+dir*256,H/2,30,SIDE_COLOR[i]);
       ctx.restore();
       // Fills from the child's own end toward the centre line, on both rails so either hand can see it.
       const full=gauge[i]>=GAUGE_MAX,pulse=.5+.5*Math.sin(performance.now()/140),t=RM-14,span=W/2-110;
