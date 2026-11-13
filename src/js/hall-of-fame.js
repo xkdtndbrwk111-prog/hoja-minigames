@@ -13,6 +13,9 @@
     {id:'shop_vs2',name:'붕어빵 · 2인 대결',family:'붕어빵 가게',mode:'2인 대결',unit:'원',noPrize:true},
     {id:'shop_co2',name:'붕어빵 · 2인 협동',family:'붕어빵 가게',mode:'2인 협동',unit:'원',team:true,noPrize:true},
     {id:'shop_co4',name:'붕어빵 · 4인 협동',family:'붕어빵 가게',mode:'4인 협동',unit:'원',team:true,noPrize:true},
+    {id:'flash_solo',name:'번개미션 · 혼자 도전',family:'번개미션',mode:'혼자 도전',unit:'개',noPrize:true},
+    {id:'flash_r8',name:'번개미션 · 8판 대결',family:'번개미션',mode:'8판 대결',unit:'점',noPrize:true},
+    {id:'flash_r12',name:'번개미션 · 12판 대결',family:'번개미션',mode:'12판 대결',unit:'점',noPrize:true},
     {id:'hockey',name:'에어하키',unit:'승'},{id:'volley',name:'호자 배구',unit:'승'},{id:'bubble',name:'퍼즐버블',unit:'승'},
     {id:'othello',name:'오셀로',unit:'승'},{id:'gomoku',name:'오목',unit:'승'},{id:'ttt',name:'틱택토',unit:'승'},{id:'germ',name:'세균전',unit:'승'},{id:'rally',name:'파티 랠리',unit:'승'},
   ];
