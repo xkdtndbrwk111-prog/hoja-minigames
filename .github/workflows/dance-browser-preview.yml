@@ -1,5 +1,8 @@
 name: Dance real-browser visual smoke
 on:
+  push:
+    branches: [feature/hoja-nahan-dance-solo-coop-20261113]
+    paths: ['.github/workflows/dance-browser-preview.yml']
   workflow_dispatch:
 permissions:
   contents: read
