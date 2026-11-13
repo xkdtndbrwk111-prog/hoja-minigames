@@ -216,8 +216,8 @@
       g.fillText('팀 점수 '+d.score+'   콤보 '+d.combo,W*.5,H*.16);
       if(t<DA_LEAD){
         const count=Math.max(1,Math.ceil((DA_LEAD-t)/chart.beat));
-        g.font='900 '+Math.round(Math.min(H*.22,W*.14))+'px "HojaTitle","HojaBody",sans-serif';
-        g.fillStyle='#fff6d4';g.fillText('준비 '+count,W*.5,H*.36);
+        g.font='900 '+Math.round(Math.min(H*.12,W*.08))+'px "HojaTitle","HojaBody",sans-serif';
+        g.fillStyle='#fff6d4';g.fillText('준비 '+count,W*.5,H*.27);
       }
       if(d.messageUntil>t){
         g.font='900 '+Math.round(font*1.28)+'px "HojaBody",sans-serif';
