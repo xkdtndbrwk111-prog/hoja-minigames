@@ -1,5 +1,7 @@
   /* ---------- Selection screen ---------- */
   let introRunning=false;
+  // Remember the dance duet separately from character choices in other games.
+  const danceChoices=['HOJA','NAHANSANG'];
   function stageSet(){
     if(PARTY_GAMES[currentGame]){const g=PARTY_GAMES[currentGame];return {all:g.stages,sel:g.sel,set:v=>{g.sel=v;},title:g.title};}
     if(currentGame==='othello')return {all:O_STAGES,sel:othelloStage,set:v=>{othelloStage=v;},title:'HOJA OTHELLO'};
@@ -61,13 +63,15 @@
     for(let side=0;side<2;side++){
       const target=$(side?'choiceRight':'choiceLeft');
       target.replaceChildren();
-      (currentGame==='dance'?CHARACTERS.filter(ch=>ch.id===(side?'NAHANSANG':'HOJA')):CHARACTERS).forEach(ch=>{
+      CHARACTERS.forEach(ch=>{
         const b=document.createElement('button');b.type='button';b.className='character-card'+(choices[side]===ch.id?' selected':'');
         b.dataset.id=ch.id;b.dataset.side=side;b.setAttribute('aria-pressed',choices[side]===ch.id?'true':'false');
         const im=document.createElement('img');im.src=characterPortrait(ch.id);im.alt='';
         const lab=document.createElement('span');lab.textContent=ch.name;
         b.append(im,lab);b.addEventListener('click',()=>{
-          choices[side]=ch.id;renderChoices();sfx('menu',.6);
+          choices[side]=ch.id;
+          if(currentGame==='dance')danceChoices[side]=ch.id;
+          renderChoices();sfx('menu',.6);
           const hero=$(side?'selectRightShowcase':'selectLeftShowcase');hero.classList.remove('portrait-pop');void hero.offsetWidth;hero.classList.add('portrait-pop');
         });target.append(b);
       });
@@ -82,7 +86,7 @@
   function syncSelectionHint(){
     const hint=$('selectionHint');
     if(currentGame==='dance'){
-      hint.textContent='호자와 나한상 고정 · 1인과 2인 협동 중 선택한 뒤 시작하세요.';
+      hint.textContent='두 캐릭터를 자유롭게 고르세요 · 1인은 두 캐릭터를 혼자, 2인 협동은 한 캐릭터씩 조작합니다.';
       hint.classList.remove('hot');kbSyncGuide();return;
     }
     if(streak.count>=1&&streak.side>=0&&choices[streak.side]===streak.id){
@@ -91,9 +95,11 @@
     kbSyncGuide();
   }
   function enterSelection(){
-    // The dance is always performed by Hoja and Nahan, irrespective of characters
-    // selected in a different minigame.
-    if(currentGame==='dance'){choices[0]='HOJA';choices[1]='NAHANSANG';}
+    // Default to Hoja + Nahan on first visit, but retain the player's
+    // dance-specific selection across subsequent visits and other games.
+    if(currentGame==='dance'){
+      choices[0]=danceChoices[0];choices[1]=danceChoices[1];
+    }
     $('choiceScreen').classList.toggle('dance-choice',currentGame==='dance');
     $('menuScreen').hidden=true;$('gameScreen').hidden=true;$('choiceScreen').hidden=false;
     renderChoices();renderStages();syncMode();$('modeButton').hidden=currentGame==='shop'||currentGame==='stairs'||Boolean(PARTY_GAMES[currentGame]);syncSelectionHint();playBgm('menu',{gain:.8});
