@@ -13394,8 +13394,8 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
     roundClose();
     const seat=HOF.players[side];
     if(!HOF.cfg||!seat)return;
+    if(HOF.pending.length>=300){hofToast('전송 대기 기록이 가득해요. 인터넷 연결을 확인해 주세요');return;}
     HOF.pending.push({code:HOF.cfg.code,seat,game,score:Math.round(score),at:new Date().toISOString()});
-    if(HOF.pending.length>300)HOF.pending.shift();
     remember('hof-pending',JSON.stringify(HOF.pending));
     hofToast(hofName(seat)+' 기록 전송 대기');
     hofFlush();
@@ -13412,9 +13412,9 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
       return;
     }
     const key=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,13);
+    if(HOF.pending.length>=300){hofToast('전송 대기 기록이 가득해요. 인터넷 연결을 확인해 주세요');return;}
     HOF.pending.push({code:HOF.cfg.code,seats:[...seats].sort((a,b)=>a-b),game,
       score:Math.round(score),at:new Date().toISOString(),key,team:true});
-    if(HOF.pending.length>300)HOF.pending.shift();
     remember('hof-pending',JSON.stringify(HOF.pending));
     hofToast('팀 기록 전송 대기');
     hofFlush();
