@@ -468,15 +468,31 @@
     const tabs=hofEl('div','hof-tabs');
     HOF_PERIODS.forEach(([id,name])=>{const b=hofEl('button','hof-tab'+(HOF.period===id?' on':''),name);b.type='button';b.addEventListener('click',()=>{sfx('menu',.6);HOF.period=id;hofDrawMain();if(id==='lastweek')hofLoadLastWeek();});tabs.append(b);});
     const grid=hofEl('div','hof-grid');
+    // One visual card per game family; underlying scoreboards remain separate by mode.
+    const groups=new Map();
     for(const g of HOF_GAMES){
-      const card=hofEl('div','hof-card');card.append(hofEl('b','',g.name));
-      const top=hofRank(rows,g.id).slice(0,3);
-      if(!top.length)card.append(hofEl('span','hof-empty','-'));
-      for(const r of top){
-        const line=hofEl('div','hof-line'+(g.team?' hof-team-line':''));line.title=hofEntryName(r);
-        line.append(hofEl('i','',r.place+''),hofEl('span','',hofEntryName(r)),hofEl('em','',hofValue(g,r.value)));card.append(line);
+      const family=g.family||g.name;
+      if(!groups.has(family))groups.set(family,[]);
+      groups.get(family).push(g);
+    }
+    for(const [family,games] of groups){
+      const multiple=games.length>1;
+      const card=hofEl('section','hof-card'+(multiple?' hof-family':''));
+      card.append(hofEl('b','',family));
+      const modeGrid=hofEl('div',multiple?'hof-mode-grid':'hof-single-body');
+      for(const g of games){
+        const mode=hofEl('div','hof-mode');
+        if(multiple)mode.append(hofEl('strong','hof-mode-title',g.mode||g.name));
+        const top=hofRank(rows,g.id).slice(0,3);
+        if(!top.length)mode.append(hofEl('span','hof-empty','아직 기록 없음'));
+        for(const r of top){
+          const line=hofEl('div','hof-line'+(g.team?' hof-team-line':''));line.title=hofEntryName(r);
+          line.append(hofEl('i','',r.place+''),hofEl('span','',hofEntryName(r)),hofEl('em','',hofValue(g,r.value)));
+          mode.append(line);
+        }
+        modeGrid.append(mode);
       }
-      grid.append(card);
+      card.append(modeGrid);grid.append(card);
     }
     const row=hofEl('div','hof-row');
     const statusText=hofQrStale()?'명단이 바뀌었어요. QR을 다시 나눠 주세요.'
