@@ -7,7 +7,7 @@ const noop=()=>{};
 function harness(lag=0){
   let now=1000;
   const nodeList={};
-  const scores=[0,0],stored=[],ended=[];
+  const scores=[0,0],stored=[],ended=[];let begun=0;
   const canvasContext=new Proxy({},{
     get(target,key){
       if(key==='createLinearGradient')return ()=>({addColorStop:noop});
@@ -38,6 +38,7 @@ function harness(lag=0){
       {id:'king',name:'광개토 전진',bpm:138,seed:79}
     ],
     paEl:el,PARTY_GAMES:{},$:(id)=>nodeList[id]||(nodeList[id]=el('div')),
+    roundBegin:()=>{begun++;},
     Image:class {constructor(){this.complete=false;this.naturalWidth=0;}},
     characterPortrait:()=>'',clamp:(n,a,b)=>Math.min(b,Math.max(a,n)),
     gamePlayerName:i=>['민수','서연'][i],
@@ -62,6 +63,7 @@ function harness(lag=0){
     assert.ok(song);
     song.listeners.pointerdown[0]({preventDefault:noop,stopPropagation:noop});
     assert.equal(run.state.chart.events.length,stage.steps);
+    assert.equal(begun,1,'round must begin only when a song is selected');
     return {run,buttons:host.children[1].children};
   };
   const tap=(button,when)=>button.listeners.pointerdown[0]({timeStamp:when,preventDefault:noop,stopPropagation:noop});
