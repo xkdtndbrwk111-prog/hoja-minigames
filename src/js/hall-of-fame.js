@@ -3,7 +3,12 @@
   const HOF_API='https://aolfbqfchzipyevtdhdy.supabase.co/rest/v1/rpc/',HOF_KEY='sb_publishable_5SFnvXsS7uWE376Iav97eQ_EFi5Nhg4';
   const HOF_HOME='https://xkdtndbrwk111-prog.github.io/hoja-minigames/';
   const HOF_GAMES=[
-    {id:'stairs',name:'무한 계단',unit:'층'},{id:'jump',name:'호자 점프',unit:'층'},
+    {id:'stairs_solo',name:'무한 계단 · 1인',unit:'층',noPrize:true},
+    {id:'stairs_race',name:'무한 계단 · 다인전',unit:'층',noPrize:true},
+    {id:'jump_solo',name:'호자 점프 · 1인',unit:'층',noPrize:true},
+    {id:'jump_duel',name:'호자 점프 · 2인',unit:'층',noPrize:true},
+    {id:'stairs',name:'무한 계단 · 이전 기록',unit:'층',legacy:true},
+    {id:'jump',name:'호자 점프 · 이전 기록',unit:'층',legacy:true},
     {id:'shop_solo',name:'붕어빵 1인 · 5일 총매출',unit:'원',noPrize:true},
     {id:'shop_vs2',name:'붕어빵 2인 대결',unit:'원',noPrize:true},
     {id:'shop_co2',name:'붕어빵 2인 협동',unit:'원',team:true,noPrize:true},
@@ -16,7 +21,7 @@
   // Weekly settlement prizes: 1st, 2nd, 3rd of each game last week.
   const HOF_PRIZE={1:1,2:.5,3:.5};
   const HOF_MAX=40;
-  const HOF={cfg:null,pending:[],board:null,last:null,lastAt:0,period:'day',players:Array(4).fill(null),pollT:0,flushing:false,online:true};
+  const HOF={cfg:null,pending:[],board:null,last:null,lastAt:0,period:'day',players:Array(6).fill(null),pollT:0,flushing:false,online:true};
   // Monday of last week on this PC's calendar, as YYYY-MM-DD.
   function hofLastMonday(now=new Date()){
     const d=new Date(now.getFullYear(),now.getMonth(),now.getDate());d.setDate(d.getDate()-((d.getDay()+6)%7)-7);
