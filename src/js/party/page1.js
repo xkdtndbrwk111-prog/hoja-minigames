@@ -81,10 +81,13 @@
   function paOpenMenu(){
     if(!PS.on||PS.ended)return;
     PS.resume=PS.live||PS.counting>0;PS.live=false;PS.paused=true;
+    if(PS.run&&typeof PS.run.pause==='function')PS.run.pause();
     const label=()=>soundMode==='all'?'♪ 소리 전체':soundMode==='sfx'?'♪ 효과음만':'소리 끔';
     const sound=button(label(),'',()=>{cycleSound();sound.textContent=label();});
     paOverlay('잠깐 쉬는 중','',[
-      button('▶ 계속','primary',()=>{$('paOverlay').hidden=true;PS.paused=false;if(!PS.counting)PS.live=true;}),
+      button('▶ 계속','primary',()=>{$('paOverlay').hidden=true;PS.paused=false;
+        if(PS.run&&typeof PS.run.resume==='function')PS.run.resume();
+        if(!PS.counting)PS.live=true;}),
       ...(RALLY.on?[]:[button('↻ 다시 하기','',paStart)]),
       button('인물 변경','',()=>{leaveParty();enterSelection();}),
       button('← 모음집','',paHome),sound
