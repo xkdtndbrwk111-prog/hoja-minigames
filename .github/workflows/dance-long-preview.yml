@@ -32,7 +32,7 @@ jobs:
           npm install --no-save playwright-core@1.56.0
           python3 -m http.server 8765 >/tmp/dance-long-server.log 2>&1 &
           sleep 2
-      - name: Real Chrome interaction: 7 selectable characters and both modes
+      - name: 'Real Chrome interaction: 7 selectable characters and both modes'
         run: |
           node <<'JS'
           const assert=require('node:assert/strict');
