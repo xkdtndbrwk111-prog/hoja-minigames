@@ -131,7 +131,24 @@ function validateMiss(){
   run.stop();
   console.log('PASS: unplayed beat counts as MISS; play continues');
 }
+function validatePause(){
+  const t=harness(.08),stage=t.api.DA_STAGES.find(x=>x.id==='d-easy');
+  const {run,buttons}=t.start(stage),s=run.state;
+  const initial=s.startPerf;
+  t.advance(initial+450);
+  run.pause();
+  t.advance(initial+3450);
+  run.resume();
+  assert.equal(s.startPerf,initial+3000);
+  const e=s.chart.events[0],at=s.startPerf+(e.at+.08)*1000;
+  t.advance(at);
+  t.tap(buttons[0],at);
+  assert.equal(s.perfect,1,'calibrated tap must still be PERFECT after pause');
+  run.stop();
+  console.log('PASS: paused song resumes from exact beat with calibration');
+}
 validateCharts();
+validatePause();
 validateMode('s-easy',0);
 validateMode('s-normal',.08);
 validateMode('s-hard',0);
