@@ -57,6 +57,7 @@
   function coinPick(n,done){
     const box=$('hofPicker'),picked=[];
     HOF.players=Array(6).fill(null);
+    HOF.playerNames=Array(6).fill(null);
     const price=n>1?0.5:1;
     const draw=(note)=>{
       const head=document.createElement('div');head.className='hof-pick-title';
@@ -79,7 +80,11 @@
       const head=document.createElement('div');head.className='hof-pick-title';head.textContent='코인을 확인하는 중이에요';
       box.replaceChildren(head);
       coinSpend(picked,msg=>{
-        picked.slice(0,6).forEach((id,i)=>{const st=COIN.students.find(x=>x.id===id);HOF.players[i]=HOF.cfg&&COIN.mapped&&st&&st.number>=1&&st.number<=HOF_MAX?st.number:null;});
+        picked.slice(0,6).forEach((id,i)=>{
+          const st=COIN.students.find(x=>x.id===id);
+          HOF.playerNames[i]=st&&st.name?String(st.name).trim():null;
+          HOF.players[i]=HOF.cfg&&COIN.mapped&&st&&st.number>=1&&st.number<=HOF_MAX?st.number:null;
+        });
         box.hidden=true;
         const names=picked.map(id=>COIN.students.find(x=>x.id===id));
         hofToast(names.map(x=>x.name+' '+coinText(x.balance)+'코인').join(' · '));
@@ -255,6 +260,7 @@
   }
   function hofPick(n,done){
     HOF.players=Array(6).fill(null);
+    HOF.playerNames=Array(6).fill(null);
     if(!HOF.cfg||!n){done();return;}
     const box=$('hofPicker');let side=0;
     const finish=()=>{box.hidden=true;done();};
@@ -265,11 +271,11 @@
         const given=HOF.cfg.names[seat-1];if(!given)continue;
         const b=document.createElement('button');b.type='button';b.className='hof-seat';const num=document.createElement('small');num.textContent=seat+'번';b.append(num,document.createTextNode(given));
         b.disabled=HOF.players.includes(seat);
-        b.addEventListener('click',()=>{sfx('menu',.7);HOF.players[side]=seat;next();});
+        b.addEventListener('click',()=>{sfx('menu',.7);HOF.players[side]=seat;HOF.playerNames[side]=String(given).trim();next();});
         grid.append(b);
       }
       const guest=document.createElement('button');guest.type='button';guest.className='hof-seat guest';guest.textContent='손님 (기록 없음)';
-      guest.addEventListener('click',()=>{sfx('menu',.7);HOF.players[side]=null;next();});
+      guest.addEventListener('click',()=>{sfx('menu',.7);HOF.players[side]=null;HOF.playerNames[side]=null;next();});
       grid.append(guest);
       const head=document.createElement('div');head.className='hof-pick-title';head.textContent=title;
       box.replaceChildren(head,grid);
