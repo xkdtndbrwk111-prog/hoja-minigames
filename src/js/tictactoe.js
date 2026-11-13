@@ -107,7 +107,7 @@
       tMark(g,60,60,44,i+1,1);
     }
     $('ttCaption').textContent='HOJA 틱택토 · '+(TT.stage?TT.stage.name:'');
-    $('ttTurnText').textContent=(TT.phase==='human'||TT.phase==='ai')?nameFor(TT.turn-1)+' 차례':'';
+    $('ttTurnText').textContent=(TT.phase==='human'||TT.phase==='ai')?gamePlayerName(TT.turn-1)+' 차례':'';
     $('ttTurnText').className='game-time o-turn side'+(TT.turn-1);
     const rn=Math.min(7,(TT.round||0)+1);
     $('ttLeft').textContent=`${rn}판째 · ${rn>=7?'마지막 판':tNeed(rn)+'점 먼저'}`;
@@ -117,7 +117,7 @@
     TT.stage=T_STAGES.find(s=>s.id===tttStage);TT.geo=tGeo(TT.stage.n,TT.stage.k);
     TT.scores=[0,0];TT.round=0;TT.first=Math.random()<.5?1:2;TT.bgDirty=true;$('ttOverlay').hidden=true;
     for(let i=0;i<2;i++){
-      $('ttName'+i).textContent=nameFor(i);
+      $('ttName'+i).textContent=gamePlayerName(i);
       $('ttLabel'+i).textContent=aiLevel&&i===1?'COMPUTER · '+AI_LEVELS[aiLevel].label:i?'PLAYER 2 · 오른쪽':'PLAYER 1 · 왼쪽';
       const champ=streak.side===i&&streak.id===choices[i]&&streak.count>0;
       $('ttStreak'+i).textContent=champ?(streak.count>=2?streak.count+'연승 중':'챔피언'):'';
@@ -161,7 +161,7 @@
       sfx('goal',.9);cheer(.55);
       tMood(winner,'happy','한 줄 완성!');tMood(3-winner,'sad','아쉬워!');
       line.forEach((c,k)=>setTimeout(()=>{if(TT.on&&tk===TT.token)tSpark(c,14,[winner===1?'#7ff0da':'#ffb59c','#ffe08a','#ffffff']);},k*90));
-      TT.banner={text:TT.stage.misere?`${nameFor(mover-1)}이(가) 줄을 만들었어요!`:`${nameFor(winner-1)} 1점!`,color:winner===1?SIDE_COLOR[0]:SIDE_COLOR[1],until:now+1900,ms:1900};
+      TT.banner={text:TT.stage.misere?`${gamePlayerName(mover-1)}이(가) 줄을 만들었어요!`:`${gamePlayerName(winner-1)} 1점!`,color:winner===1?SIDE_COLOR[0]:SIDE_COLOR[1],until:now+1900,ms:1900};
       TT.first=3-winner;
     }else{
       sfx('soft',1);tMood(1,'surprised','비겼다!');tMood(2,'surprised','비겼다!');
@@ -186,7 +186,7 @@
       streak={side:w,id:choices[w],count:repeat?streak.count+1:1};
       hofWin('ttt',w);
       tMood(w+1,'happy','이겼다!');tMood(2-w,'sad','아쉬워…');cheer(1.1);victoryJingle();
-      title=streak.count>=2?`${nameFor(w)} ${streak.count}연승!`:`${nameFor(w)} 승리!`;
+      title=streak.count>=2?`${gamePlayerName(w)} ${streak.count}연승!`:`${gamePlayerName(w)} 승리!`;
     }else{tMood(1,'surprised','막상막하!');tMood(2,'surprised','막상막하!');sfx('goal',.7);}
     const next=button('다음 도전자 ▶','primary',()=>{leaveTtt();enterSelection();});
     const again=button('↻ 바로 재대결','',tNewMatch);
