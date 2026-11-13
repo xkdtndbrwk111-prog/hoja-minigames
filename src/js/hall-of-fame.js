@@ -2,18 +2,17 @@
   // The server only ever sees a random class code, seat numbers and results. Names stay on the devices.
   const HOF_API='https://aolfbqfchzipyevtdhdy.supabase.co/rest/v1/rpc/',HOF_KEY='sb_publishable_5SFnvXsS7uWE376Iav97eQ_EFi5Nhg4';
   const HOF_HOME='https://xkdtndbrwk111-prog.github.io/hoja-minigames/';
+  // Keep one board per ruleset, but show modes under their shared game family.
+  // Old mixed-mode scores have been retired and are never a playable category.
   const HOF_GAMES=[
-    {id:'stairs_solo',name:'무한 계단 · 1인',unit:'층',noPrize:true},
-    {id:'stairs_race',name:'무한 계단 · 다인전',unit:'층',noPrize:true},
-    {id:'jump_solo',name:'호자 점프 · 1인',unit:'층',noPrize:true},
-    {id:'jump_duel',name:'호자 점프 · 2인',unit:'층',noPrize:true},
-    {id:'stairs',name:'무한 계단 · 이전 기록',unit:'층',legacy:true},
-    {id:'jump',name:'호자 점프 · 이전 기록',unit:'층',legacy:true},
-    {id:'shop_solo',name:'붕어빵 1인 · 5일 총매출',unit:'원',noPrize:true},
-    {id:'shop_vs2',name:'붕어빵 2인 대결',unit:'원',noPrize:true},
-    {id:'shop_co2',name:'붕어빵 2인 협동',unit:'원',team:true,noPrize:true},
-    {id:'shop_co4',name:'붕어빵 4인 협동',unit:'원',team:true,noPrize:true},
-    {id:'shop',name:'붕어빵 이전 기록',unit:'원',legacy:true},
+    {id:'stairs_solo',name:'무한의 계단 · 1인전',family:'무한의 계단',mode:'1인전',unit:'층',noPrize:true},
+    {id:'stairs_race',name:'무한의 계단 · 다인전',family:'무한의 계단',mode:'다인전',unit:'층',noPrize:true},
+    {id:'jump_solo',name:'호자 점프 · 1인전',family:'호자 점프',mode:'1인전',unit:'층',noPrize:true},
+    {id:'jump_duel',name:'호자 점프 · 2인전',family:'호자 점프',mode:'2인전',unit:'층',noPrize:true},
+    {id:'shop_solo',name:'붕어빵 · 1인 장사',family:'붕어빵 가게',mode:'1인 · 5일 총매출',unit:'원',noPrize:true},
+    {id:'shop_vs2',name:'붕어빵 · 2인 대결',family:'붕어빵 가게',mode:'2인 대결',unit:'원',noPrize:true},
+    {id:'shop_co2',name:'붕어빵 · 2인 협동',family:'붕어빵 가게',mode:'2인 협동',unit:'원',team:true,noPrize:true},
+    {id:'shop_co4',name:'붕어빵 · 4인 협동',family:'붕어빵 가게',mode:'4인 협동',unit:'원',team:true,noPrize:true},
     {id:'hockey',name:'에어하키',unit:'승'},{id:'volley',name:'호자 배구',unit:'승'},{id:'bubble',name:'퍼즐버블',unit:'승'},
     {id:'othello',name:'오셀로',unit:'승'},{id:'gomoku',name:'오목',unit:'승'},{id:'ttt',name:'틱택토',unit:'승'},{id:'germ',name:'세균전',unit:'승'},{id:'rally',name:'파티 랠리',unit:'승'},
   ];
@@ -30,6 +29,10 @@
   function hofLoad(){
     try{HOF.cfg=JSON.parse(preference('hof','null'));}catch{HOF.cfg=null;}
     try{HOF.pending=JSON.parse(preference('hof-pending','[]'));}catch{HOF.pending=[];}
+    // Cancel only unsent legacy mixed-mode scores; never replay retired categories.
+    if(!Array.isArray(HOF.pending))HOF.pending=[];
+    const current=HOF.pending.filter(p=>p&&!['stairs','jump','shop'].includes(p.game));
+    if(current.length!==HOF.pending.length){HOF.pending=current;remember('hof-pending',JSON.stringify(current));}
     try{HOF.board=JSON.parse(preference('hof-board','null'));}catch{HOF.board=null;}
   }
   function hofSaveCfg(){remember('hof',JSON.stringify(HOF.cfg));}
