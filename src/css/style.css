@@ -1306,10 +1306,9 @@ html[data-device=tablet] .sx-stage{transform-origin:50% 50%}
 #rhythmGrid .game-card:nth-child(6){grid-column:span 2!important}
 #rhythmGrid .game-card.da-menu-card .game-name{white-space:normal;word-break:keep-all;text-align:center;font-size:clamp(14px,1.7vw,30px)}
 
-/* The dance has a fixed cast; show their portraits at a useful size instead
-   of leaving each one in a tiny cell of the seven-character selector. */
-#choiceScreen.dance-choice .choice-grid{grid-template-columns:minmax(0,1fr)}
-#choiceScreen.dance-choice .character-card{width:min(100%,260px);justify-self:center;cursor:default}
+/* Full seven-character roster is available on both dance sides.
+   Reuse the standard selector grid so each pick remains accessible. */
+#choiceScreen.dance-choice .character-card{cursor:pointer}
 
 /* The dance needs the entire bottom edge for reliable touch timing.
    Put the pause/menu button at the top-right, away from both pads. */
