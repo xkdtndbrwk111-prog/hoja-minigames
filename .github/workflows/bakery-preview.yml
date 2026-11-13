@@ -22,7 +22,12 @@ jobs:
       - name: Verify and syntax-check
         run: |
           python3 build.py --check
-          for f in src/js/*.js src/js/party/*.js; do node --check "$f"; done
+          python3 - <<'PY'
+          import build
+          from pathlib import Path
+          Path('/tmp/hoja-bundle.js').write_text(''.join(build.read(p) for p in build.MAIN_JS))
+          PY
+          node --check /tmp/hoja-bundle.js
           python3 - <<'PY'
           from pathlib import Path
           s=Path('src/js/bakery.js').read_text()
