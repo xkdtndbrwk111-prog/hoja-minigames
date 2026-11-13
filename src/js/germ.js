@@ -127,7 +127,7 @@
       $('gxTip'+i).textContent=mine&&GX.phase==='human'?(GX.sel>=0?'초록 칸은 복제, 노란 칸은 점프':'내 세균을 눌러요'):'';
     }
     $('gxCaption').textContent='HOJA 세균전 · '+(GX.stage?GX.stage.name:'');
-    $('gxTurnText').textContent=(GX.phase==='human'||GX.phase==='ai')?nameFor(GX.turn-1)+' 차례':'';
+    $('gxTurnText').textContent=(GX.phase==='human'||GX.phase==='ai')?gamePlayerName(GX.turn-1)+' 차례':'';
     $('gxTurnText').className='game-time o-turn side'+(GX.turn-1);
     const left=GX.board?GX.board.reduce((s,v)=>s+(v===0?1:0),0):0;
     $('gxLeft').textContent='빈칸 '+left;
@@ -139,7 +139,7 @@
     GX.sel=-1;GX.hover=-1;GX.pid=null;GX.dragFrom=-1;GX.hints=[2,2];GX.undos=2;GX.hint=null;GX.history=[];GX.anim=[];GX.hop=null;GX.jumpRun=0;GX.last=-1;GX.banner=null;GX.sparks=[];GX.floats=[];
     GX.displayed=xCount(GX.board);GX.bgDirty=true;$('gxOverlay').hidden=true;
     for(let i=0;i<2;i++){
-      $('gxName'+i).textContent=nameFor(i);GX.faces[i].src=portraitFor(i);
+      $('gxName'+i).textContent=gamePlayerName(i);GX.faces[i].src=portraitFor(i);
       $('gxLabel'+i).textContent=aiLevel&&i===1?'COMPUTER · '+AI_LEVELS[aiLevel].label:i?'PLAYER 2 · 오른쪽':'PLAYER 1 · 왼쪽';
       const champ=streak.side===i&&streak.id===choices[i]&&streak.count>0;
       $('gxStreak'+i).textContent=champ?(streak.count>=2?streak.count+'연승 중':'챔피언'):'';
@@ -148,7 +148,7 @@
     }
     xBuildSprites();
     const first=Math.random()<.5?1:2;GX.turn=first;GX.phase='opening';xSync();
-    GX.banner={text:nameFor(first-1)+' 먼저!',color:SIDE_COLOR[first-1],until:performance.now()+1100,ms:1100};sfx('goal',.6);
+    GX.banner={text:gamePlayerName(first-1)+' 먼저!',color:SIDE_COLOR[first-1],until:performance.now()+1100,ms:1100};sfx('goal',.6);
     const tk=GX.token;setTimeout(()=>{if(GX.on&&tk===GX.token&&GX.phase==='opening')xBeginTurn(first);},1150);
     playMood('calm');
   }
@@ -197,7 +197,7 @@
     if(xHasMove(GX.board,GX.geo,opp)){xBeginTurn(opp);return;}
     // No move left for one side: the other side takes the remaining room, so nobody waits through empty turns.
     GX.phase='fill';xSync();
-    GX.banner={text:`${nameFor(opp-1)}는 움직일 곳이 없어요!`,color:'#7a5a2e',until:now+1300,ms:1300};sfx('soft',.9);
+    GX.banner={text:`${gamePlayerName(opp-1)}는 움직일 곳이 없어요!`,color:'#7a5a2e',until:now+1300,ms:1300};sfx('soft',.9);
     const tk=GX.token,empt=[];GX.board.forEach((v,i)=>{if(v===0)empt.push(i);});
     empt.forEach((c,k)=>setTimeout(()=>{
       if(!GX.on||tk!==GX.token)return;
@@ -216,7 +216,7 @@
       const repeat=streak.side===w&&streak.id===choices[w];
       streak={side:w,id:choices[w],count:repeat?streak.count+1:1};
       hofWin('germ',w);
-      title=streak.count>=2?`${nameFor(w)} ${streak.count}연승!`:`${nameFor(w)} 승리!`;
+      title=streak.count>=2?`${gamePlayerName(w)} ${streak.count}연승!`:`${gamePlayerName(w)} 승리!`;
       xMood(w+1,'happy','판을 뒤덮었다!');xMood(2-w,'sad','아쉬워…');cheer(1.1);victoryJingle();
     }else{xMood(1,'surprised','똑같아!');xMood(2,'surprised','다시 붙자!');sfx('goal',.7);}
     const next=button('다음 도전자 ▶','primary',()=>{leaveGerm();enterSelection();});
