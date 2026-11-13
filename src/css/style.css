@@ -1251,3 +1251,9 @@ html[data-device=tablet] .sx-stage{transform-origin:50% 50%}
 #openHall.hof-due::after{content:'결산!';position:absolute;top:-.95em;right:-.6em;padding:.12em .5em;border-radius:1em;background:#e0584a;color:#fff;font-size:.72em;font-weight:950;line-height:1.2;box-shadow:0 2px 0 rgba(0,0,0,.25);animation:hofDueTag .5s ease-in-out infinite alternate}
 @keyframes hofDue{0%{filter:none;transform:scale(1)}100%{filter:brightness(1.35) saturate(1.4);background:#ffd24a;color:#3a2418;transform:scale(1.1)}}
 @keyframes hofDueTag{to{transform:scale(1.18) rotate(-6deg)}}
+
+/* Team boards add several cards: allow scrolling instead of clipping rows. */
+.hof-grid{flex:none;grid-template-rows:none;grid-auto-rows:minmax(115px,auto)}
+.hof-card .hof-team-line{white-space:normal;align-items:flex-start}
+.hof-card .hof-team-line span{overflow:visible;text-overflow:clip;word-break:keep-all}
+@media(orientation:portrait){.hof-grid{grid-template-rows:none;grid-auto-rows:minmax(120px,auto)}}

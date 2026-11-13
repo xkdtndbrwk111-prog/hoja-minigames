@@ -3,7 +3,6 @@
     {id:'solo',name:'혼자 장사',desc:'5일 동안 장사하고 번 돈으로 가게를 키워요'},
     {id:'versus',name:'장사 대결',desc:'90초 동안 누가 더 많이 버는지 겨뤄요'},
     {id:'co2',name:'2인 협동',desc:'둘이서 굽고 포장하고 계산해요',people:2},
-    {id:'co3',name:'3인 협동',desc:'셋이서 역할을 나눠 손님을 맞아요',people:3},
     {id:'co4',name:'4인 협동',desc:'넷이서 반죽 · 굽기 · 포장 · 계산을 맡아요',people:4},
   ];
   const SH_FILL=[{n:'팥',c:'#7a2b33',t:'#fff'},{n:'슈크림',c:'#f2cf5c',t:'#4a3a10'},{n:'고구마',c:'#9b59c4',t:'#fff'},{n:'초코',c:'#5a3a22',t:'#fff'}];
@@ -80,7 +79,9 @@
   /* ---------- Bungeoppang shop: flow ---------- */
   function shNewGame(){
     const st=SH_STAGES.find(s=>s.id===shopStage);
-    SH.mode=st.id;SH.people=st.people||0;SH.money=0;SH.day=0;SH.retries=0;SH.up=Object.fromEntries(SH_UP.map(u=>[u.id,0]));
+    // A removed selection must never launch an undefined stage.
+    SH.mode=st?st.id:'solo';SH.people=st?st.people||0:0;
+    SH.money=0;SH.totalEarned=0;SH.day=0;SH.retries=0;SH.up=Object.fromEntries(SH_UP.map(u=>[u.id,0]));
     SH.floats=[];SH.sparks=[];SH.bgKey='';$('shOverlay').hidden=true;
     shStartRound();
     playMood('bright');
@@ -98,7 +99,7 @@
       SH.dayLen=120;
       const shop=shMakeShop(0,W,4,4,'#2f9c8c','');
       SH.shops=[shop];
-      SH.co={raw:[],cooked:[],bags:[],prep:[0,0,0],packing:null,targets:{2:[10000,20000,32000],3:[11000,22000,36000],4:[10000,22000,38000]}[SH.people]};
+      SH.co={raw:[],cooked:[],bags:[],prep:[0,0,0],packing:null,targets:{2:[10000,20000,32000],4:[10000,22000,38000]}[SH.people]};
     }
     SH.phase='countdown';SH.countdown=2.4;SH.cShown=0;SH.bgKey='';
   }
@@ -107,7 +108,7 @@
   function shDayInfo(){
     if(SH.mode==='solo')return SH_DAYS[SH.day];
     if(SH.mode==='versus')return {fills:3,gap:2.4,max:3};
-    return {fills:3,gap:{2:4.2,3:3.3,4:2.6}[SH.people],max:3};
+    return {fills:3,gap:{2:4.2,4:2.6}[SH.people],max:3};
   }
   function shFloat(x,y,text,color,size=40,ttl=1){SH.floats.push({x,y,text,color,size,ttl,life:ttl});}
   function shSpark(x,y,n,colors,speed=320){
@@ -344,7 +345,7 @@
     SH.shops.forEach(s=>{s.rush=0;s.tickets.forEach(t=>{if(!t.done){t.done=true;t.leave=0;t.happy=false;}});});
     if(SH.mode==='solo'){
       const ok=SH.earned>=shTarget(),last=SH.day===SH_DAYS.length-1;
-      hofRecord('shop',0,SH.earned);
+      if(ok)SH.totalEarned+=SH.earned;
       if(ok&&last){shFinishSolo();return;}
       SH.dayOk=ok;SH.phase='shopping';
       sfx(ok?'goal':'soft',ok?1:.9);if(ok)cheer(.6);
@@ -352,7 +353,7 @@
     }
     if(SH.mode==='versus'){
       const [a,b]=SH.shops.map(s=>s.earned),w=a===b?-1:(a>b?0:1);
-      hofRecord('shop',0,a);hofRecord('shop',1,b);
+      hofRecord('shop_vs2',0,a);hofRecord('shop_vs2',1,b);
       let title='무승부!';
       if(w>=0){
         const repeat=streak.side===w&&streak.id===choices[w];
@@ -364,15 +365,18 @@
       return;
     }
     const tg=SH.co.targets,stars=tg.filter(v=>SH.earned>=v).length;
-    SH.stars=stars;sfx('goal',1);cheer(.5+stars*.25);victoryJingle();
+    SH.stars=stars;
+    hofRecordTeam(SH.people===2?'shop_co2':'shop_co4',HOF.players.slice(0,SH.people),SH.earned);
+    sfx('goal',1);cheer(.5+stars*.25);victoryJingle();
     shResult(['조금 아쉬워요','잘했어요!','훌륭해요!','최고의 팀!'][stars]+'  '+'★'.repeat(stars)+'☆'.repeat(3-stars),`매출 ${shWon(SH.earned)} · 손님 ${SH.shops[0].served}명 · 다음 별 ${stars<3?shWon(tg[stars]):'완성!'}`,[['↻ 한 번 더','primary',()=>replayGate(shNewGame)],['인물 변경','',()=>{leaveShop();enterSelection();}],['← 모음집','',shHome]]);
   }
   function shFinishSolo(){
     SH.phase='over';
+    hofRecord('shop_solo',0,SH.totalEarned);
     const prev=+preference('shop-best','0');const record=SH.money>prev;
     if(record)remember('shop-best',String(SH.money));
     sfx('goal',1.1);cheer(1.2);victoryJingle();
-    shResult('5일 장사 대성공!',`남은 돈 ${shWon(SH.money)}`+(record?' · 최고 기록!':` · 최고 기록 ${shWon(prev)}`),[['↻ 처음부터','primary',shNewGame],['인물 변경','',()=>{leaveShop();enterSelection();}],['← 모음집','',shHome]]);
+    shResult('5일 장사 대성공!',`5일 총매출 ${shWon(SH.totalEarned)} · 남은 돈 ${shWon(SH.money)}`+(record?' · 기기 최고 기록!':` · 기기 최고 기록 ${shWon(prev)}`),[['↻ 처음부터','primary',shNewGame],['인물 변경','',()=>{leaveShop();enterSelection();}],['← 모음집','',shHome]]);
   }
   function shHome(){streak={side:-1,id:null,count:0};leaveShop();$('menuScreen').hidden=false;playBgm('menu',{gain:.8});}
   function shResult(title,detail,list){
@@ -655,7 +659,7 @@
       shTicket(g,s,t,rightX,y,rightW,th,now,ready?'주기!':'',ready,(cx,cy)=>shServe(s,t,cx,cy));
     }
   }
-  const SH_CO_COLORS={2:['#2f9c8c','#2f9c8c','#e0694f','#e0694f'],3:['#2f9c8c','#2f9c8c','#d6a01f','#e0694f'],4:['#2f9c8c','#3f8ee0','#d6a01f','#e0694f']};
+  const SH_CO_COLORS={2:['#2f9c8c','#2f9c8c','#e0694f','#e0694f'],4:['#2f9c8c','#3f8ee0','#d6a01f','#e0694f']};
   function shDrawCo(g,now){
     const {TZ,H,W}=SH,c=SH.co,s=SH.shops[0],colors=SH_CO_COLORS[SH.people],names=['① 반죽','② 굽기','③ 포장','④ 계산'];
     const pad=10,top=TZ+8,bot=H-72,cw=(W-pad*5)/4,head=46;

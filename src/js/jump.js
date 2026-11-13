@@ -242,14 +242,14 @@ function respawn(L){
 function endSolo(L){
   G.phase='over';G.overT=0;const n=Math.floor(L.maxAlt/FLOOR),b=readBest();
   if(n>b){remember('jump-best',String(n));G.best=n;}
-  hofRecord('jump',0,n);
+  hofRecord('jump_solo',0,n);
   showResult(n+'층까지 올라갔어요!',n>b&&b>0?'새 기록!':(b?'최고 기록 '+Math.max(n,b)+'층':''));
   beep(200,.3,'triangle',.08);stopBgm(.4);
 }
 function endDuel(){
   G.phase='over';G.overT=0;$('cjTimer').style.display='none';
   const [a,b]=G.lanes,na=Math.floor(a.maxAlt/FLOOR),nb=Math.floor(b.maxAlt/FLOOR);
-  hofRecord('jump',0,na);hofRecord('jump',1,nb);
+  hofRecord('jump_duel',0,na);hofRecord('jump_duel',1,nb);
   showResult(na===nb?'무승부!':(na>nb?'왼쪽 승리!':'오른쪽 승리!'),na+'층 : '+nb+'층');
   victoryJingle();
 }
@@ -408,7 +408,7 @@ function drawGauge(L){
   if(G.rush){g.fillStyle='#3a2418';g.fillRect(x0+n*w+2,y-4,32,22);g.fillStyle='#ffe27a';g.font='18px HojaBody,sans-serif';g.textAlign='left';g.fillText('×2',x0+n*w+6,y+13);}
 }
 function drawBestLine(L,cam){
-  const marks=hofMarks('jump');
+  const marks=hofMarks(G.mode==='solo'?'jump_solo':'jump_duel');
   if(marks){
     g.font='13px HojaBody,sans-serif';g.textAlign='center';g.textBaseline='alphabetic';
     for(const [floor,m] of marks){
