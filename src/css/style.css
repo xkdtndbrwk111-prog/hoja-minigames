@@ -1299,3 +1299,9 @@ html[data-device=tablet] .sx-stage{transform-origin:50% 50%}
 .da-orbit-icon i:last-child{bottom:-13%;left:29%;background:#efa470}
 @media(max-width:700px){.da-song-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.da-key{font-size:clamp(14px,2.8vw,26px)}.da-keys{gap:10px}.da-picker-desc{font-size:13px}}
 @media(orientation:portrait){.da-keys{height:clamp(74px,14vh,120px)}.da-picker{overflow-y:auto}.da-song{min-height:75px}}
+
+/* Rhythm page now has ten games. Keep exactly five playable cards per row. */
+#rhythmGrid{grid-template-columns:repeat(10,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr))}
+#rhythmGrid .game-card{grid-column:span 2!important}
+#rhythmGrid .game-card:nth-child(6){grid-column:span 2!important}
+#rhythmGrid .game-card.da-menu-card .game-name{white-space:normal;word-break:keep-all;text-align:center;font-size:clamp(14px,1.7vw,30px)}
