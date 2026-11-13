@@ -62,7 +62,7 @@
   function stGameOver(p){
     p.over=true;p.fallV=-500;
     ST.phase='over';stopBgm(.4);
-    hofRecord('stairs',0,p.idx);
+    hofRecord('stairs_solo',0,p.idx);
     const prev=+preference('stairs-best','0');
     ST.record=p.idx>prev;if(ST.record)remember('stairs-best',String(p.idx));
     setTimeout(()=>{
@@ -73,7 +73,7 @@
   }
   function stRaceEnd(){
     ST.phase='over';
-    if(ST.n===2)ST.players.forEach(p=>hofRecord('stairs',p.i,p.idx));
+    ST.players.forEach(p=>hofRecord('stairs_race',p.i,p.idx));
     const rank=[...ST.players].sort((a,b)=>b.idx-a.idx),top=rank[0].idx,leaders=rank.filter(p=>p.idx===top);
     let title='';
     if(leaders.length>1)title='공동 1등!';
@@ -189,7 +189,7 @@
       const [c1,c2]=stSky(p.idx),sky=g.createLinearGradient(0,0,0,btnY);
       sky.addColorStop(0,`rgb(${c1})`);sky.addColorStop(1,`rgb(${c2})`);g.fillStyle=sky;g.fillRect(x,0,w,H);
     }
-    const marks=ST.n<=2?hofMarks('stairs'):null;
+    const marks=hofMarks(ST.solo?'stairs_solo':'stairs_race');
     for(let i=Math.max(0,p.idx-6);i<p.idx+22;i++){
       const sx=px+(ST.xs[i]-p.camX)*stepX,sy=py+(p.camY-i)*sh;
       if(sy<-sh||sy>btnY+sh)continue;
