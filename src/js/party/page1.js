@@ -102,6 +102,7 @@
     RALLY.on=false;
     PS.on=false;PS.live=false;PS.ended=true;PS.counting=0;PS.timers=[];PS.paused=false;
     cancelAnimationFrame(PS.raf);
+    if(PS.run&&typeof PS.run.stop==='function')PS.run.stop();
     $('partyScreen').hidden=true;$('paOverlay').hidden=true;$('paStage').replaceChildren();PS.run=null;RH.sess=null;
   }
   const RALLY={on:false,list:[],idx:0,wins:[0,0],total:5};
@@ -147,6 +148,7 @@
     $('paCaption').textContent=RALLY.on?`파티 랠리 ${RALLY.idx+1}판 · ${RALLY.wins[0]} : ${RALLY.wins[1]} · ${def.name}`:def.name+' · '+stage.name;
     paHint(stage.desc);paTime('');
     RH.sess=null;
+    if(PS.run&&typeof PS.run.stop==='function')PS.run.stop();
     PS.run=def.make(stage,host)||{};
     PS.counting=def.noCount?0:3;PS.lastCount=0;
     if(PS.counting){$('paCount').hidden=false;}else{$('paCount').hidden=true;PS.live=true;PS.run.begin&&PS.run.begin();}
