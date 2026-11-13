@@ -21,7 +21,7 @@
   // Weekly settlement prizes: 1st, 2nd, 3rd of each game last week.
   const HOF_PRIZE={1:1,2:.5,3:.5};
   const HOF_MAX=40;
-  const HOF={cfg:null,pending:[],board:null,last:null,lastAt:0,period:'day',players:Array(6).fill(null),pollT:0,flushing:false,online:true};
+  const HOF={cfg:null,pending:[],board:null,last:null,lastAt:0,period:'day',players:Array(6).fill(null),pollT:0,flushing:false,online:true,lastError:null};
   // Monday of last week on this PC's calendar, as YYYY-MM-DD.
   function hofLastMonday(now=new Date()){
     const d=new Date(now.getFullYear(),now.getMonth(),now.getDate());d.setDate(d.getDate()-((d.getDay()+6)%7)-7);
@@ -107,14 +107,14 @@
           ?await hofRpc('hof_add_team_record',{p_code:p.code,p_seats:p.seats,p_game:p.game,p_score:p.score,p_at:p.at,p_key:p.key})
           :await hofRpc('hof_add_record',{p_code:p.code,p_seat:p.seat,p_game:p.game,p_score:p.score,p_at:p.at});
         if(res!=='ok'){
-          HOF.online=res==='too_fast';retry=res==='too_fast'?3500:30000;
+          HOF.lastError=String(res);HOF.online=res==='too_fast';retry=res==='too_fast'?3500:30000;
           hofToast('기록 미전송: '+String(res)+' · 다시 시도해요');break;
         }
-        HOF.pending.shift();remember('hof-pending',JSON.stringify(HOF.pending));
+        HOF.pending.shift();HOF.lastError=null;remember('hof-pending',JSON.stringify(HOF.pending));
         hofToast('명예의 전당 기록 저장 완료');
       }
       if(!retry)HOF.online=true;
-    }catch(e){HOF.online=false;retry=30000;hofToast('서버 연결 실패 · 기록을 보관 중이에요');}
+    }catch(e){HOF.online=false;HOF.lastError='연결 실패';retry=30000;hofToast('서버 연결 실패 · 기록을 보관 중이에요');}
     HOF.flushing=false;
     if(retry)setTimeout(hofFlush,retry);
     if(!$('hallScreen').hidden&&HOF.view==='main')hofRefresh();
