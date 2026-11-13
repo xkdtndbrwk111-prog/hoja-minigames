@@ -694,8 +694,21 @@
         }else if(F.phase==='result'){
           F.t-=dt;
           if(F.t<=0){
-            if(solo&&F.lives<=0){paSoloEnd(F.cleared,'개','solo');return;}
-            if(!solo&&F.round>=total){paWinnerByScore();return;}
+            if(solo&&F.lives<=0){
+              F.phase='done';
+              // Solo medals are the number of missions cleared, not points from the versus modes.
+              if(!RALLY.on)hofRecord('flash_solo',0,F.cleared);
+              paSoloEnd(F.cleared,'개','solo');return;
+            }
+            if(!solo&&F.round>=total){
+              F.phase='done';
+              // Eight and twelve rounds have different possible scores, so never mix them.
+              if(!RALLY.on){
+                const game=total===8?'flash_r8':'flash_r12';
+                for(let side=0;side<2;side++)hofRecord(game,side,PS.scores[side]);
+              }
+              paWinnerByScore();return;
+            }
             next();
           }
         }
