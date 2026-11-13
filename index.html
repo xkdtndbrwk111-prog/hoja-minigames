@@ -1273,6 +1273,21 @@ html[data-device=tablet] .sx-stage{transform-origin:50% 50%}
 .hof-card .hof-team-line{white-space:normal;align-items:flex-start}
 .hof-card .hof-team-line span{overflow:visible;text-overflow:clip;word-break:keep-all}
 @media(orientation:portrait){.hof-grid{grid-template-rows:none;grid-auto-rows:minmax(120px,auto)}}
+
+/* Hall of fame: each game has a single family card and clear mode subsections.
+   Use the actual viewport width, rather than the old fixed 5/6-column layouts. */
+.hof-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:none;grid-auto-rows:auto;gap:clamp(8px,1vw,16px);align-items:start;flex:none}
+.hof-card{height:auto;min-height:112px;gap:clamp(4px,.6vh,9px);padding:clamp(8px,1vw,14px)}
+.hof-family{grid-column:span 2}
+.hof-family>b{font-size:clamp(17px,1.45vw,27px)}
+.hof-mode-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(6px,.65vw,12px)}
+.hof-mode{display:flex;flex-direction:column;min-width:0;gap:3px;padding:6px 7px;border-radius:8px;background:rgba(63,106,100,.065)}
+.hof-mode-title{font-family:"HojaBody",sans-serif;font-size:clamp(12px,1.03vw,19px);font-weight:950;color:#3f6a64;border-bottom:1px solid #c2d5c9;padding-bottom:4px;margin-bottom:2px}
+.hof-mode .hof-line{font-size:clamp(11px,1.0vw,19px);white-space:normal;align-items:baseline}
+.hof-mode .hof-line span{overflow:visible;text-overflow:clip;white-space:normal;overflow-wrap:anywhere;word-break:keep-all}
+.hof-mode .hof-line em{white-space:nowrap;font-size:.9em}
+@media(max-width:1000px){.hof-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hof-family{grid-column:span 2}}
+@media(max-width:560px){.hof-grid{grid-template-columns:minmax(0,1fr)}.hof-family{grid-column:span 1}.hof-mode-grid{grid-template-columns:minmax(0,1fr)}}
 </style>
 </head>
 <!--
@@ -6260,8 +6275,21 @@ var qrcode = function() {
         }else if(F.phase==='result'){
           F.t-=dt;
           if(F.t<=0){
-            if(solo&&F.lives<=0){paSoloEnd(F.cleared,'개','solo');return;}
-            if(!solo&&F.round>=total){paWinnerByScore();return;}
+            if(solo&&F.lives<=0){
+              F.phase='done';
+              // Solo medals are the number of missions cleared, not points from the versus modes.
+              if(!RALLY.on)hofRecord('flash_solo',0,F.cleared);
+              paSoloEnd(F.cleared,'개','solo');return;
+            }
+            if(!solo&&F.round>=total){
+              F.phase='done';
+              // Eight and twelve rounds have different possible scores, so never mix them.
+              if(!RALLY.on){
+                const game=total===8?'flash_r8':'flash_r12';
+                for(let side=0;side<2;side++)hofRecord(game,side,PS.scores[side]);
+              }
+              paWinnerByScore();return;
+            }
             next();
           }
         }
@@ -13340,18 +13368,20 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
   // The server only ever sees a random class code, seat numbers and results. Names stay on the devices.
   const HOF_API='https://aolfbqfchzipyevtdhdy.supabase.co/rest/v1/rpc/',HOF_KEY='sb_publishable_5SFnvXsS7uWE376Iav97eQ_EFi5Nhg4';
   const HOF_HOME='https://xkdtndbrwk111-prog.github.io/hoja-minigames/';
+  // Keep one board per ruleset, but show modes under their shared game family.
+  // Old mixed-mode scores have been retired and are never a playable category.
   const HOF_GAMES=[
-    {id:'stairs_solo',name:'무한 계단 · 1인',unit:'층',noPrize:true},
-    {id:'stairs_race',name:'무한 계단 · 다인전',unit:'층',noPrize:true},
-    {id:'jump_solo',name:'호자 점프 · 1인',unit:'층',noPrize:true},
-    {id:'jump_duel',name:'호자 점프 · 2인',unit:'층',noPrize:true},
-    {id:'stairs',name:'무한 계단 · 이전 기록',unit:'층',legacy:true},
-    {id:'jump',name:'호자 점프 · 이전 기록',unit:'층',legacy:true},
-    {id:'shop_solo',name:'붕어빵 1인 · 5일 총매출',unit:'원',noPrize:true},
-    {id:'shop_vs2',name:'붕어빵 2인 대결',unit:'원',noPrize:true},
-    {id:'shop_co2',name:'붕어빵 2인 협동',unit:'원',team:true,noPrize:true},
-    {id:'shop_co4',name:'붕어빵 4인 협동',unit:'원',team:true,noPrize:true},
-    {id:'shop',name:'붕어빵 이전 기록',unit:'원',legacy:true},
+    {id:'stairs_solo',name:'무한의 계단 · 1인전',family:'무한의 계단',mode:'1인전',unit:'층',noPrize:true},
+    {id:'stairs_race',name:'무한의 계단 · 다인전',family:'무한의 계단',mode:'다인전',unit:'층',noPrize:true},
+    {id:'jump_solo',name:'호자 점프 · 1인전',family:'호자 점프',mode:'1인전',unit:'층',noPrize:true},
+    {id:'jump_duel',name:'호자 점프 · 2인전',family:'호자 점프',mode:'2인전',unit:'층',noPrize:true},
+    {id:'shop_solo',name:'붕어빵 · 1인 장사',family:'붕어빵 가게',mode:'1인 · 5일 총매출',unit:'원',noPrize:true},
+    {id:'shop_vs2',name:'붕어빵 · 2인 대결',family:'붕어빵 가게',mode:'2인 대결',unit:'원',noPrize:true},
+    {id:'shop_co2',name:'붕어빵 · 2인 협동',family:'붕어빵 가게',mode:'2인 협동',unit:'원',team:true,noPrize:true},
+    {id:'shop_co4',name:'붕어빵 · 4인 협동',family:'붕어빵 가게',mode:'4인 협동',unit:'원',team:true,noPrize:true},
+    {id:'flash_solo',name:'번개미션 · 혼자 도전',family:'번개미션',mode:'혼자 도전',unit:'개',noPrize:true},
+    {id:'flash_r8',name:'번개미션 · 8판 대결',family:'번개미션',mode:'8판 대결',unit:'점',noPrize:true},
+    {id:'flash_r12',name:'번개미션 · 12판 대결',family:'번개미션',mode:'12판 대결',unit:'점',noPrize:true},
     {id:'hockey',name:'에어하키',unit:'승'},{id:'volley',name:'호자 배구',unit:'승'},{id:'bubble',name:'퍼즐버블',unit:'승'},
     {id:'othello',name:'오셀로',unit:'승'},{id:'gomoku',name:'오목',unit:'승'},{id:'ttt',name:'틱택토',unit:'승'},{id:'germ',name:'세균전',unit:'승'},{id:'rally',name:'파티 랠리',unit:'승'},
   ];
@@ -13368,6 +13398,10 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
   function hofLoad(){
     try{HOF.cfg=JSON.parse(preference('hof','null'));}catch{HOF.cfg=null;}
     try{HOF.pending=JSON.parse(preference('hof-pending','[]'));}catch{HOF.pending=[];}
+    // Cancel only unsent legacy mixed-mode scores; never replay retired categories.
+    if(!Array.isArray(HOF.pending))HOF.pending=[];
+    const current=HOF.pending.filter(p=>p&&!['stairs','jump','shop'].includes(p.game));
+    if(current.length!==HOF.pending.length){HOF.pending=current;remember('hof-pending',JSON.stringify(current));}
     try{HOF.board=JSON.parse(preference('hof-board','null'));}catch{HOF.board=null;}
   }
   function hofSaveCfg(){remember('hof',JSON.stringify(HOF.cfg));}
@@ -13724,7 +13758,12 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
   }
   /* Who is playing */
   function hofNeeded(){
-    if(!HOF.cfg)return 0;if(currentGame==='rally')return 2;if(PARTY_GAMES[currentGame])return 0;
+    if(!HOF.cfg)return 0;if(currentGame==='rally')return 2;
+    if(currentGame==='flash'){
+      const mode=PARTY_GAMES.flash.stages.find(st=>st.id===PARTY_GAMES.flash.sel);
+      return mode&&mode.people===1?1:2;
+    }
+    if(PARTY_GAMES[currentGame])return 0;
     if(currentGame==='stairs'){const st=ST_STAGES.find(s=>s.id===stairsStage);return st.n;}
     if(currentGame==='shop')return shopStage==='solo'?1:shopStage==='versus'||shopStage==='co2'?2:shopStage==='co4'?4:0;
     return aiLevel?0:2;
@@ -13939,15 +13978,31 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
     const tabs=hofEl('div','hof-tabs');
     HOF_PERIODS.forEach(([id,name])=>{const b=hofEl('button','hof-tab'+(HOF.period===id?' on':''),name);b.type='button';b.addEventListener('click',()=>{sfx('menu',.6);HOF.period=id;hofDrawMain();if(id==='lastweek')hofLoadLastWeek();});tabs.append(b);});
     const grid=hofEl('div','hof-grid');
+    // One visual card per game family; underlying scoreboards remain separate by mode.
+    const groups=new Map();
     for(const g of HOF_GAMES){
-      const card=hofEl('div','hof-card');card.append(hofEl('b','',g.name));
-      const top=hofRank(rows,g.id).slice(0,3);
-      if(!top.length)card.append(hofEl('span','hof-empty','-'));
-      for(const r of top){
-        const line=hofEl('div','hof-line'+(g.team?' hof-team-line':''));line.title=hofEntryName(r);
-        line.append(hofEl('i','',r.place+''),hofEl('span','',hofEntryName(r)),hofEl('em','',hofValue(g,r.value)));card.append(line);
+      const family=g.family||g.name;
+      if(!groups.has(family))groups.set(family,[]);
+      groups.get(family).push(g);
+    }
+    for(const [family,games] of groups){
+      const multiple=games.length>1;
+      const card=hofEl('section','hof-card'+(multiple?' hof-family':''));
+      card.append(hofEl('b','',family));
+      const modeGrid=hofEl('div',multiple?'hof-mode-grid':'hof-single-body');
+      for(const g of games){
+        const mode=hofEl('div','hof-mode');
+        if(multiple)mode.append(hofEl('strong','hof-mode-title',g.mode||g.name));
+        const top=hofRank(rows,g.id).slice(0,3);
+        if(!top.length)mode.append(hofEl('span','hof-empty','아직 기록 없음'));
+        for(const r of top){
+          const line=hofEl('div','hof-line'+(g.team?' hof-team-line':''));line.title=hofEntryName(r);
+          line.append(hofEl('i','',r.place+''),hofEl('span','',hofEntryName(r)),hofEl('em','',hofValue(g,r.value)));
+          mode.append(line);
+        }
+        modeGrid.append(mode);
       }
-      grid.append(card);
+      card.append(modeGrid);grid.append(card);
     }
     const row=hofEl('div','hof-row');
     const statusText=hofQrStale()?'명단이 바뀌었어요. QR을 다시 나눠 주세요.'
