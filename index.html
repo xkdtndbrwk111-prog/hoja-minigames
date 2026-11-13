@@ -992,7 +992,7 @@ html[data-device=tablet] #partyScreen .score-caption{display:none}
 html[data-device=tablet] #partyScreen .score-box{display:flex;align-items:center;gap:6px}
 html[data-device=tablet] #partyScreen .score-digit{font-size:clamp(24px,4.4vmin,44px);min-width:1.3em;box-shadow:none;border-width:2px}
 html[data-device=tablet] #partyScreen .game-time{font-size:clamp(11px,1.7vmin,16px);min-height:0}
-html[data-device=tablet] #paHint{font-size:clamp(10px,1.6vmin,15px);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+html[data-device=tablet] #paHint{font-size:clamp(10px,1.6vmin,15px);line-height:1.2;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;word-break:keep-all;max-width:100%}
 html[data-device=tablet] .pa-stage.pa-two,html[data-device=tablet] .pa-tug-row{gap:clamp(30px,5vw,60px)}
 @media(orientation:portrait){html[data-device=tablet] #partyScreen .team-name{display:none}html[data-device=tablet] .pa-holes{grid-template-rows:repeat(3,minmax(0,1fr))}}
 @media(max-width:700px){.rh-songs{grid-template-columns:repeat(2,minmax(0,1fr))}.pa-stage.pa-two{gap:30px}.menu-pages .control{min-width:0;padding:0 8px}}
@@ -1251,6 +1251,10 @@ html[data-device=tablet] .sx-stage{transform-origin:50% 50%}
 .emotion-note{align-self:flex-start;display:inline-block;max-width:100%;box-sizing:border-box;min-height:0;font-size:clamp(15px,1.9vw,38px);font-weight:950;line-height:1.2;color:#2f2a24;background:#fffaf0;border:clamp(2px,.22vw,4px) solid #2f9c8c;border-radius:.7em;padding:.16em .6em;box-shadow:0 .12em 0 rgba(60,40,20,.2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transform-origin:left center}
 .team.right .emotion-note{align-self:flex-end;border-color:#e0694f;transform-origin:right center}
 .emotion-note:empty{visibility:hidden}
+/* Do not clip speech by character count or narrow text boxes. Fit a line when
+   possible and wrap the entire sentence when the actual available space is small. */
+.team-text{flex:1 1 auto;min-width:0}
+.emotion-note{width:max-content;max-width:100%;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;word-break:keep-all}
 .emotion-note.say{animation:noteSay .34s cubic-bezier(.3,1.6,.5,1)}
 @keyframes noteSay{0%{transform:scale(.55);opacity:.2}100%{transform:scale(1);opacity:1}}
 @media (prefers-reduced-motion:reduce){.emotion-note.say{animation:none}}
@@ -4240,7 +4244,7 @@ var qrcode = function() {
     if(RALLY.on){rallyLeg(winner,detail);return;}
     roundClose();
     if(winner===-1){sfx('soft',.8);}else{victoryJingle();cheer(.7);}
-    const title=winner===null?'끝!':winner===-1?'무승부!':nameFor(winner)+' 승리!';
+    const title=winner===null?'끝!':winner===-1?'무승부!':gamePlayerName(winner)+' 승리!';
     paOverlay(title,detail||'',[
       button('↻ 다시 하기','primary',paStart),
       button('인물 변경','',()=>{leaveParty();enterSelection();}),
@@ -4287,7 +4291,7 @@ var qrcode = function() {
     if(!finished){
       sfx('soft',.8);
       const extra=RALLY.idx+1>=RALLY.total;
-      paOverlay((winner===0||winner===1?nameFor(winner)+' 이번 판 승리!':'무승부!'),`랠리 ${a} : ${b}`+(extra?' · 동점이라 한 판 더!':` · ${RALLY.idx+1}/${RALLY.total}판`),[
+      paOverlay((winner===0||winner===1?gamePlayerName(winner)+' 이번 판 승리!':'무승부!'),`랠리 ${a} : ${b}`+(extra?' · 동점이라 한 판 더!':` · ${RALLY.idx+1}/${RALLY.total}판`),[
         button('다음 게임 ▶','primary',()=>{RALLY.idx++;PS.game=RALLY.list[RALLY.idx];paStart();}),
         button('← 모음집','',paHome)
       ]);
@@ -4297,7 +4301,7 @@ var qrcode = function() {
     RALLY.on=false;
     victoryJingle();cheer(.7);
     hofRecord('rally',w,1);
-    paOverlay(nameFor(w)+' 랠리 우승!',`${a} : ${b}`,[
+    paOverlay(gamePlayerName(w)+' 랠리 우승!',`${a} : ${b}`,[
       button('↻ 다시 하기','primary',()=>{PS.game='rally';paStart();}),
       button('인물 변경','',()=>{leaveParty();enterSelection();}),
       button('← 모음집','',paHome)
@@ -4314,7 +4318,7 @@ var qrcode = function() {
     $('partyScreen').classList.toggle('solo',solo);
     $('partyScreen').classList.toggle('rh-stage',Boolean(def.rhythm));$('partyScreen').classList.remove('rh-full');
     for(let i=0;i<2;i++){
-      $('paPortrait'+i).src=portraitFor(i);$('paName'+i).textContent=nameFor(i);$('paLabel'+i).textContent=i?'오른쪽':solo?'':'왼쪽';
+      $('paPortrait'+i).src=portraitFor(i);$('paName'+i).textContent=gamePlayerName(i);$('paLabel'+i).textContent=i?'오른쪽':solo?'':'왼쪽';
       $('paScore'+i).textContent='0';
     }
     $('paCaption').textContent=RALLY.on?`파티 랠리 ${RALLY.idx+1}판 · ${RALLY.wins[0]} : ${RALLY.wins[1]} · ${def.name}`:def.name+' · '+stage.name;
@@ -4456,7 +4460,7 @@ var qrcode = function() {
     const deck=paShuffle(faces.slice(0,pairs).flatMap(f=>[f,f]));
     const board=paEl('div','pa-cards');board.style.setProperty('--cols',stage.cols);host.append(board);
     let open=[],lock=false,turn=0,found=0,flips=0;
-    const showTurn=()=>{if(!solo){paHint(nameFor(turn)+' 차례');$('partyScreen').dataset.turn=turn;}};
+    const showTurn=()=>{if(!solo){paHint(gamePlayerName(turn)+' 차례');$('partyScreen').dataset.turn=turn;}};
     deck.forEach(([id,mood])=>{
       const card=paEl('button','pa-card'),img=paEl('img');img.alt='';img.draggable=false;img.src=characterPortrait(id,mood);card.append(img);board.append(card);
       card.dataset.key=id+mood;
@@ -4525,8 +4529,8 @@ var qrcode = function() {
       paAfter(1.2,round);
     }
     sides.forEach((box,side)=>paTap(box,()=>{
-      if(state==='go'){sfx('goal',.9);score(side,nameFor(side)+' 빨랐어요!');}
-      else if(state==='wait'){sfx('soft',1);paFlash(box,'pa-bad');score(1-side,nameFor(side)+' 먼저 눌렀어요');}
+      if(state==='go'){sfx('goal',.9);score(side,gamePlayerName(side)+' 빨랐어요!');}
+      else if(state==='wait'){sfx('soft',1);paFlash(box,'pa-bad');score(1-side,gamePlayerName(side)+' 먼저 눌렀어요');}
     }));
     return {begin:round};
   }
@@ -4594,15 +4598,15 @@ var qrcode = function() {
     function miss(){
       listening=false;sfx('soft',1);paFlash(pads,'pa-bad');
       if(solo)paSoloEnd(Math.max(0,seq.length-1),'단계',stage.id);
-      else paEnd(1-turn,paSubject(nameFor(turn))+' '+seq.length+'단계에서 틀렸어요');
+      else paEnd(1-turn,paSubject(gamePlayerName(turn))+' '+seq.length+'단계에서 틀렸어요');
     }
     function grow(){
       seq.push(paRand(4));
       if(!solo&&seq.length>1)turn=1-turn;
       if(solo)paSetScore(0,seq.length-1);else{paSetScore(0,turn===0?seq.length:PS.scores[0]);paSetScore(1,turn===1?seq.length:PS.scores[1]);$('partyScreen').dataset.turn=turn;}
-      paHint(solo?'잘 보고 따라 눌러요':nameFor(turn)+' 차례 · 잘 보고 따라 눌러요');
+      paHint(solo?'잘 보고 따라 눌러요':gamePlayerName(turn)+' 차례 · 잘 보고 따라 눌러요');
       seq.forEach((v,k)=>paAfter(.3+k*beat,()=>light(v,beat*.7)));
-      paAfter(.3+seq.length*beat,()=>{input=0;listening=true;paHint(solo?'이제 눌러요!':nameFor(turn)+' 눌러요!');});
+      paAfter(.3+seq.length*beat,()=>{input=0;listening=true;paHint(solo?'이제 눌러요!':gamePlayerName(turn)+' 눌러요!');});
     }
     PS.simon={seq,get listening(){return listening;},els};
     return {begin:grow};
@@ -4684,7 +4688,7 @@ var qrcode = function() {
     let turn=0,busy=false;
     const bar=paEl('div','pa-four-tops');host.append(bar,board);
     for(let i=0;i<FOUR_W*FOUR_H;i++){const c=paEl('div','pa-slot');board.append(c);cells.push(c);}
-    const show=()=>{paHint(nameFor(turn)+' 차례');$('partyScreen').dataset.turn=turn;};
+    const show=()=>{paHint(gamePlayerName(turn)+' 차례');$('partyScreen').dataset.turn=turn;};
     function play(c){
       const r=fourDrop(b,c,turn+1);if(r<0)return false;
       const cell=cells[r*FOUR_W+c];cell.classList.add('p'+turn,'drop');cell.style.setProperty('--rows',r+1);sfx('wood',.9);
@@ -4713,13 +4717,13 @@ var qrcode = function() {
     const n=stage.n,bomb=1+paRand(n),grid=paEl('div','pa-bomb');grid.style.setProperty('--cols',stage.cols);host.append(grid);
     let lo=1,hi=n,turn=0;
     const btns=[];
-    const show=()=>{paHint(nameFor(turn)+' 차례 · 남은 범위 '+lo+'~'+hi);$('partyScreen').dataset.turn=turn;};
+    const show=()=>{paHint(gamePlayerName(turn)+' 차례 · 남은 범위 '+lo+'~'+hi);$('partyScreen').dataset.turn=turn;};
     for(let v=1;v<=n;v++){
       const b=paTap(paEl('button','pa-bomb-num',v),()=>{
         if(v<lo||v>hi)return;
         if(v===bomb){
           sfx('goal',1);b.classList.add('boom');b.textContent='💥';paSetScore(turn,1);paSetScore(1-turn,0);
-          paEnd(1-turn,paSubject(nameFor(turn))+' 폭탄 '+bomb+'번을 눌렀어요!');
+          paEnd(1-turn,paSubject(gamePlayerName(turn))+' 폭탄 '+bomb+'번을 눌렀어요!');
           return;
         }
         sfx('wood',.8);
@@ -5071,7 +5075,7 @@ var qrcode = function() {
     const n=stage.n,grid=paEl('div','pa-dots');grid.style.setProperty('--n',n);host.append(grid);
     const svgNS='http://www.w3.org/2000/svg',svg=document.createElementNS(svgNS,'svg');svg.setAttribute('viewBox','-0.5 -0.5 '+(n+1)+' '+(n+1));grid.append(svg);
     let turn=0;const lines=new Map(),boxes=new Map();
-    const show=()=>{paHint(nameFor(turn)+' 차례 · 선을 눌러요');$('partyScreen').dataset.turn=turn;};
+    const show=()=>{paHint(gamePlayerName(turn)+' 차례 · 선을 눌러요');$('partyScreen').dataset.turn=turn;};
     const keyH=(r,c)=>'h'+r+','+c,keyV=(r,c)=>'v'+r+','+c;
     function completed(r,c){return lines.has(keyH(r,c))&&lines.has(keyH(r+1,c))&&lines.has(keyV(r,c))&&lines.has(keyV(r,c+1));}
     function claim(key,el){
@@ -7326,7 +7330,7 @@ var qrcode = function() {
     portraitEls[player].src=portraitFor(player,mood);
     teamEls[player].classList.toggle('react',mood==='happy'||mood==='surprised');
     teamEls[player].classList.toggle('sad',mood==='sad'||mood==='angry');
-    noteEls[player].textContent=note||nameFor(player);
+    noteEls[player].textContent=note||gamePlayerName(player);
   }
   function neutralMoods(){setMood(0,'neutral','집중 중!');setMood(1,'neutral',aiLevel?'컴퓨터 상대':'집중 중!');}
   function button(label,cls,fn){
@@ -7398,6 +7402,8 @@ var qrcode = function() {
     trail=[];particles=[];floats=[];rings=[];flash=null;shake=0;updateRally();syncGauge();
     resetPositions();resetGoalCamp();phase='ready';updateClock();
     syncCharacterUI();
+    $('teamNameLeft').textContent=gamePlayerName(0);
+    $('teamNameRight').textContent=gamePlayerName(1);
     setMood(0,'neutral','손가락을 올려!');setMood(1,'neutral',aiLevel?'컴퓨터 상대':'손가락을 올려!');
     for(let i=0;i<2;i++)teamEls[i].classList.toggle('champion',streak.side===i&&streak.id===choices[i]&&streak.count>0);
     for(let i=0;i<2;i++)$(i?'streakRight':'streakLeft').textContent=(streak.side===i&&streak.id===choices[i]&&streak.count>0)?(streak.count>=2?streak.count+'연승 중':'챔피언'):'';
@@ -7418,7 +7424,7 @@ var qrcode = function() {
     possession.side=side;possession.time=0;possession.warned=false;
     puckHidden=false;serve={side,time:4.5};
     phase='playing';neutralMoods();hideOverlay();syncStrip();
-    floatText(puck.x,puck.y-70,aiLevel&&side===1?'컴퓨터 서브':nameFor(side)+' 서브!',SIDE_COLOR[side],28,1.3);
+    floatText(puck.x,puck.y-70,aiLevel&&side===1?'컴퓨터 서브':gamePlayerName(side)+' 서브!',SIDE_COLOR[side],28,1.3);
     rings.push({x:puck.x,y:puck.y,r:28,grow:150,ttl:.5,life:.5,color:SIDE_COLOR[side],w:6});
   }
   function launchServe(){
@@ -7451,7 +7457,7 @@ var qrcode = function() {
     hofWin('hockey',winner);
     setMood(winner,'happy','이겼다!');setMood(1-winner,'sad','아쉬워…');
     const line=`${scores[0]} : ${scores[1]}   ·   최고 랠리 ${bestRally}   ·   강타 ${stats[0].smash} : ${stats[1].smash}`;
-    const crown=streak.count>=2?`${nameFor(winner)} ${streak.count}연승!`:`${nameFor(winner)} 승리!`;
+    const crown=streak.count>=2?`${gamePlayerName(winner)} ${streak.count}연승!`:`${gamePlayerName(winner)} 승리!`;
     const next=button('다음 도전자 ▶','primary',()=>{leaveGame();enterSelection();});
     const again=button('↻ 바로 재대결','',()=>{resetMatch();});
     const home=button('← 모음집','',()=>{streak={side:-1,id:null,count:0};leaveGame();$('menuScreen').hidden=false;$('gameScreen').hidden=true;});
@@ -7482,7 +7488,7 @@ var qrcode = function() {
   }
   function showGoalBanner(scorer){
     if(TABLET){
-      const line=Math.max(...scores)===4?'매치 포인트!':nameFor(scorer)+' 득점!';
+      const line=Math.max(...scores)===4?'매치 포인트!':gamePlayerName(scorer)+' 득점!';
       floatText(W*.3,H/2,line,SIDE_COLOR[scorer],64,1.3);floatText(W*.7,H/2,line,SIDE_COLOR[scorer],64,1.3);
       return;
     }
@@ -7688,7 +7694,7 @@ var qrcode = function() {
       specialCut.aim={x0:puck.x,y0:puck.y,vx:dx/len*CANNON_SPEED,vy:dy/len*CANNON_SPEED};
     }
     $('comicAttacker').src=portraitFor(i,'angry');$('comicDefender').src=portraitFor(1-i,'surprised');
-    $('comicAttackName').textContent=nameFor(i);$('comicDefendName').textContent=nameFor(1-i);
+    $('comicAttackName').textContent=gamePlayerName(i);$('comicDefendName').textContent=gamePlayerName(1-i);
     $('comicAttacker').closest('.comic-panel').style.order=String(i===0?0:2);
     $('comicDefender').closest('.comic-panel').style.order=String(i===0?2:0);
     $('comicName').textContent=sp.name;$('comicTip').textContent=sp.tip;
@@ -8422,7 +8428,7 @@ var qrcode = function() {
       if(phase!=='ready'){ctx.save();ctx.globalAlpha=.62;text(String(scores[i]),W/2+dir*92,H/2,150,SIDE_COLOR[i]);ctx.restore();}
       ctx.save();ctx.globalAlpha=.75;
       text(time,W/2+dir*204,H/2,38,clock<=15?'#c0532f':'#4a4037');
-      text(nameFor(i),W/2+dir*256,H/2,30,SIDE_COLOR[i]);
+      text(gamePlayerName(i),W/2+dir*256,H/2,30,SIDE_COLOR[i]);
       ctx.restore();
       // Fills from the child's own end toward the centre line, on both rails so either hand can see it.
       const full=gauge[i]>=GAUGE_MAX,pulse=.5+.5*Math.sin(performance.now()/140),t=RM-14,span=W/2-110;
@@ -8718,7 +8724,7 @@ var qrcode = function() {
   O.faces.forEach(im=>im.addEventListener('load',()=>{oBuildSprites();}));
   const oSide=p=>p-1;
   const oIsAI=p=>aiLevel>0&&p===2;
-  const oName=p=>nameFor(oSide(p));
+  const oName=p=>gamePlayerName(oSide(p));
   function oMood(p,mood,note){
     const i=oSide(p),img=$('oPortrait'+i);
     img.src=portraitFor(i,mood);
@@ -8779,7 +8785,7 @@ var qrcode = function() {
     O.floats=[];O.sparks=[];O.counted=null;O.banner=null;O.displayed=oCount(O.board);
     O.bgDirty=true;$('oOverlay').hidden=true;
     for(let i=0;i<2;i++){
-      $('oName'+i).textContent=nameFor(i);
+      $('oName'+i).textContent=gamePlayerName(i);
       O.faces[i].src=portraitFor(i);
       $('oLabel'+i).textContent=aiLevel&&i===1?'COMPUTER · '+AI_LEVELS[aiLevel].label:i?'PLAYER 2 · 오른쪽':'PLAYER 1 · 왼쪽';
       oMood(i+1,'neutral',aiLevel&&i===1?'컴퓨터 상대':'한 판 해볼까?');
@@ -8877,7 +8883,7 @@ var qrcode = function() {
       const repeat=streak.side===winner&&streak.id===choices[winner];
       streak={side:winner,id:choices[winner],count:repeat?streak.count+1:1};
       hofWin('othello',winner);
-      title=streak.count>=2?`${nameFor(winner)} ${streak.count}연승!`:`${nameFor(winner)} 승리!`;
+      title=streak.count>=2?`${gamePlayerName(winner)} ${streak.count}연승!`:`${gamePlayerName(winner)} 승리!`;
       oMood(winner+1,'happy','이겼다!');oMood(2-winner,'sad','아쉬워…');
       sfx('goal',1.1);cheer(1.1);
       oConfetti([SIDE_COLOR[winner],SIDE_GLOW[winner],'#ffe08a','#ffffff']);
@@ -9370,7 +9376,7 @@ var qrcode = function() {
       $('gTip'+i).textContent=mine&&GO.phase==='human'?'줄이 만나는 곳을 눌러요':'';
     }
     $('gCaption').textContent='HOJA 오목 · '+(stage?stage.name:'');
-    $('gTurnText').textContent=(GO.phase==='human'||GO.phase==='ai')?nameFor(GO.turn-1)+' 차례':'';
+    $('gTurnText').textContent=(GO.phase==='human'||GO.phase==='ai')?gamePlayerName(GO.turn-1)+' 차례':'';
     $('gTurnText').className='game-time o-turn side'+(GO.turn-1);
     $('gLeft').textContent=GO.moves+'수째';
   }
@@ -9390,7 +9396,7 @@ var qrcode = function() {
     GO.hints=[2,2];GO.undos=2;GO.hintCell=-1;GO.queues=[[],[]];GO.history=[];GO.floats=[];GO.sparks=[];GO.pop=null;GO.fading=[];GO.banner=null;
     GO.bgDirty=true;$('gOverlay').hidden=true;
     for(let i=0;i<2;i++){
-      $('gName'+i).textContent=nameFor(i);
+      $('gName'+i).textContent=gamePlayerName(i);
       $('gLabel'+i).textContent=aiLevel&&i===1?'COMPUTER · '+AI_LEVELS[aiLevel].label:i?'PLAYER 2 · 오른쪽':'PLAYER 1 · 왼쪽';
       gMood(i+1,'neutral',aiLevel&&i===1?'컴퓨터 상대':'다섯 줄, 간다!');
       const champ=streak.side===i&&streak.id===choices[i]&&streak.count>0;
@@ -9399,7 +9405,7 @@ var qrcode = function() {
     }
     const first=Math.random()<.5?1:2;
     GO.turn=first;GO.phase='opening';gSyncUI();
-    GO.banner={text:nameFor(first-1)+' 먼저!',color:SIDE_COLOR[first-1],until:performance.now()+1200,ms:1200};sfx('goal',.6);
+    GO.banner={text:gamePlayerName(first-1)+' 먼저!',color:SIDE_COLOR[first-1],until:performance.now()+1200,ms:1200};sfx('goal',.6);
     const tk=GO.token;setTimeout(()=>{if(GO.on&&tk===GO.token&&GO.phase==='opening')gBeginTurn(first);},1250);
     playMood('calm');
   }
@@ -9458,7 +9464,7 @@ var qrcode = function() {
     const W=gCanvas.width;
     for(let k=0;k<150&&GO.sparks.length<320;k++)GO.sparks.push({x:Math.random()*W,y:-Math.random()*W*.3,vx:(Math.random()-.5)*W*.12,vy:W*(.15+Math.random()*.25),ttl:1.5+Math.random()*1.4,c:[SIDE_COLOR[w],SIDE_GLOW[w],'#ffe08a','#ffffff'][k%4],sz:W*(.006+Math.random()*.007),conf:true,rot:Math.random()*6});
     victoryJingle();
-    gResult(streak.count>=2?`${nameFor(w)} ${streak.count}연승!`:`${nameFor(w)} 승리!`,GO.moves+'수 만에 다섯 줄 완성',1500);
+    gResult(streak.count>=2?`${gamePlayerName(w)} ${streak.count}연승!`:`${gamePlayerName(w)} 승리!`,GO.moves+'수 만에 다섯 줄 완성',1500);
   }
   function gResult(title,detail,delay){
     const next=button('다음 도전자 ▶','primary',()=>{leaveGomoku();enterSelection();});
@@ -9854,7 +9860,7 @@ var qrcode = function() {
     BB.result=null;BB.time=0;BB.phase='countdown';BB.countdown=2.4;BB.cShown=0;BB.acc=0;
     $('bOverlay').hidden=true;
     for(let i=0;i<2;i++){
-      $('bName'+i).textContent=nameFor(i);
+      $('bName'+i).textContent=gamePlayerName(i);
       $('bLabel'+i).textContent=aiLevel&&i===1?'COMPUTER · '+AI_LEVELS[aiLevel].label:i?'2P':'1P';
       bNote(i,'neutral','');
       const champ=streak.side===i&&streak.id===choices[i]&&streak.count>0;
@@ -9953,7 +9959,7 @@ var qrcode = function() {
     hofWin('bubble',w);
     bNote(w,'happy','이겼다!');bNote(1-w,'sad','아쉬워…');
     sfx('goal',1.1);sfx('boom',.9);cheer(1.1);victoryJingle();
-    const title=streak.count>=2?`${nameFor(w)} ${streak.count}연승!`:`${nameFor(w)} 승리!`;
+    const title=streak.count>=2?`${gamePlayerName(w)} ${streak.count}연승!`:`${gamePlayerName(w)} 승리!`;
     const detail=`${BB.fields[0].score} : ${BB.fields[1].score}점 · ${Math.ceil(BB.time)}초`;
     const next=button('다음 도전자 ▶','primary',()=>{leaveBubble();enterSelection();});
     const again=button('↻ 바로 재대결','',()=>{bNewMatch();});
@@ -10602,7 +10608,7 @@ var qrcode = function() {
       if(w>=0){
         const repeat=streak.side===w&&streak.id===choices[w];
         streak={side:w,id:choices[w],count:repeat?streak.count+1:1};
-        title=streak.count>=2?`${nameFor(w)} ${streak.count}연승!`:`${nameFor(w)} 승리!`;
+        title=streak.count>=2?`${gamePlayerName(w)} ${streak.count}연승!`:`${gamePlayerName(w)} 승리!`;
       }
       SH.winner=w;sfx('goal',1.1);cheer(1);victoryJingle();
       shResult(title,`${shWon(a)} : ${shWon(b)}`,[['다음 도전자 ▶','primary',()=>{leaveShop();enterSelection();}],['↻ 바로 재대결','',shNewGame],['← 모음집','',shHome]]);
@@ -10612,7 +10618,7 @@ var qrcode = function() {
     SH.stars=stars;
     hofRecordTeam(SH.people===2?'shop_co2':'shop_co4',HOF.players.slice(0,SH.people),SH.earned);
     sfx('goal',1);cheer(.5+stars*.25);victoryJingle();
-    shResult(['조금 아쉬워요','잘했어요!','훌륭해요!','최고의 팀!'][stars]+'  '+'★'.repeat(stars)+'☆'.repeat(3-stars),`매출 ${shWon(SH.earned)} · 손님 ${SH.shops[0].served}명 · 다음 별 ${stars<3?shWon(tg[stars]):'완성!'}`,[['↻ 한 번 더','primary',()=>replayGate(shNewGame)],['인물 변경','',()=>{leaveShop();enterSelection();}],['← 모음집','',shHome]]);
+    shResult(['조금 아쉬워요','잘했어요!','훌륭해요!','최고의 팀!'][stars]+'  '+'★'.repeat(stars)+'☆'.repeat(3-stars),`팀원 ${Array.from({length:SH.people},(_,i)=>gamePlayerName(i)).join(' · ')} · 매출 ${shWon(SH.earned)} · 손님 ${SH.shops[0].served}명 · 다음 별 ${stars<3?shWon(tg[stars]):'완성!'}`,[['↻ 한 번 더','primary',()=>replayGate(shNewGame)],['인물 변경','',()=>{leaveShop();enterSelection();}],['← 모음집','',shHome]]);
   }
   function shFinishSolo(){
     SH.phase='over';
@@ -10905,7 +10911,9 @@ var qrcode = function() {
   }
   const SH_CO_COLORS={2:['#2f9c8c','#2f9c8c','#e0694f','#e0694f'],4:['#2f9c8c','#3f8ee0','#d6a01f','#e0694f']};
   function shDrawCo(g,now){
-    const {TZ,H,W}=SH,c=SH.co,s=SH.shops[0],colors=SH_CO_COLORS[SH.people],names=['① 반죽','② 굽기','③ 포장','④ 계산'];
+    const {TZ,H,W}=SH,c=SH.co,s=SH.shops[0],colors=SH_CO_COLORS[SH.people],
+      names=['① 반죽','② 굽기','③ 포장','④ 계산'].map((label,i)=>
+        SH.people===4?label+' · '+gamePlayerName(i):label);
     const pad=10,top=TZ+8,bot=H-72,cw=(W-pad*5)/4,head=46;
     for(let i=0;i<4;i++){
       const x=pad+i*(cw+pad);
@@ -11007,8 +11015,8 @@ var qrcode = function() {
       shText(g,value,cx+Math.min(46,w*.14),H-36,30,color);
     };
     if(SH.mode==='versus'){
-      panel(W*.25,430,nameFor(0),shWon(SH.shops[0].earned),SIDE_COLOR[0]);
-      panel(W*.75,430,nameFor(1),shWon(SH.shops[1].earned),SIDE_COLOR[1]);
+      panel(W*.25,430,gamePlayerName(0),shWon(SH.shops[0].earned),SIDE_COLOR[0]);
+      panel(W*.75,430,gamePlayerName(1),shWon(SH.shops[1].earned),SIDE_COLOR[1]);
     }else if(SH.mode==='solo'){
       const tg=shTarget();
       panel(W*.2,500,(SH.day+1)+'일째',`${shWon(SH.earned)} / ${shWon(tg)}`,SH.earned>=tg?'#1f8a58':'#3b3229');
@@ -11027,8 +11035,10 @@ var qrcode = function() {
     }
     // Sign above the customers
     if(SH.mode!=='versus'&&!shFaced()){
-      shRound(g,W/2-118,8,236,48,12,'#d9573f','#7a2a1b',4);
-      shText(g,'호자네 붕어빵',W/2,33,28,'#fff6e3');
+      const sign=SH.co?'팀원 '+Array.from({length:SH.people},(_,i)=>gamePlayerName(i)).join(' · '):'호자네 붕어빵';
+      const sw=Math.min(W*.8,Math.max(236,sign.length*27));
+      shRound(g,W/2-sw/2,8,sw,48,12,'#d9573f','#7a2a1b',4);
+      shText(g,sign,W/2,33,Math.min(28,Math.max(19,900/Math.max(20,sign.length))),'#fff6e3');
     }
   }
   function shDrawUpgrades(g,now){
@@ -11183,7 +11193,7 @@ var qrcode = function() {
     const rest=SH_FACES.filter(id=>!choices.includes(id));
     return rest[(i-2)%rest.length];
   }
-  const stName=i=>CHARACTERS.find(c=>c.id===stWho(i)).name;
+  const stName=i=>gamePlayerName(i);
   function stNew(){
     hofRefresh();
     const st=ST_STAGES.find(s=>s.id===stairsStage);
@@ -11532,7 +11542,7 @@ var qrcode = function() {
     hofWin('volley',w);
     cheer(1.2);sfx('goal',1.1);victoryJingle();
     vbSetMood(VB.players[w],'happy',99);vbSetMood(VB.players[1-w],'sad',99);
-    const title=streak.count>=2?`${nameFor(w)} ${streak.count}연승!`:`${nameFor(w)} 승리!`;
+    const title=streak.count>=2?`${gamePlayerName(w)} ${streak.count}연승!`:`${gamePlayerName(w)} 승리!`;
     const next=button('다음 도전자 ▶','primary',()=>{leaveVolley();enterSelection();});
     const again=button('↻ 바로 재대결','',vbNew);
     const home=button('← 모음집','',vbHome);
@@ -11773,8 +11783,8 @@ var qrcode = function() {
     // Score
     g.fillStyle='rgba(255,250,235,.9)';g.beginPath();g.roundRect(W/2-180,10,360,104,18);g.fill();g.lineWidth=4;g.strokeStyle='#3b3229';g.stroke();
     vbText(g,String(VB.scores[0]),W/2-92,64,84,SIDE_COLOR[0]);vbText(g,':',W/2,60,60,'#8a7a5a');vbText(g,String(VB.scores[1]),W/2+92,64,84,SIDE_COLOR[1]);
-    vbText(g,nameFor(0),W/2-330,60,40,SIDE_COLOR[0],'rgba(255,255,255,.9)');
-    vbText(g,aiLevel?nameFor(1)+' · '+AI_LEVELS[aiLevel].label:nameFor(1),W/2+360,60,40,SIDE_COLOR[1],'rgba(255,255,255,.9)');
+    vbText(g,gamePlayerName(0),W/2-330,60,40,SIDE_COLOR[0],'rgba(255,255,255,.9)');
+    vbText(g,aiLevel?gamePlayerName(1)+' · '+AI_LEVELS[aiLevel].label:gamePlayerName(1),W/2+360,60,40,SIDE_COLOR[1],'rgba(255,255,255,.9)');
     // Special gauges fill toward the score box.
     for(const side of [0,1]){
       const v=VB.gauge[side],full=v>=100,gw=300,gx=side?W/2+200:W/2-200-gw,fw=(gw-6)*v/100;
@@ -11988,7 +11998,7 @@ var qrcode = function() {
       tMark(g,60,60,44,i+1,1);
     }
     $('ttCaption').textContent='HOJA 틱택토 · '+(TT.stage?TT.stage.name:'');
-    $('ttTurnText').textContent=(TT.phase==='human'||TT.phase==='ai')?nameFor(TT.turn-1)+' 차례':'';
+    $('ttTurnText').textContent=(TT.phase==='human'||TT.phase==='ai')?gamePlayerName(TT.turn-1)+' 차례':'';
     $('ttTurnText').className='game-time o-turn side'+(TT.turn-1);
     const rn=Math.min(7,(TT.round||0)+1);
     $('ttLeft').textContent=`${rn}판째 · ${rn>=7?'마지막 판':tNeed(rn)+'점 먼저'}`;
@@ -11998,7 +12008,7 @@ var qrcode = function() {
     TT.stage=T_STAGES.find(s=>s.id===tttStage);TT.geo=tGeo(TT.stage.n,TT.stage.k);
     TT.scores=[0,0];TT.round=0;TT.first=Math.random()<.5?1:2;TT.bgDirty=true;$('ttOverlay').hidden=true;
     for(let i=0;i<2;i++){
-      $('ttName'+i).textContent=nameFor(i);
+      $('ttName'+i).textContent=gamePlayerName(i);
       $('ttLabel'+i).textContent=aiLevel&&i===1?'COMPUTER · '+AI_LEVELS[aiLevel].label:i?'PLAYER 2 · 오른쪽':'PLAYER 1 · 왼쪽';
       const champ=streak.side===i&&streak.id===choices[i]&&streak.count>0;
       $('ttStreak'+i).textContent=champ?(streak.count>=2?streak.count+'연승 중':'챔피언'):'';
@@ -12042,7 +12052,7 @@ var qrcode = function() {
       sfx('goal',.9);cheer(.55);
       tMood(winner,'happy','한 줄 완성!');tMood(3-winner,'sad','아쉬워!');
       line.forEach((c,k)=>setTimeout(()=>{if(TT.on&&tk===TT.token)tSpark(c,14,[winner===1?'#7ff0da':'#ffb59c','#ffe08a','#ffffff']);},k*90));
-      TT.banner={text:TT.stage.misere?`${nameFor(mover-1)}이(가) 줄을 만들었어요!`:`${nameFor(winner-1)} 1점!`,color:winner===1?SIDE_COLOR[0]:SIDE_COLOR[1],until:now+1900,ms:1900};
+      TT.banner={text:TT.stage.misere?`${gamePlayerName(mover-1)}이(가) 줄을 만들었어요!`:`${gamePlayerName(winner-1)} 1점!`,color:winner===1?SIDE_COLOR[0]:SIDE_COLOR[1],until:now+1900,ms:1900};
       TT.first=3-winner;
     }else{
       sfx('soft',1);tMood(1,'surprised','비겼다!');tMood(2,'surprised','비겼다!');
@@ -12067,7 +12077,7 @@ var qrcode = function() {
       streak={side:w,id:choices[w],count:repeat?streak.count+1:1};
       hofWin('ttt',w);
       tMood(w+1,'happy','이겼다!');tMood(2-w,'sad','아쉬워…');cheer(1.1);victoryJingle();
-      title=streak.count>=2?`${nameFor(w)} ${streak.count}연승!`:`${nameFor(w)} 승리!`;
+      title=streak.count>=2?`${gamePlayerName(w)} ${streak.count}연승!`:`${gamePlayerName(w)} 승리!`;
     }else{tMood(1,'surprised','막상막하!');tMood(2,'surprised','막상막하!');sfx('goal',.7);}
     const next=button('다음 도전자 ▶','primary',()=>{leaveTtt();enterSelection();});
     const again=button('↻ 바로 재대결','',tNewMatch);
@@ -12341,7 +12351,7 @@ var qrcode = function() {
       $('gxTip'+i).textContent=mine&&GX.phase==='human'?(GX.sel>=0?'초록 칸은 복제, 노란 칸은 점프':'내 세균을 눌러요'):'';
     }
     $('gxCaption').textContent='HOJA 세균전 · '+(GX.stage?GX.stage.name:'');
-    $('gxTurnText').textContent=(GX.phase==='human'||GX.phase==='ai')?nameFor(GX.turn-1)+' 차례':'';
+    $('gxTurnText').textContent=(GX.phase==='human'||GX.phase==='ai')?gamePlayerName(GX.turn-1)+' 차례':'';
     $('gxTurnText').className='game-time o-turn side'+(GX.turn-1);
     const left=GX.board?GX.board.reduce((s,v)=>s+(v===0?1:0),0):0;
     $('gxLeft').textContent='빈칸 '+left;
@@ -12353,7 +12363,7 @@ var qrcode = function() {
     GX.sel=-1;GX.hover=-1;GX.pid=null;GX.dragFrom=-1;GX.hints=[2,2];GX.undos=2;GX.hint=null;GX.history=[];GX.anim=[];GX.hop=null;GX.jumpRun=0;GX.last=-1;GX.banner=null;GX.sparks=[];GX.floats=[];
     GX.displayed=xCount(GX.board);GX.bgDirty=true;$('gxOverlay').hidden=true;
     for(let i=0;i<2;i++){
-      $('gxName'+i).textContent=nameFor(i);GX.faces[i].src=portraitFor(i);
+      $('gxName'+i).textContent=gamePlayerName(i);GX.faces[i].src=portraitFor(i);
       $('gxLabel'+i).textContent=aiLevel&&i===1?'COMPUTER · '+AI_LEVELS[aiLevel].label:i?'PLAYER 2 · 오른쪽':'PLAYER 1 · 왼쪽';
       const champ=streak.side===i&&streak.id===choices[i]&&streak.count>0;
       $('gxStreak'+i).textContent=champ?(streak.count>=2?streak.count+'연승 중':'챔피언'):'';
@@ -12362,7 +12372,7 @@ var qrcode = function() {
     }
     xBuildSprites();
     const first=Math.random()<.5?1:2;GX.turn=first;GX.phase='opening';xSync();
-    GX.banner={text:nameFor(first-1)+' 먼저!',color:SIDE_COLOR[first-1],until:performance.now()+1100,ms:1100};sfx('goal',.6);
+    GX.banner={text:gamePlayerName(first-1)+' 먼저!',color:SIDE_COLOR[first-1],until:performance.now()+1100,ms:1100};sfx('goal',.6);
     const tk=GX.token;setTimeout(()=>{if(GX.on&&tk===GX.token&&GX.phase==='opening')xBeginTurn(first);},1150);
     playMood('calm');
   }
@@ -12411,7 +12421,7 @@ var qrcode = function() {
     if(xHasMove(GX.board,GX.geo,opp)){xBeginTurn(opp);return;}
     // No move left for one side: the other side takes the remaining room, so nobody waits through empty turns.
     GX.phase='fill';xSync();
-    GX.banner={text:`${nameFor(opp-1)}는 움직일 곳이 없어요!`,color:'#7a5a2e',until:now+1300,ms:1300};sfx('soft',.9);
+    GX.banner={text:`${gamePlayerName(opp-1)}는 움직일 곳이 없어요!`,color:'#7a5a2e',until:now+1300,ms:1300};sfx('soft',.9);
     const tk=GX.token,empt=[];GX.board.forEach((v,i)=>{if(v===0)empt.push(i);});
     empt.forEach((c,k)=>setTimeout(()=>{
       if(!GX.on||tk!==GX.token)return;
@@ -12430,7 +12440,7 @@ var qrcode = function() {
       const repeat=streak.side===w&&streak.id===choices[w];
       streak={side:w,id:choices[w],count:repeat?streak.count+1:1};
       hofWin('germ',w);
-      title=streak.count>=2?`${nameFor(w)} ${streak.count}연승!`:`${nameFor(w)} 승리!`;
+      title=streak.count>=2?`${gamePlayerName(w)} ${streak.count}연승!`:`${gamePlayerName(w)} 승리!`;
       xMood(w+1,'happy','판을 뒤덮었다!');xMood(2-w,'sad','아쉬워…');cheer(1.1);victoryJingle();
     }else{xMood(1,'surprised','똑같아!');xMood(2,'surprised','다시 붙자!');sfx('goal',.7);}
     const next=button('다음 도전자 ▶','primary',()=>{leaveGerm();enterSelection();});
@@ -13349,7 +13359,7 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
   // Weekly settlement prizes: 1st, 2nd, 3rd of each game last week.
   const HOF_PRIZE={1:1,2:.5,3:.5};
   const HOF_MAX=40;
-  const HOF={cfg:null,pending:[],board:null,last:null,lastAt:0,period:'day',players:Array(6).fill(null),pollT:0,flushing:false,online:true,lastError:null};
+  const HOF={cfg:null,pending:[],board:null,last:null,lastAt:0,period:'day',players:Array(6).fill(null),playerNames:Array(6).fill(null),pollT:0,flushing:false,online:true,lastError:null};
   // Monday of last week on this PC's calendar, as YYYY-MM-DD.
   function hofLastMonday(now=new Date()){
     const d=new Date(now.getFullYear(),now.getMonth(),now.getDate());d.setDate(d.getDate()-((d.getDay()+6)%7)-7);
@@ -13372,6 +13382,17 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
     const t=$('hofToast');t.textContent=text;t.hidden=false;clearTimeout(t._h);t._h=setTimeout(()=>{t.hidden=true;},2600);
   }
   function hofName(seat){const n=HOF.cfg&&HOF.cfg.names&&HOF.cfg.names[seat-1];return n||seat+'번';}
+  // Names belong to selected students, not their character artwork. The slot order
+  // is the actual coin-paying/roster-picking order, including 3-6 player races.
+  function gamePlayerName(player){
+    if(!Number.isInteger(player)||player<0||player>=6)return '플레이어';
+    const chosen=HOF.playerNames&&HOF.playerNames[player];
+    if(chosen)return chosen;
+    const seat=HOF.players&&HOF.players[player];
+    if(seat&&HOF.cfg)return hofName(seat);
+    if(player===1&&aiLevel&&!PARTY_GAMES[currentGame]&&!['stairs','shop','jump'].includes(currentGame))return '컴퓨터';
+    return (player+1)+'P';
+  }
   /* Links carry the names after the #, which browsers never send to any server. */
   function hofEncode(names){
     const bytes=new TextEncoder().encode(JSON.stringify(names));let bin='';bytes.forEach(b=>{bin+=String.fromCharCode(b);});
@@ -13507,6 +13528,7 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
   function coinPick(n,done){
     const box=$('hofPicker'),picked=[];
     HOF.players=Array(6).fill(null);
+    HOF.playerNames=Array(6).fill(null);
     const price=n>1?0.5:1;
     const draw=(note)=>{
       const head=document.createElement('div');head.className='hof-pick-title';
@@ -13529,7 +13551,11 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
       const head=document.createElement('div');head.className='hof-pick-title';head.textContent='코인을 확인하는 중이에요';
       box.replaceChildren(head);
       coinSpend(picked,msg=>{
-        picked.slice(0,6).forEach((id,i)=>{const st=COIN.students.find(x=>x.id===id);HOF.players[i]=HOF.cfg&&COIN.mapped&&st&&st.number>=1&&st.number<=HOF_MAX?st.number:null;});
+        picked.slice(0,6).forEach((id,i)=>{
+          const st=COIN.students.find(x=>x.id===id);
+          HOF.playerNames[i]=st&&st.name?String(st.name).trim():null;
+          HOF.players[i]=HOF.cfg&&COIN.mapped&&st&&st.number>=1&&st.number<=HOF_MAX?st.number:null;
+        });
         box.hidden=true;
         const names=picked.map(id=>COIN.students.find(x=>x.id===id));
         hofToast(names.map(x=>x.name+' '+coinText(x.balance)+'코인').join(' · '));
@@ -13705,6 +13731,7 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
   }
   function hofPick(n,done){
     HOF.players=Array(6).fill(null);
+    HOF.playerNames=Array(6).fill(null);
     if(!HOF.cfg||!n){done();return;}
     const box=$('hofPicker');let side=0;
     const finish=()=>{box.hidden=true;done();};
@@ -13715,11 +13742,11 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
         const given=HOF.cfg.names[seat-1];if(!given)continue;
         const b=document.createElement('button');b.type='button';b.className='hof-seat';const num=document.createElement('small');num.textContent=seat+'번';b.append(num,document.createTextNode(given));
         b.disabled=HOF.players.includes(seat);
-        b.addEventListener('click',()=>{sfx('menu',.7);HOF.players[side]=seat;next();});
+        b.addEventListener('click',()=>{sfx('menu',.7);HOF.players[side]=seat;HOF.playerNames[side]=String(given).trim();next();});
         grid.append(b);
       }
       const guest=document.createElement('button');guest.type='button';guest.className='hof-seat guest';guest.textContent='손님 (기록 없음)';
-      guest.addEventListener('click',()=>{sfx('menu',.7);HOF.players[side]=null;next();});
+      guest.addEventListener('click',()=>{sfx('menu',.7);HOF.players[side]=null;HOF.playerNames[side]=null;next();});
       grid.append(guest);
       const head=document.createElement('div');head.className='hof-pick-title';head.textContent=title;
       box.replaceChildren(head,grid);
