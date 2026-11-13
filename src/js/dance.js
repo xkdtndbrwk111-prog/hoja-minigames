@@ -18,7 +18,8 @@
     const rand=rhSeed(song.seed+(stage.difficulty==='hard'?307:stage.difficulty==='normal'?101:17));
     const p=[{x:-1,y:0},{x:0,y:0}],ev=[],visited=new Set(['-1,0','0,0']);
     let heading=0,time=DA_LEAD;
-    const stepLen=60/(stage.difficulty==='easy'?Math.min(song.bpm,112):stage.difficulty==='hard'?Math.max(song.bpm,126):song.bpm);
+    // Motion and generated audio must share the exact song tempo.
+    const stepLen=60/song.bpm;
     for(let j=1;j<=stage.steps;j++){
       // Keep the board readable: progress mostly rightward, allow quarter-turns.
       const candidates=stage.difficulty==='easy'?[0,0,0,0,1,-1]:
