@@ -3,7 +3,12 @@
   const HOF_API='https://aolfbqfchzipyevtdhdy.supabase.co/rest/v1/rpc/',HOF_KEY='sb_publishable_5SFnvXsS7uWE376Iav97eQ_EFi5Nhg4';
   const HOF_HOME='https://xkdtndbrwk111-prog.github.io/hoja-minigames/';
   const HOF_GAMES=[
-    {id:'stairs',name:'무한 계단',unit:'층'},{id:'jump',name:'호자 점프',unit:'층'},{id:'shop',name:'붕어빵 가게',unit:'원'},
+    {id:'stairs',name:'무한 계단',unit:'층'},{id:'jump',name:'호자 점프',unit:'층'},
+    {id:'shop_solo',name:'붕어빵 1인 · 5일 총매출',unit:'원'},
+    {id:'shop_vs2',name:'붕어빵 2인 대결',unit:'원'},
+    {id:'shop_co2',name:'붕어빵 2인 협동',unit:'원',team:true},
+    {id:'shop_co4',name:'붕어빵 4인 협동',unit:'원',team:true},
+    {id:'shop',name:'붕어빵 이전 기록',unit:'원',legacy:true},
     {id:'hockey',name:'에어하키',unit:'승'},{id:'volley',name:'호자 배구',unit:'승'},{id:'bubble',name:'퍼즐버블',unit:'승'},
     {id:'othello',name:'오셀로',unit:'승'},{id:'gomoku',name:'오목',unit:'승'},{id:'ttt',name:'틱택토',unit:'승'},{id:'germ',name:'세균전',unit:'승'},{id:'rally',name:'파티 랠리',unit:'승'},
   ];
@@ -11,7 +16,7 @@
   // Weekly settlement prizes: 1st, 2nd, 3rd of each game last week.
   const HOF_PRIZE={1:1,2:.5,3:.5};
   const HOF_MAX=40;
-  const HOF={cfg:null,pending:[],board:null,last:null,lastAt:0,period:'day',players:[null,null],pollT:0,flushing:false,online:true};
+  const HOF={cfg:null,pending:[],board:null,last:null,lastAt:0,period:'day',players:Array(4).fill(null),pollT:0,flushing:false,online:true};
   // Monday of last week on this PC's calendar, as YYYY-MM-DD.
   function hofLastMonday(now=new Date()){
     const d=new Date(now.getFullYear(),now.getMonth(),now.getDate());d.setDate(d.getDate()-((d.getDay()+6)%7)-7);
@@ -64,7 +69,26 @@
     HOF.pending.push({code:HOF.cfg.code,seat,game,score:Math.round(score),at:new Date().toISOString()});
     if(HOF.pending.length>300)HOF.pending.shift();
     remember('hof-pending',JSON.stringify(HOF.pending));
-    hofToast(hofName(seat)+' 기록 저장!');
+    hofToast(hofName(seat)+' 기록 전송 대기');
+    hofFlush();
+  }
+  // A cooperative bakery result belongs to the complete team, never to each
+  // member as if they had independently earned the whole revenue.
+  function hofRecordTeam(game,seats,score){
+    roundClose();
+    const expected=game==='shop_co2'?2:game==='shop_co4'?4:0;
+    if(!HOF.cfg||!expected||!Array.isArray(seats)||seats.length!==expected
+      ||seats.some(n=>!Number.isInteger(n)||n<1||n>HOF_MAX)
+      ||new Set(seats).size!==expected){
+      if(HOF.cfg)hofToast('팀 전원의 학급 번호가 있어야 기록할 수 있어요');
+      return;
+    }
+    const key=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,13);
+    HOF.pending.push({code:HOF.cfg.code,seats:[...seats].sort((a,b)=>a-b),game,
+      score:Math.round(score),at:new Date().toISOString(),key,team:true});
+    if(HOF.pending.length>300)HOF.pending.shift();
+    remember('hof-pending',JSON.stringify(HOF.pending));
+    hofToast('팀 기록 전송 대기');
     hofFlush();
   }
   function hofWin(game,side){roundClose();if(!aiLevel)hofRecord(game,side,1);}
@@ -74,12 +98,18 @@
     try{
       while(HOF.pending.length){
         const p=HOF.pending[0];
-        const res=await hofRpc('hof_add_record',{p_code:p.code,p_seat:p.seat,p_game:p.game,p_score:p.score,p_at:p.at});
-        if(res==='too_fast'){retry=3500;break;}
+        const res=p.team
+          ?await hofRpc('hof_add_team_record',{p_code:p.code,p_seats:p.seats,p_game:p.game,p_score:p.score,p_at:p.at,p_key:p.key})
+          :await hofRpc('hof_add_record',{p_code:p.code,p_seat:p.seat,p_game:p.game,p_score:p.score,p_at:p.at});
+        if(res!=='ok'){
+          HOF.online=res==='too_fast';retry=res==='too_fast'?3500:30000;
+          hofToast('기록 미전송: '+String(res)+' · 다시 시도해요');break;
+        }
         HOF.pending.shift();remember('hof-pending',JSON.stringify(HOF.pending));
+        hofToast('명예의 전당 기록 저장 완료');
       }
-      HOF.online=true;
-    }catch(e){HOF.online=false;retry=30000;}
+      if(!retry)HOF.online=true;
+    }catch(e){HOF.online=false;retry=30000;hofToast('서버 연결 실패 · 기록을 보관 중이에요');}
     HOF.flushing=false;
     if(retry)setTimeout(hofFlush,retry);
     if(!$('hallScreen').hidden&&HOF.view==='main')hofRefresh();
