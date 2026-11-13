@@ -144,7 +144,7 @@
   O.faces.forEach(im=>im.addEventListener('load',()=>{oBuildSprites();}));
   const oSide=p=>p-1;
   const oIsAI=p=>aiLevel>0&&p===2;
-  const oName=p=>nameFor(oSide(p));
+  const oName=p=>gamePlayerName(oSide(p));
   function oMood(p,mood,note){
     const i=oSide(p),img=$('oPortrait'+i);
     img.src=portraitFor(i,mood);
@@ -205,7 +205,7 @@
     O.floats=[];O.sparks=[];O.counted=null;O.banner=null;O.displayed=oCount(O.board);
     O.bgDirty=true;$('oOverlay').hidden=true;
     for(let i=0;i<2;i++){
-      $('oName'+i).textContent=nameFor(i);
+      $('oName'+i).textContent=gamePlayerName(i);
       O.faces[i].src=portraitFor(i);
       $('oLabel'+i).textContent=aiLevel&&i===1?'COMPUTER · '+AI_LEVELS[aiLevel].label:i?'PLAYER 2 · 오른쪽':'PLAYER 1 · 왼쪽';
       oMood(i+1,'neutral',aiLevel&&i===1?'컴퓨터 상대':'한 판 해볼까?');
@@ -303,7 +303,7 @@
       const repeat=streak.side===winner&&streak.id===choices[winner];
       streak={side:winner,id:choices[winner],count:repeat?streak.count+1:1};
       hofWin('othello',winner);
-      title=streak.count>=2?`${nameFor(winner)} ${streak.count}연승!`:`${nameFor(winner)} 승리!`;
+      title=streak.count>=2?`${gamePlayerName(winner)} ${streak.count}연승!`:`${gamePlayerName(winner)} 승리!`;
       oMood(winner+1,'happy','이겼다!');oMood(2-winner,'sad','아쉬워…');
       sfx('goal',1.1);cheer(1.1);
       oConfetti([SIDE_COLOR[winner],SIDE_GLOW[winner],'#ffe08a','#ffffff']);
