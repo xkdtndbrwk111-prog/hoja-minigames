@@ -13332,10 +13332,10 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
   const HOF_HOME='https://xkdtndbrwk111-prog.github.io/hoja-minigames/';
   const HOF_GAMES=[
     {id:'stairs',name:'무한 계단',unit:'층'},{id:'jump',name:'호자 점프',unit:'층'},
-    {id:'shop_solo',name:'붕어빵 1인 · 5일 총매출',unit:'원'},
-    {id:'shop_vs2',name:'붕어빵 2인 대결',unit:'원'},
-    {id:'shop_co2',name:'붕어빵 2인 협동',unit:'원',team:true},
-    {id:'shop_co4',name:'붕어빵 4인 협동',unit:'원',team:true},
+    {id:'shop_solo',name:'붕어빵 1인 · 5일 총매출',unit:'원',noPrize:true},
+    {id:'shop_vs2',name:'붕어빵 2인 대결',unit:'원',noPrize:true},
+    {id:'shop_co2',name:'붕어빵 2인 협동',unit:'원',team:true,noPrize:true},
+    {id:'shop_co4',name:'붕어빵 4인 협동',unit:'원',team:true,noPrize:true},
     {id:'shop',name:'붕어빵 이전 기록',unit:'원',legacy:true},
     {id:'hockey',name:'에어하키',unit:'승'},{id:'volley',name:'호자 배구',unit:'승'},{id:'bubble',name:'퍼즐버블',unit:'승'},
     {id:'othello',name:'오셀로',unit:'승'},{id:'gomoku',name:'오목',unit:'승'},{id:'ttt',name:'틱택토',unit:'승'},{id:'germ',name:'세균전',unit:'승'},{id:'rally',name:'파티 랠리',unit:'승'},
@@ -13967,7 +13967,7 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
     const person=seat=>COIN.everyone.find(s=>s.number===seat);
     const awards=[],wins=[];
     for(const g of HOF_GAMES){
-      if(g.legacy)continue; // Never pay old mixed-mode scores as another new game.
+      if(g.noPrize)continue; // New modes have no automatic coin award policy yet.
       for(const r of hofRank(last.rows,g.id).slice(0,3)){
         const sts=hofEntrySeats(r).map(person);
         wins.push({g,r,sts});
@@ -13993,7 +13993,7 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
     const head=hofEl('p','hof-note',reply.already?`${hofWeekText(week)} 결산은 이미 했어요. 결과만 보여 줄게요.`:`${hofWeekText(week)} · 게임마다 1등 1코인, 2등·3등 0.5코인`);
     const grid=hofEl('div','hof-grid');
     for(const g of HOF_GAMES){
-      if(g.legacy)continue;
+      if(g.noPrize)continue;
       const card=hofEl('div','hof-card');card.append(hofEl('b','',g.name));
       const mine=wins.filter(w=>w.g===g);
       if(!mine.length)card.append(hofEl('span','hof-empty','-'));
