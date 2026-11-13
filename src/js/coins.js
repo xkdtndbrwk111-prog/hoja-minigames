@@ -473,7 +473,12 @@
       grid.append(card);
     }
     const row=hofEl('div','hof-row');
-    const status=hofEl('span','hof-status',hofQrStale()?'명단이 바뀌었어요. QR을 다시 나눠 주세요.':!HOF.online?'연결이 끊겼어요. 기록은 기기에 보관 중이에요.':(HOF.board&&HOF.board.recording===false)?'기록 꺼짐':'학급 코드 '+HOF.cfg.code);
+    const statusText=hofQrStale()?'명단이 바뀌었어요. QR을 다시 나눠 주세요.'
+      :!HOF.online?'오프라인 · 이전 순위가 표시될 수 있어요'
+      :(HOF.board&&HOF.board.recording===false)?'기록 꺼짐':'학급 코드 '+HOF.cfg.code;
+    const status=hofEl('span','hof-status',statusText
+      +(HOF.pending.length?' · 전송 대기 '+HOF.pending.length+'건':'')
+      +(HOF.lastError?' · 최근 오류: '+HOF.lastError:''));
     const teach=hofEl('button','control','교사 메뉴 (길게 누르기)');teach.type='button';
     let hold=0;const stop=()=>clearTimeout(hold);
     teach.addEventListener('pointerdown',()=>{stop();hold=setTimeout(()=>{sfx('menu',.8);hofGate();},800);});
