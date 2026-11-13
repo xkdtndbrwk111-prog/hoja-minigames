@@ -522,7 +522,7 @@
     const person=seat=>COIN.everyone.find(s=>s.number===seat);
     const awards=[],wins=[];
     for(const g of HOF_GAMES){
-      if(g.legacy)continue; // Never pay old mixed-mode scores as another new game.
+      if(g.noPrize)continue; // New modes have no automatic coin award policy yet.
       for(const r of hofRank(last.rows,g.id).slice(0,3)){
         const sts=hofEntrySeats(r).map(person);
         wins.push({g,r,sts});
@@ -548,7 +548,7 @@
     const head=hofEl('p','hof-note',reply.already?`${hofWeekText(week)} 결산은 이미 했어요. 결과만 보여 줄게요.`:`${hofWeekText(week)} · 게임마다 1등 1코인, 2등·3등 0.5코인`);
     const grid=hofEl('div','hof-grid');
     for(const g of HOF_GAMES){
-      if(g.legacy)continue;
+      if(g.noPrize)continue;
       const card=hofEl('div','hof-card');card.append(hofEl('b','',g.name));
       const mine=wins.filter(w=>w.g===g);
       if(!mine.length)card.append(hofEl('span','hof-empty','-'));
