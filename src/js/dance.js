@@ -4,13 +4,15 @@
      physical players, continuous circular motion, independent of the other rhythm engines.
      Existing boardLag is applied to event time, never to the animation timeline. */
   const DA_LEAD=1.8,DA_PERFECT=.075,DA_GOOD=.15,DA_TAU=Math.PI*2;
+  // Target length in real musical seconds, not a fixed number of notes: a slow
+  // tune should not force an unusually long game, or a fast tune a short one.
   const DA_STAGES=[
-    {id:'s-easy',name:'1인 · 쉬움',people:1,difficulty:'easy',steps:36,desc:'혼자 두 친구를 움직여요 · 일정한 박자'},
-    {id:'s-normal',name:'1인 · 보통',people:1,difficulty:'normal',steps:48,desc:'혼자 누르기 · 꺾이는 발판과 변하는 박자'},
-    {id:'s-hard',name:'1인 · 어려움',people:1,difficulty:'hard',steps:64,desc:'혼자 누르기 · 빠른 박자에 도전'},
-    {id:'d-easy',name:'2인 협동 · 쉬움',people:2,difficulty:'easy',steps:36,desc:'호자와 나한상 차례에 각각 한 번씩 눌러요'},
-    {id:'d-normal',name:'2인 협동 · 보통',people:2,difficulty:'normal',steps:48,desc:'서로 박자를 맞추며 꺾이는 발판 통과'},
-    {id:'d-hard',name:'2인 협동 · 어려움',people:2,difficulty:'hard',steps:64,desc:'둘이 번갈아 빠르고 정확하게 터치'}
+    {id:'s-easy',name:'1인 · 쉬움',people:1,difficulty:'easy',targetSeconds:60,desc:'약 60초 · 혼자 두 캐릭터를 조작'},
+    {id:'s-normal',name:'1인 · 보통',people:1,difficulty:'normal',targetSeconds:80,desc:'약 80초 · 꺾이는 발판을 통과'},
+    {id:'s-hard',name:'1인 · 어려움',people:1,difficulty:'hard',targetSeconds:100,desc:'약 100초 · 복잡한 회전에 도전'},
+    {id:'d-easy',name:'2인 협동 · 쉬움',people:2,difficulty:'easy',targetSeconds:60,desc:'약 60초 · 두 학생이 번갈아 터치'},
+    {id:'d-normal',name:'2인 협동 · 보통',people:2,difficulty:'normal',targetSeconds:80,desc:'약 80초 · 호흡을 맞춰 회전'},
+    {id:'d-hard',name:'2인 협동 · 어려움',people:2,difficulty:'hard',targetSeconds:100,desc:'약 100초 · 복잡한 회전을 함께 도전'}
   ];
   // Pure chart generator. One fixed orb is at path[j], the other rotates from
   // path[j-1] to path[j+1]; alternating the fixed orb on each target.
@@ -20,7 +22,7 @@
     let heading=0,time=DA_LEAD;
     // Motion and generated audio must share the exact song tempo.
     const stepLen=60/song.bpm;
-    for(let j=1;j<=stage.steps;j++){
+    for(let j=1;j<=400&&time-DA_LEAD<stage.targetSeconds;j++){
       // Keep the board readable: progress mostly rightward, allow quarter-turns.
       const candidates=stage.difficulty==='easy'?[0,0,0,0,1,-1]:
         stage.difficulty==='normal'?[0,0,1,-1,1,-1]:[0,1,1,-1,-1,0];
@@ -43,7 +45,7 @@
       time+=duration;
       ev.push({j,at:time,from,arc,duration,owner:(j-1)%2});
     }
-    return {path:p,events:ev,beat:stepLen,end:time};
+    return {path:p,events:ev,beat:stepLen,end:time,duration:time-DA_LEAD};
   }
   // Event timestamp -> monotonic time. Browser pointer timestamps are normally
   // performance-relative; old epoch-based implementations get normalized.
@@ -62,7 +64,7 @@
     const keys=paEl('div','da-keys'+(solo?' da-one':''));
     const picker=paEl('div','da-picker');
     host.append(canvas,keys,picker);
-    const portraits=['HOJA','NAHANSANG'].map(id=>{
+    const portraits=choices.slice(0,2).map(id=>{
       const im=new Image();im.src=characterPortrait(id,'neutral');return im;
     });
     const colors=['#31b69e','#e69a58'];
@@ -73,8 +75,8 @@
     keys.append(left);
     if(!solo)keys.append(right);
     function labels(){
-      left.textContent=solo?'터치해서 회전 · SPACE':gamePlayerName(0)+' · 호자 차례 (A)';
-      right.textContent=gamePlayerName(1)+' · 나한상 차례 (L)';
+      left.textContent=solo?'터치해서 회전 · SPACE':gamePlayerName(0)+' · '+nameFor(0)+' (A)';
+      right.textContent=gamePlayerName(1)+' · '+nameFor(1)+' (L)';
     }
     labels();
     function resize(){
@@ -154,7 +156,8 @@
         if(solo)hofRecord('dance_solo',0,d.score);
         else hofRecordTeam('dance_duo',HOF.players.slice(0,2),d.score);
       }
-      const people=solo?gamePlayerName(0):gamePlayerName(0)+' · '+gamePlayerName(1);
+      const people=solo?gamePlayerName(0)+' ('+nameFor(0)+' + '+nameFor(1)+')':
+        gamePlayerName(0)+' ('+nameFor(0)+') · '+gamePlayerName(1)+' ('+nameFor(1)+')';
       const detail=people+' · 팀 점수 '+d.score+'점 · PERFECT '+d.perfect+' · GREAT '+d.good+
         ' · MISS '+d.miss+' · 최고 콤보 '+d.best;
       paEnd(null,detail);
@@ -166,7 +169,7 @@
       g.beginPath();g.arc(0,0,r,0,DA_TAU);g.fill();g.stroke();
       const im=portraits[id];
       if(im.complete&&im.naturalWidth)g.drawImage(im,-r*.84,-r*.84,r*1.68,r*1.68);
-      else{g.fillStyle='#fff';g.font='bold '+r+'px sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(id?'나':'호',0,0);}
+      else{g.fillStyle='#fff';g.font='bold '+r+'px sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(nameFor(id).slice(0,1),0,0);}
       g.restore();
     }
     function draw(t,dt){
@@ -236,21 +239,27 @@
       const cues=[];
       const add=(time,kind,more)=>{if(time<=end)cues.push(Object.assign({time,kind},more));};
       for(let i=0;i<=Math.ceil(end/chart.beat);i++)add(DA_LEAD+i*chart.beat,'drum',{sound:'kick'});
-      for(const n of music.drums)add(DA_LEAD+n.step*music.stepLen,'drum',{sound:n.kind});
-      for(const n of music.bass)add(DA_LEAD+n.step*music.stepLen,'tone',{midi:n.midi,len:n.len*music.stepLen,wave:'triangle',vol:.11});
-      for(const n of music.notes)add(DA_LEAD+n.step*music.stepLen,'tone',{midi:n.midi,len:Math.min(n.len,4)*music.stepLen,wave:song.lead,vol:.09});
+      // Long levels can exceed one song arrangement. Repeat the original
+      // generated phrase so melody and accompaniment never fall silent.
+      const loopSeconds=music.totalSteps*music.stepLen;
+      for(let offset=0;offset<end-DA_LEAD;offset+=loopSeconds){
+        for(const n of music.drums)add(DA_LEAD+offset+n.step*music.stepLen,'drum',{sound:n.kind});
+        for(const n of music.bass)add(DA_LEAD+offset+n.step*music.stepLen,'tone',{midi:n.midi,len:n.len*music.stepLen,wave:'triangle',vol:.11});
+        for(const n of music.notes)add(DA_LEAD+offset+n.step*music.stepLen,'tone',{midi:n.midi,len:Math.min(n.len,4)*music.stepLen,wave:song.lead,vol:.09});
+      }
       cues.sort((a,b)=>a.time-b.time);
       const audio=rhAudioOk();
       active={song,chart,cues,cue:0,score:0,hits:[0,0],next:0,combo:0,best:0,perfect:0,good:0,miss:0,
         fx:[],message:'',messageUntil:0,done:false,audio,startAudio:ac?ac.currentTime:0,startPerf:performance.now(),
         lastTick:performance.now(),lastCtx:ac?ac.currentTime:0};
       cam={x:0,y:0};
-      paHint(solo?'하나의 버튼으로 두 캐릭터를 차례로 회전시켜요':gamePlayerName(0)+' / '+gamePlayerName(1)+' · 서로 번갈아 누르세요');
+      paHint(solo?nameFor(0)+'와 '+nameFor(1)+' · 하나의 버튼으로 교대 회전':
+        gamePlayerName(0)+'('+nameFor(0)+') / '+gamePlayerName(1)+'('+nameFor(1)+') · 서로 번갈아 누르세요');
       paTime('전자칠판 보정 '+Math.round(boardLag*1000)+'ms');
       sfx('goal',.45);
     }
     const headline=paEl('h2','da-picker-title','호자와 나한상의 춤');
-    const desc=paEl('p','da-picker-desc',stage.name+' · '+stage.desc+' · 기존 전자칠판 보정값 사용');
+    const desc=paEl('p','da-picker-desc',stage.name+' · '+stage.desc+' · 캐릭터 '+nameFor(0)+' / '+nameFor(1)+' · 기존 전자칠판 보정값 사용');
     const songs=paEl('div','da-song-grid');
     const featured=RH_SONGS.filter(s=>['march','break','run','fish','star','king'].includes(s.id));
     for(const song of featured){
