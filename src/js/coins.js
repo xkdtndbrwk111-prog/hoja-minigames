@@ -253,7 +253,12 @@
   }
   /* Who is playing */
   function hofNeeded(){
-    if(!HOF.cfg)return 0;if(currentGame==='rally')return 2;if(PARTY_GAMES[currentGame])return 0;
+    if(!HOF.cfg)return 0;if(currentGame==='rally')return 2;
+    if(currentGame==='flash'){
+      const mode=PARTY_GAMES.flash.stages.find(st=>st.id===PARTY_GAMES.flash.sel);
+      return mode&&mode.people===1?1:2;
+    }
+    if(PARTY_GAMES[currentGame])return 0;
     if(currentGame==='stairs'){const st=ST_STAGES.find(s=>s.id===stairsStage);return st.n;}
     if(currentGame==='shop')return shopStage==='solo'?1:shopStage==='versus'||shopStage==='co2'?2:shopStage==='co4'?4:0;
     return aiLevel?0:2;
