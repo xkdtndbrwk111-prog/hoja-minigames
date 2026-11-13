@@ -115,14 +115,19 @@
       }
       active.next++;
       const perfect=abs<=DA_PERFECT;
-      active.score+=perfect?3:1;
-      active.hits[ev.owner]+=perfect?3:1;
+      // A full PERFECT run is always 300 points, regardless of song BPM,
+      // difficulty, or total number of notes. This keeps the two existing
+      // hall-of-fame categories fair without changing the backend schema.
+      const earned=perfect?3:1,totalPossible=active.chart.events.length*3;
+      active.rawPoints+=earned;
+      active.hits[ev.owner]+=earned;
+      active.score=Math.round(active.rawPoints*300/totalPossible);
       active.combo++;active.best=Math.max(active.best,active.combo);
       if(perfect)active.perfect++;else active.good++;
       active.fx.push({j:ev.j,age:0,perfect});
       if(active.fx.length>8)active.fx.shift();
-      paSetScore(0,solo?active.score:active.hits[0]);
-      if(!solo)paSetScore(1,active.hits[1]);
+      paSetScore(0,solo?active.score:Math.round(active.hits[0]*300/totalPossible));
+      if(!solo)paSetScore(1,Math.round(active.hits[1]*300/totalPossible));
       feedback(perfect?'PERFECT!':'GREAT!',ev.owner);
       if(rhAudioOk())rhTone(perfect?84:76,ac.currentTime,.10,'triangle',.12);
       const following=active.chart.events[active.next];
@@ -158,7 +163,7 @@
       }
       const people=solo?gamePlayerName(0)+' ('+nameFor(0)+' + '+nameFor(1)+')':
         gamePlayerName(0)+' ('+nameFor(0)+') · '+gamePlayerName(1)+' ('+nameFor(1)+')';
-      const detail=people+' · 팀 점수 '+d.score+'점 · PERFECT '+d.perfect+' · GREAT '+d.good+
+      const detail=people+' · 기록 '+d.score+'/300점 · PERFECT '+d.perfect+' · GREAT '+d.good+
         ' · MISS '+d.miss+' · 최고 콤보 '+d.best;
       paEnd(null,detail);
       $('paOverlayTitle').textContent=solo?'혼자 완주!':'둘이서 완주!';
@@ -216,7 +221,7 @@
       g.font='900 '+font+'px "HojaBody",sans-serif';g.fillStyle='#e8e6d7';
       g.fillText((solo?'1인':'2인 협동')+' · '+d.song.name+' · '+(d.next)+' / '+events.length,W*.5,H*.075);
       g.font='900 '+Math.round(font*1.32)+'px "HojaTitle","HojaBody",sans-serif';g.fillStyle='#ffdf77';
-      g.fillText('팀 점수 '+d.score+'   콤보 '+d.combo,W*.5,H*.16);
+      g.fillText('기록 '+d.score+'/300   콤보 '+d.combo,W*.5,H*.16);
       if(t<DA_LEAD){
         const count=Math.max(1,Math.ceil((DA_LEAD-t)/chart.beat));
         g.font='900 '+Math.round(Math.min(H*.12,W*.08))+'px "HojaTitle","HojaBody",sans-serif';
@@ -249,7 +254,7 @@
       }
       cues.sort((a,b)=>a.time-b.time);
       const audio=rhAudioOk();
-      active={song,chart,cues,cue:0,score:0,hits:[0,0],next:0,combo:0,best:0,perfect:0,good:0,miss:0,
+      active={song,chart,cues,cue:0,score:0,rawPoints:0,hits:[0,0],next:0,combo:0,best:0,perfect:0,good:0,miss:0,
         fx:[],message:'',messageUntil:0,done:false,audio,startAudio:ac?ac.currentTime:0,startPerf:performance.now(),
         lastTick:performance.now(),lastCtx:ac?ac.currentTime:0};
       cam={x:0,y:0};
