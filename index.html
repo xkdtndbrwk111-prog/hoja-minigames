@@ -7348,6 +7348,9 @@ var qrcode = function() {
         keys.children[i].classList.toggle('da-turn',Boolean(next)&&(solo||next.owner===i));
     }
     function start(song){
+      // The song picker is a free preview. The paid play begins only once a
+      // tune is actually selected, even if the child never hits the first note.
+      roundBegin();
       picker.remove();
       const chart=daChart(song,stage),music=rhCompose(song),end=chart.end+.85;
       const cues=[];
