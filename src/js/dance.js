@@ -257,6 +257,19 @@
     }
     picker.append(headline,desc,songs);
     return {
+      pause(){
+        if(!active||active.done||active.pausedAt)return;
+        active.pausedAt=performance.now();
+        active.pauseAudio=ac?ac.currentTime:0;
+      },
+      resume(){
+        if(!active||!active.pausedAt)return;
+        const now=performance.now();
+        active.startPerf+=now-active.pausedAt;
+        if(active.audio&&ac)active.startAudio+=ac.currentTime-active.pauseAudio;
+        active.lastTick=now;active.lastCtx=ac?ac.currentTime:0;
+        active.pausedAt=0;
+      },
       frame(dt){
         if(stopped||!active)return;
         const now=performance.now(),gap=now-active.lastTick;
