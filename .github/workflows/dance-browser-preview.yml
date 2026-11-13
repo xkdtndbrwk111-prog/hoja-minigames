@@ -26,7 +26,7 @@ jobs:
           const assert=require('node:assert/strict');
           const {chromium}=require('playwright-core');
           (async()=>{
-            const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+            const browser=await chromium.launch({headless:true,executablePath:'/usr/bin/google-chrome',args:['--no-sandbox']});
             const page=await browser.newPage({viewport:{width:1600,height:900},hasTouch:true});
             const errors=[];
             page.on('pageerror',err=>errors.push(err.message));
