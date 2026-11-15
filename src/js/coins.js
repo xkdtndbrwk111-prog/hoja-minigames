@@ -52,7 +52,7 @@
     if(COIN.uncertain&&(!v3||!sameRequest(COIN.uncertain,ids,game))){fail('이전 코인 결제 결과부터 확인해 주세요. 같은 학생으로 다시 시도해 주세요.');return;}
     const p=COIN.uncertain||{txId:crypto.randomUUID(),classId:COIN.classId,ids:[...ids],game};
     const payload={type:'hoja-coin-spend',req,game,ids:[...ids],...(v3?{txId:p.txId,classId:p.classId}:{})};
-    COIN.paying=true;
+    COIN.paying=true;if(v3)COIN.uncertain=p;
     let attempts=0,timer;const send=()=>{attempts++;window.parent.postMessage(payload,DASHBOARD_ORIGIN);timer=setTimeout(()=>{if(v3&&attempts<3){send();return;}COIN.pending.delete(req);COIN.paying=false;if(v3)COIN.uncertain=p;fail('대시보드 응답이 없어요. 같은 학생으로 다시 시도해 주세요.');},5000);};
     COIN.pending.set(req,msg=>{
       clearTimeout(timer);COIN.paying=false;
@@ -142,6 +142,7 @@
     if(msg.type==='hoja-roster'){
       const nextClass=typeof msg.classId==='string'?msg.classId:'';
       if(COIN.ready&&COIN.protocol>=3&&nextClass!==COIN.classId){roundClose();TRY.left=0;COIN.lastIds=[];HOF.players=Array(6).fill(null);HOF.playerNames=Array(6).fill(null);}
+      if(COIN.uncertain&&COIN.uncertain.classId!==nextClass&&!COIN.paying){const p=COIN.uncertain;COIN.refunds.set(p.txId,{classId:p.classId,why:'학급이 변경되어'});sendRefund(p.txId);COIN.uncertain=null;}
       COIN.ready=true;COIN.protocol=Number(msg.version)||0;COIN.classId=nextClass;
       COIN.students=msg.students||[];COIN.floor=typeof msg.floor==='number'?msg.floor:-3;
       COIN.on=Boolean(msg.enabled)&&COIN.students.length>0;COIN.enabled=Boolean(msg.enabled);
@@ -160,6 +161,8 @@
       const cb=COIN.pending.get(msg.req);if(cb){COIN.pending.delete(msg.req);cb(msg);}
     }
   });
+  function cancelPendingPayment(){if(COIN.protocol>=3&&COIN.uncertain){const p=COIN.uncertain;window.parent.postMessage({type:'hoja-coin-refund',charge:p.txId,classId:p.classId},DASHBOARD_ORIGIN);}}
+  if(EMBED)window.addEventListener('pagehide',cancelPendingPayment);
   if(EMBED)setInterval(()=>{if(!COIN.ready)window.parent.postMessage({type:'hoja-ready'},DASHBOARD_ORIGIN);for(const charge of COIN.refunds.keys())sendRefund(charge);},5000);
   /* Dashboards from V1.16 keep each class's link and fixed seats on the PC. */
   function hofUseRoster(msg){
@@ -413,7 +416,7 @@
       try{
         const made=await hofRpc('hof_create_class');
         HOF.cfg={code:made.code,teacher:made.teacher,names:list,pin:pin.value};HOF.board=null;hofSaveCfg();
-        if(EMBED&&COIN.v2)window.parent.postMessage({type:'hoja-setup',enabled:coin.checked,hof:{code:made.code,teacher:made.teacher,pin:pin.value,seats:{},keep:{}}},DASHBOARD_ORIGIN);
+        if(EMBED&&COIN.v2)window.parent.postMessage({type:'hoja-setup',classId:COIN.classId,enabled:coin.checked,hof:{code:made.code,teacher:made.teacher,pin:pin.value,seats:{},keep:{}}},DASHBOARD_ORIGIN);
         hofShowCodes();
       }catch{msg.textContent='만들지 못했어요. 인터넷 연결을 확인해 주세요.';}
     }),hofBtn('취소','',hofShowStart));
