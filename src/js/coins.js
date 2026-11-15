@@ -2,7 +2,7 @@
      Inside the dashboard, games cost coins from the ledger on that PC.
      On a device opened through a class link, the limit is five plays a day, kept in this browser.
      Anywhere else nothing changes. */
-  const COIN={on:false,students:[],everyone:[],v2:false,mapped:true,chosen:true,className:'',dismissed:false,pending:new Map(),seq:0,lastIds:[]};
+  const COIN={on:false,students:[],everyone:[],v2:false,mapped:true,chosen:true,className:'',dismissed:false,pending:new Map(),seq:0,lastIds:[],ready:false,protocol:0,classId:'',paying:false,uncertain:null,refunds:new Map()};
   const TRY_PLAN={flap:5,stack:5,tiles:5,simon:5,stairs:5,jump:5,dodge:3,draw:3,bomb:3,tron:3,rush:3};
   const TRY={game:null,left:0};
   function tryStart(){const n=TRY_PLAN[currentGame]||0;TRY.game=currentGame;TRY.left=n?n-1:0;return n>0;}
@@ -30,7 +30,7 @@
     if(r.tries)return;
     if(r.t0&&Date.now()-r.t0>=REFUND_MS)return;
     const why=r.t0?'10초 안에 끝나서':'시작하기 전에 나가서';
-    if(r.charge){window.parent.postMessage({type:'hoja-coin-refund',charge:r.charge},DASHBOARD_ORIGIN);hofToast(why+' 코인을 돌려줬어요');COIN.lastIds.forEach(id=>{const st=COIN.students.find(x=>x.id===id);if(st)st.balance+=r.price;});}
+    if(r.charge){if(COIN.protocol>=3){COIN.refunds.set(r.charge,{classId:r.classId,why});sendRefund(r.charge);}else{window.parent.postMessage({type:'hoja-coin-refund',charge:r.charge},DASHBOARD_ORIGIN);hofToast('환불을 요청했어요.');window.parent.postMessage({type:'hoja-ready'},DASHBOARD_ORIGIN);}}
     else if(r.day){setPlays(playsToday()-1);hofToast(why+' 횟수를 돌려줬어요');}
   }
   function playersNeeded(){
@@ -39,19 +39,33 @@
     if(currentGame==='shop'){const st=SH_STAGES.find(x=>x.id===shopStage);return st?(st.people||(shopStage==='versus'?2:1)):1;}
     return aiLevel?1:2;
   }
+  function sendRefund(charge){
+    const r=COIN.refunds.get(charge);if(!r)return;
+    window.parent.postMessage({type:'hoja-coin-refund',charge,classId:r.classId},DASHBOARD_ORIGIN);
+  }
+  function sameRequest(p,ids,game){return p.classId===COIN.classId&&p.game===game&&JSON.stringify(p.ids)===JSON.stringify(ids);}
   function coinSpend(ids,done,fail){
-    const req=++COIN.seq;
-    const timer=setTimeout(()=>{COIN.pending.delete(req);fail('대시보드 응답이 없어요. 다시 해 주세요.');},5000);
+    if(COIN.paying)return;
+    if(!COIN.ready||!COIN.on){fail('코인 연결을 확인해 주세요.');return;}
+    const req=++COIN.seq,game=currentGame==='shop'?'붕어빵 가게':(HOF_GAMES.find(g=>g.id===currentGame)||{}).name||(PARTY_GAMES[currentGame]||{}).name||currentGame;
+    const v3=COIN.protocol>=3;
+    if(COIN.uncertain&&(!v3||!sameRequest(COIN.uncertain,ids,game))){fail('이전 코인 결제 결과부터 확인해 주세요. 같은 학생으로 다시 시도해 주세요.');return;}
+    const p=COIN.uncertain||{txId:crypto.randomUUID(),classId:COIN.classId,ids:[...ids],game};
+    const payload={type:'hoja-coin-spend',req,game,ids:[...ids],...(v3?{txId:p.txId,classId:p.classId}:{})};
+    COIN.paying=true;
+    let attempts=0,timer;const send=()=>{attempts++;window.parent.postMessage(payload,DASHBOARD_ORIGIN);timer=setTimeout(()=>{if(v3&&attempts<3){send();return;}COIN.pending.delete(req);COIN.paying=false;if(v3)COIN.uncertain=p;fail('대시보드 응답이 없어요. 같은 학생으로 다시 시도해 주세요.');},5000);};
     COIN.pending.set(req,msg=>{
-      clearTimeout(timer);
-      if(!msg.ok){fail(msg.message||'시작하지 못했어요.');return;}
+      clearTimeout(timer);COIN.paying=false;
+      if(!msg.ok){if(v3&&msg.retryable)COIN.uncertain=p;else COIN.uncertain=null;fail(msg.message||'시작하지 못했어요.');return;}
+      if(v3&&(msg.classId!==p.classId||msg.charge!==p.txId)){COIN.uncertain=p;fail('결제 결과가 일치하지 않아요.');return;}
+      COIN.uncertain=null;
+      if(v3&&COIN.classId!==p.classId){COIN.refunds.set(msg.charge,{classId:p.classId,why:'학급이 변경되어'});sendRefund(msg.charge);fail('학급이 바뀌었어요. 게임을 다시 열어 주세요.');return;}
       for(const [id,balance] of Object.entries(msg.balances||{})){const st=COIN.students.find(x=>x.id===id);if(st)st.balance=balance;}
-      COIN.lastIds=ids;
-      round={charge:msg.charge,price:msg.price,t0:null,tries:tryStart()};
+      COIN.lastIds=[...ids];
+      round={charge:msg.charge,classId:p.classId,price:msg.price,t0:null,tries:tryStart()};
       done(msg);
     });
-    const game=currentGame==='shop'?'붕어빵 가게':(HOF_GAMES.find(g=>g.id===currentGame)||{}).name||(PARTY_GAMES[currentGame]||{}).name||currentGame;
-    window.parent.postMessage({type:'hoja-coin-spend',req,game,ids},DASHBOARD_ORIGIN);
+    send();
   }
   const coinText=v=>Number.isInteger(v)?String(v):v.toFixed(1);
   function coinPick(n,done){
@@ -98,6 +112,7 @@
   }
   // Every new game goes through here.
   function playGate(n,hofCount,done){
+    if(EMBED&&(!COIN.ready||COIN.paying||COIN.uncertain&&!COIN.on||COIN.enabled&&!COIN.on)){hofToast('대시보드 코인 연결을 확인해 주세요.');window.parent.postMessage({type:'hoja-ready'},DASHBOARD_ORIGIN);return;}
     if(EMBED&&COIN.on){coinPick(n,done);return;}
     if(limited()){
       if(playsToday()>=DAY_LIMIT){dayLimitReached();return;}
@@ -108,6 +123,7 @@
   }
   // "Play again" inside a game is a new round with the same players.
   function replayGate(fn){
+    if(EMBED&&(!COIN.ready||COIN.paying||COIN.uncertain&&!COIN.on||COIN.enabled&&!COIN.on)){hofToast('대시보드 코인 연결을 확인해 주세요.');return;}
     roundClose();
     if(tryOpen()){TRY.left--;round={tries:true,t0:Date.now()};hofToast(TRY.left?`남은 판 ${TRY.left}`:'마지막 판이에요');fn();return;}
     if(EMBED&&COIN.on){
@@ -124,6 +140,9 @@
     if(!EMBED||event.origin!==DASHBOARD_ORIGIN||event.source!==window.parent||!event.data)return;
     const msg=event.data;
     if(msg.type==='hoja-roster'){
+      const nextClass=typeof msg.classId==='string'?msg.classId:'';
+      if(COIN.ready&&COIN.protocol>=3&&nextClass!==COIN.classId){roundClose();TRY.left=0;COIN.lastIds=[];HOF.players=Array(6).fill(null);HOF.playerNames=Array(6).fill(null);}
+      COIN.ready=true;COIN.protocol=Number(msg.version)||0;COIN.classId=nextClass;
       COIN.students=msg.students||[];COIN.floor=typeof msg.floor==='number'?msg.floor:-3;
       COIN.on=Boolean(msg.enabled)&&COIN.students.length>0;COIN.enabled=Boolean(msg.enabled);
       COIN.hofWeeks=Array.isArray(msg.hofWeeks)?msg.hofWeeks:null;
@@ -134,10 +153,14 @@
         for(const st of COIN.students)if(st.number>=1&&st.number<=20)names[st.number-1]=String(st.name).slice(0,12);
         HOF.cfg.names=names;hofSaveCfg();
       }
+    }else if(msg.type==='hoja-refund-result'){
+      const r=COIN.refunds.get(msg.charge);if(!r)return;if(msg.retryable)return;COIN.refunds.delete(msg.charge);
+      if(msg.ok){if(msg.classId===COIN.classId)for(const [id,b] of Object.entries(msg.balances||{})){const st=COIN.students.find(x=>x.id===id);if(st)st.balance=b;}hofToast(r.why+' 코인을 돌려줬어요');}else hofToast('환불을 확인할 수 없어요. 선생님께 알려 주세요.');
     }else if(msg.type==='hoja-coin-result'||msg.type==='hoja-hof-week-result'){
       const cb=COIN.pending.get(msg.req);if(cb){COIN.pending.delete(msg.req);cb(msg);}
     }
   });
+  if(EMBED)setInterval(()=>{if(!COIN.ready)window.parent.postMessage({type:'hoja-ready'},DASHBOARD_ORIGIN);for(const charge of COIN.refunds.keys())sendRefund(charge);},5000);
   /* Dashboards from V1.16 keep each class's link and fixed seats on the PC. */
   function hofUseRoster(msg){
     COIN.v2=true;COIN.everyone=msg.everyone||[];COIN.chosen=Boolean(msg.chosen);COIN.className=msg.className||'';COIN.mapped=Boolean(msg.hof);
@@ -156,7 +179,7 @@
     const shared=preference('hof-qr-names','');
     return Boolean(shared&&HOF.cfg&&shared!==JSON.stringify(HOF.cfg.names));
   }
-  function hofSetup(data){window.parent.postMessage({type:'hoja-setup',...data},DASHBOARD_ORIGIN);}
+  function hofSetup(data){window.parent.postMessage({type:'hoja-setup',...data,classId:COIN.classId},DASHBOARD_ORIGIN);}
   function hofPinInput(){
     const pin=hofEl('input','hof-input');pin.id='hofFirstPin';pin.inputMode='numeric';pin.maxLength=4;pin.placeholder='잠금 숫자 4자리';pin.autocomplete='off';
     return pin;
@@ -570,7 +593,7 @@
     const reply=await new Promise(res=>{
       const timer=setTimeout(()=>{COIN.pending.delete(req);res(null);},8000);
       COIN.pending.set(req,m=>{clearTimeout(timer);res(m);});
-      window.parent.postMessage({type:'hoja-hof-week',req,week,awards},DASHBOARD_ORIGIN);
+      window.parent.postMessage({type:'hoja-hof-week',req,week,awards,classId:COIN.classId},DASHBOARD_ORIGIN);
     });
     if(!reply||!reply.ok){msg.textContent=(reply&&reply.message)||'대시보드 응답이 없어요. 다시 해 주세요.';$('hofBody').append(hofBtn('← 명예의 전당','primary',hofShowMain));return;}
     for(const [id,b] of Object.entries(reply.balances||{})){const st=COIN.students.find(x=>x.id===id);if(st)st.balance=b;}
