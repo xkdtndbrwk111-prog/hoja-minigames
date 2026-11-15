@@ -25,7 +25,7 @@
     $('fullscreenButton').hidden=true;
     $('dashboardBack').hidden=false;
     // Leaving straight to the dashboard settles the round first, so a game never started is refunded.
-    $('dashboardBack').addEventListener('click',()=>{sfx('menu',.7);roundClose();window.parent.postMessage({type:'hoja-close'},DASHBOARD_ORIGIN);});
+    $('dashboardBack').addEventListener('click',()=>{sfx('menu',.7);roundClose();cancelPendingPayment();window.parent.postMessage({type:'hoja-close'},DASHBOARD_ORIGIN);});
     window.addEventListener('pagehide',()=>roundClose());
     window.parent.postMessage({type:'hoja-ready'},DASHBOARD_ORIGIN);
   }
