@@ -168,13 +168,13 @@
   function hofUseRoster(msg){
     COIN.v2=true;COIN.everyone=msg.everyone||[];COIN.chosen=Boolean(msg.chosen);COIN.className=msg.className||'';COIN.mapped=Boolean(msg.hof);
     if(msg.hof){
-      if(!HOF.cfg||HOF.cfg.code!==msg.hof.code)HOF.board=null;
+      if(!HOF.cfg||HOF.cfg.code!==msg.hof.code){HOF.board=null;HOF.last=null;HOF.lastAt=0;}
       HOF.cfg={code:msg.hof.code,teacher:msg.hof.teacher,pin:msg.hof.pin,names:msg.names||[],linked:true};hofSaveCfg();
       if(hofQrStale())hofToast('명단이 바뀌었어요. 태블릿 QR을 다시 나눠 주세요.');
       return;
     }
     // Another class is open, so the last class's link no longer applies.
-    if(HOF.cfg&&HOF.cfg.linked){HOF.cfg=null;HOF.board=null;try{localStorage.removeItem('hoja-airhockey-hof');localStorage.removeItem('hoja-airhockey-hof-board');}catch{}}
+    if(HOF.cfg&&HOF.cfg.linked){HOF.cfg=null;HOF.board=null;HOF.last=null;HOF.lastAt=0;try{localStorage.removeItem('hoja-airhockey-hof');localStorage.removeItem('hoja-airhockey-hof-board');}catch{}}
     if(COIN.dismissed||!COIN.everyone.length||$('menuScreen').hidden)return;
     if(HOF.cfg||!COIN.chosen)hofFirstRun();
   }
@@ -557,14 +557,15 @@
   }
   async function hofLoadLastWeek(force){
     if(!HOF.cfg)return null;
-    const week=hofLastMonday();
-    if(!force&&HOF.last&&HOF.last.week===week&&Date.now()-HOF.lastAt<60000)return HOF.last;
+    const week=hofLastMonday(),code=HOF.cfg.code;
+    if(!force&&HOF.last&&HOF.last.code===code&&HOF.last.week===week&&Date.now()-HOF.lastAt<60000)return HOF.last;
     try{
-      const res=await hofRpc('hof_week',{p_code:HOF.cfg.code,p_start:week});
-      if(res&&res.rows){HOF.last={week,rows:res.rows};HOF.lastAt=Date.now();}
-    }catch{HOF.online=false;}
+      const res=await hofRpc('hof_week',{p_code:code,p_start:week});
+      if(HOF.cfg?.code!==code||!res||!Array.isArray(res.rows))return null;
+      HOF.last={code,week,rows:res.rows};HOF.lastAt=Date.now();
+    }catch{HOF.online=false;return null;}
     if(HOF.view==='main'&&!$('hallScreen').hidden&&HOF.period==='lastweek')hofDrawMain();
-    return HOF.last&&HOF.last.week===week?HOF.last:null;
+    return HOF.last&&HOF.last.code===code&&HOF.last.week===week?HOF.last:null;
   }
   /* Weekly settlement: from Monday, last week's top three of each game get bonus coins, once per week.
      Only inside the dashboard, which keeps the coins and remembers which weeks it has paid. */
@@ -575,18 +576,20 @@
   function hofSyncDue(){const b=$('openHall');if(b)b.classList.toggle('hof-due',Boolean(hofSettleReady()));}
   setInterval(hofSyncDue,60000);
   function hofWeekText(week){const [y,m,d]=week.split('-').map(Number);const e=new Date(y,m-1,d+6);return `${m}월 ${d}일 ~ ${e.getMonth()+1}월 ${e.getDate()}일`;}
+  function hofPrizeGames(){return HOF_GAMES.filter(g=>!g.noPrize&&(!g.requiresV3||COIN.protocol>=3));}
   async function hofSettle(){
+    if(!hofSettleReady())return;
+    const classId=COIN.classId,code=HOF.cfg.code;
     HOF.view='settle';clearInterval(HOF.pollT);
     const week=hofLastMonday(),msg=hofEl('p','hof-note','지난주 기록을 불러오는 중이에요…');
     hofSet('지난주 결산',msg,hofEl('div','hof-row'));
     const last=await hofLoadLastWeek(true);
-    if(!last){msg.textContent='지난주 기록을 불러오지 못했어요. 인터넷 연결을 확인해 주세요.';$('hofBody').append(hofBtn('← 명예의 전당','primary',hofShowMain));return;}
-    const person=seat=>COIN.everyone.find(s=>s.number===seat);
+    if(!last||COIN.classId!==classId||HOF.cfg?.code!==code){msg.textContent='지난주 기록을 불러오지 못했어요. 인터넷 연결을 확인해 주세요.';$('hofBody').append(hofBtn('← 명예의 전당','primary',hofShowMain));return;}
+    const person=seat=>COIN.everyone.find(s=>Number.isInteger(seat)&&s.number===seat);
     const awards=[],wins=[];
-    for(const g of HOF_GAMES){
-      if(g.noPrize)continue; // New modes have no automatic coin award policy yet.
+    for(const g of hofPrizeGames()){
       for(const r of hofRank(last.rows,g.id).slice(0,3)){
-        const sts=hofEntrySeats(r).map(person);
+        const sts=[...new Set(hofEntrySeats(r))].map(person);
         wins.push({g,r,sts});
         for(const st of sts)if(st)awards.push({id:st.id,game:g.id,place:r.place});
       }
@@ -596,9 +599,9 @@
     const reply=await new Promise(res=>{
       const timer=setTimeout(()=>{COIN.pending.delete(req);res(null);},8000);
       COIN.pending.set(req,m=>{clearTimeout(timer);res(m);});
-      window.parent.postMessage({type:'hoja-hof-week',req,week,awards,classId:COIN.classId},DASHBOARD_ORIGIN);
+      window.parent.postMessage({type:'hoja-hof-week',req,week,awards,classId},DASHBOARD_ORIGIN);
     });
-    if(!reply||!reply.ok){msg.textContent=(reply&&reply.message)||'대시보드 응답이 없어요. 다시 해 주세요.';$('hofBody').append(hofBtn('← 명예의 전당','primary',hofShowMain));return;}
+    if(!reply||!reply.ok||COIN.classId!==classId||HOF.cfg?.code!==code){msg.textContent=(reply&&reply.message)||'대시보드 응답이 없어요. 다시 해 주세요.';$('hofBody').append(hofBtn('← 명예의 전당','primary',hofShowMain));return;}
     for(const [id,b] of Object.entries(reply.balances||{})){const st=COIN.students.find(x=>x.id===id);if(st)st.balance=b;}
     if(Array.isArray(reply.hofWeeks))COIN.hofWeeks=reply.hofWeeks;else if(COIN.hofWeeks)COIN.hofWeeks.push(week);
     hofSyncDue();
@@ -609,8 +612,7 @@
     const given=new Map((reply.given||[]).map(x=>[x.id,x]));
     const head=hofEl('p','hof-note',reply.already?`${hofWeekText(week)} 결산은 이미 했어요. 결과만 보여 줄게요.`:`${hofWeekText(week)} · 게임마다 1등 1코인, 2등·3등 0.5코인`);
     const grid=hofEl('div','hof-grid');
-    for(const g of HOF_GAMES){
-      if(g.noPrize)continue;
+    for(const g of hofPrizeGames()){
       const card=hofEl('div','hof-card');card.append(hofEl('b','',g.name));
       const mine=wins.filter(w=>w.g===g);
       if(!mine.length)card.append(hofEl('span','hof-empty','-'));
