@@ -41,7 +41,7 @@
     try{HOF.board=JSON.parse(preference('hof-board','null'));}catch{HOF.board=null;}
   }
   function hofSaveCfg(){remember('hof',JSON.stringify(HOF.cfg));}
-  function hofForget(){try{localStorage.removeItem('hoja-airhockey-hof');localStorage.removeItem('hoja-airhockey-hof-board');}catch{}HOF.cfg=null;HOF.board=null;if(EMBED&&COIN.v2)window.parent.postMessage({type:'hoja-setup',hof:null},DASHBOARD_ORIGIN);}
+  function hofForget(){try{localStorage.removeItem('hoja-airhockey-hof');localStorage.removeItem('hoja-airhockey-hof-board');}catch{}HOF.cfg=null;HOF.board=null;if(EMBED&&COIN.v2)window.parent.postMessage({type:'hoja-setup',hof:null,classId:COIN.classId},DASHBOARD_ORIGIN);}
   async function hofRpc(name,args={}){
     const r=await fetch(HOF_API+name,{method:'POST',headers:{apikey:HOF_KEY,'Content-Type':'application/json'},body:JSON.stringify(args)});
     const text=await r.text();let data=null;try{data=text?JSON.parse(text):null;}catch{}
