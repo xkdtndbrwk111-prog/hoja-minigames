@@ -25,7 +25,7 @@
   // Weekly settlement prizes: 1st, 2nd, 3rd of each game last week.
   const HOF_PRIZE={1:1,2:.5,3:.5};
   const HOF_MAX=40;
-  const HOF={cfg:null,pending:[],board:null,last:null,lastAt:0,period:'day',players:Array(6).fill(null),playerNames:Array(6).fill(null),pollT:0,flushing:false,online:true,lastError:null};
+  const HOF={cfg:null,pending:[],board:null,last:null,lastAt:0,period:'day',players:Array(6).fill(null),playerNames:Array(6).fill(null),pollT:0,flushing:false,online:true,lastError:null,viewKey:null,viewEpoch:0,boardRequest:0};
   // Monday of last week on this PC's calendar, as YYYY-MM-DD.
   function hofLastMonday(now=new Date()){
     const d=new Date(now.getFullYear(),now.getMonth(),now.getDate());d.setDate(d.getDate()-((d.getDay()+6)%7)-7);
@@ -38,10 +38,21 @@
     if(!Array.isArray(HOF.pending))HOF.pending=[];
     const current=HOF.pending.filter(p=>p&&!['stairs','jump','shop'].includes(p.game));
     if(current.length!==HOF.pending.length){HOF.pending=current;remember('hof-pending',JSON.stringify(current));}
-    try{HOF.board=JSON.parse(preference('hof-board','null'));}catch{HOF.board=null;}
+    HOF.viewKey=hofViewKey();
+    // Linked embeds must first receive the current board roster. Old untagged caches are display-only and unsafe to reuse.
+    HOF.board=null;
+    try{const cached=JSON.parse(preference('hof-board','null'));if(!EMBED&&HOF.cfg&&cached?.scope===HOF.viewKey)HOF.board=cached.board??null;}catch{}
   }
-  function hofSaveCfg(){remember('hof',JSON.stringify(HOF.cfg));}
-  function hofForget(){try{localStorage.removeItem('hoja-airhockey-hof');localStorage.removeItem('hoja-airhockey-hof-board');}catch{}HOF.cfg=null;HOF.board=null;if(EMBED&&COIN.v2)coinPost({type:'hoja-setup',hof:null,classId:COIN.classId});}
+  function hofViewKey(){return JSON.stringify([EMBED?COIN.classId:'',HOF.cfg?.code??'']);}
+  function hofSyncViewScope(){
+    const key=hofViewKey();if(key===HOF.viewKey)return;
+    HOF.viewKey=key;HOF.viewEpoch++;HOF.board=null;HOF.last=null;HOF.lastAt=0;HOF.online=true;
+    remember('hof-board','null');
+  }
+  function hofViewScope(){hofSyncViewScope();return HOF.viewEpoch;}
+  function hofScopeCurrent(epoch){return HOF.viewEpoch===epoch&&HOF.viewKey===hofViewKey();}
+  function hofSaveCfg(){hofSyncViewScope();remember('hof',JSON.stringify(HOF.cfg));}
+  function hofForget(){try{localStorage.removeItem('hoja-airhockey-hof');localStorage.removeItem('hoja-airhockey-hof-board');}catch{}HOF.cfg=null;hofSyncViewScope();if(EMBED&&COIN.v2)coinPost({type:'hoja-setup',hof:null,classId:COIN.classId});}
   async function hofRpc(name,args={}){
     const r=await fetch(HOF_API+name,{method:'POST',headers:{apikey:HOF_KEY,'Content-Type':'application/json'},body:JSON.stringify(args)});
     const text=await r.text();let data=null;try{data=text?JSON.parse(text):null;}catch{}
