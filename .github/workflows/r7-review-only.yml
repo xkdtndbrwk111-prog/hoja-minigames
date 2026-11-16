@@ -1,0 +1,44 @@
+name: R7 review-only minigame build and regressions
+on:
+  push:
+    branches: [codex/r7-coin-integration]
+permissions:
+  contents: read
+jobs:
+  review:
+    if: github.ref == 'refs/heads/codex/r7-coin-integration'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Run isolated logic and protocol tests
+        run: node --test tests/*.test.js
+      - name: Build full candidate and verify reproducibility
+        run: |
+          python3 build.py
+          python3 build.py --check
+          sha256sum index.html
+          python3 - <<'PY'
+          import re, pathlib, tempfile, subprocess
+          text = pathlib.Path('index.html').read_text(encoding='utf-8')
+          scripts = re.findall(r'<script\b([^>]*)>([\s\S]*?)</script>', text, re.I)
+          count = 0
+          with tempfile.TemporaryDirectory() as tmp:
+              for attrs, script in scripts:
+                  if not script.strip() or re.search(r'\bsrc\s*=', attrs, re.I): continue
+                  p = pathlib.Path(tmp) / ('script-%d.js' % count)
+                  p.write_text(script, encoding='utf-8')
+                  subprocess.run(['node','--check', str(p)], check=True)
+                  count += 1
+          assert count > 0
+          print('PASS: built inline script syntax:', count)
+          PY
+      - name: Retain review-only candidate (no release, Pages or feed changes)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: r7-minigames-review-only
+          path: index.html
+          retention-days: 7
+          if-no-files-found: error
