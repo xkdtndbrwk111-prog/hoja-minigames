@@ -5,19 +5,19 @@
   // Keep one board per ruleset, but show modes under their shared game family.
   // Old mixed-mode scores have been retired and are never a playable category.
   const HOF_GAMES=[
-    {id:'stairs_solo',name:'무한의 계단 · 1인전',family:'무한의 계단',mode:'1인전',unit:'층',noPrize:true},
-    {id:'stairs_race',name:'무한의 계단 · 다인전',family:'무한의 계단',mode:'다인전',unit:'층',noPrize:true},
-    {id:'jump_solo',name:'호자 점프 · 1인전',family:'호자 점프',mode:'1인전',unit:'층',noPrize:true},
-    {id:'jump_duel',name:'호자 점프 · 2인전',family:'호자 점프',mode:'2인전',unit:'층',noPrize:true},
-    {id:'shop_solo',name:'붕어빵 · 1인 장사',family:'붕어빵 가게',mode:'1인 · 5일 총매출',unit:'원',noPrize:true},
-    {id:'shop_vs2',name:'붕어빵 · 2인 대결',family:'붕어빵 가게',mode:'2인 대결',unit:'원',noPrize:true},
-    {id:'shop_co2',name:'붕어빵 · 2인 협동',family:'붕어빵 가게',mode:'2인 협동',unit:'원',team:true,noPrize:true},
-    {id:'shop_co4',name:'붕어빵 · 4인 협동',family:'붕어빵 가게',mode:'4인 협동',unit:'원',team:true,noPrize:true},
-    {id:'flash_solo',name:'번개미션 · 혼자 도전',family:'번개미션',mode:'혼자 도전',unit:'개',noPrize:true},
-    {id:'flash_r8',name:'번개미션 · 8판 대결',family:'번개미션',mode:'8판 대결',unit:'점',noPrize:true},
-    {id:'flash_r12',name:'번개미션 · 12판 대결',family:'번개미션',mode:'12판 대결',unit:'점',noPrize:true},
-    {id:'dance_solo',name:'호자와 나한상의 춤 · 1인',family:'호자와 나한상의 춤',mode:'1인',unit:'점',noPrize:true},
-    {id:'dance_duo',name:'호자와 나한상의 춤 · 2인 협동',family:'호자와 나한상의 춤',mode:'2인 협동',unit:'점',team:true,noPrize:true},
+    {id:'stairs_solo',name:'무한의 계단 · 1인전',family:'무한의 계단',mode:'1인전',unit:'층',requiresV3:true},
+    {id:'stairs_race',name:'무한의 계단 · 다인전',family:'무한의 계단',mode:'다인전',unit:'층',requiresV3:true},
+    {id:'jump_solo',name:'호자 점프 · 1인전',family:'호자 점프',mode:'1인전',unit:'층',requiresV3:true},
+    {id:'jump_duel',name:'호자 점프 · 2인전',family:'호자 점프',mode:'2인전',unit:'층',requiresV3:true},
+    {id:'shop_solo',name:'붕어빵 · 1인 장사',family:'붕어빵 가게',mode:'1인 · 5일 총매출',unit:'원',requiresV3:true},
+    {id:'shop_vs2',name:'붕어빵 · 2인 대결',family:'붕어빵 가게',mode:'2인 대결',unit:'원',requiresV3:true},
+    {id:'shop_co2',name:'붕어빵 · 2인 협동',family:'붕어빵 가게',mode:'2인 협동',unit:'원',team:true,requiresV3:true},
+    {id:'shop_co4',name:'붕어빵 · 4인 협동',family:'붕어빵 가게',mode:'4인 협동',unit:'원',team:true,requiresV3:true},
+    {id:'flash_solo',name:'번개미션 · 혼자 도전',family:'번개미션',mode:'혼자 도전',unit:'개',requiresV3:true},
+    {id:'flash_r8',name:'번개미션 · 8판 대결',family:'번개미션',mode:'8판 대결',unit:'점',requiresV3:true},
+    {id:'flash_r12',name:'번개미션 · 12판 대결',family:'번개미션',mode:'12판 대결',unit:'점',requiresV3:true},
+    {id:'dance_solo',name:'호자와 나한상의 춤 · 1인',family:'호자와 나한상의 춤',mode:'1인',unit:'점',requiresV3:true},
+    {id:'dance_duo',name:'호자와 나한상의 춤 · 2인 협동',family:'호자와 나한상의 춤',mode:'2인 협동',unit:'점',team:true,requiresV3:true},
     {id:'hockey',name:'에어하키',unit:'승'},{id:'volley',name:'호자 배구',unit:'승'},{id:'bubble',name:'퍼즐버블',unit:'승'},
     {id:'othello',name:'오셀로',unit:'승'},{id:'gomoku',name:'오목',unit:'승'},{id:'ttt',name:'틱택토',unit:'승'},{id:'germ',name:'세균전',unit:'승'},{id:'rally',name:'파티 랠리',unit:'승'},
   ];
@@ -25,7 +25,7 @@
   // Weekly settlement prizes: 1st, 2nd, 3rd of each game last week.
   const HOF_PRIZE={1:1,2:.5,3:.5};
   const HOF_MAX=40;
-  const HOF={cfg:null,pending:[],board:null,last:null,lastAt:0,period:'day',players:Array(6).fill(null),playerNames:Array(6).fill(null),pollT:0,flushing:false,online:true,lastError:null};
+  const HOF={cfg:null,pending:[],board:null,last:null,lastAt:0,period:'day',players:Array(6).fill(null),playerNames:Array(6).fill(null),pollT:0,flushing:false,online:true,lastError:null,viewKey:null,viewEpoch:0,boardRequest:0};
   // Monday of last week on this PC's calendar, as YYYY-MM-DD.
   function hofLastMonday(now=new Date()){
     const d=new Date(now.getFullYear(),now.getMonth(),now.getDate());d.setDate(d.getDate()-((d.getDay()+6)%7)-7);
@@ -38,10 +38,21 @@
     if(!Array.isArray(HOF.pending))HOF.pending=[];
     const current=HOF.pending.filter(p=>p&&!['stairs','jump','shop'].includes(p.game));
     if(current.length!==HOF.pending.length){HOF.pending=current;remember('hof-pending',JSON.stringify(current));}
-    try{HOF.board=JSON.parse(preference('hof-board','null'));}catch{HOF.board=null;}
+    HOF.viewKey=hofViewKey();
+    // Linked embeds must first receive the current board roster. Old untagged caches are display-only and unsafe to reuse.
+    HOF.board=null;
+    try{const cached=JSON.parse(preference('hof-board','null'));if(!EMBED&&HOF.cfg&&cached?.scope===HOF.viewKey)HOF.board=cached.board??null;}catch{}
   }
-  function hofSaveCfg(){remember('hof',JSON.stringify(HOF.cfg));}
-  function hofForget(){try{localStorage.removeItem('hoja-airhockey-hof');localStorage.removeItem('hoja-airhockey-hof-board');}catch{}HOF.cfg=null;HOF.board=null;if(EMBED&&COIN.v2)window.parent.postMessage({type:'hoja-setup',hof:null},DASHBOARD_ORIGIN);}
+  function hofViewKey(){return JSON.stringify([EMBED?COIN.classId:'',HOF.cfg?.code??'']);}
+  function hofSyncViewScope(){
+    const key=hofViewKey();if(key===HOF.viewKey)return;
+    HOF.viewKey=key;HOF.viewEpoch++;HOF.board=null;HOF.last=null;HOF.lastAt=0;HOF.online=true;
+    remember('hof-board','null');
+  }
+  function hofViewScope(){hofSyncViewScope();return HOF.viewEpoch;}
+  function hofScopeCurrent(epoch){return HOF.viewEpoch===epoch&&HOF.viewKey===hofViewKey();}
+  function hofSaveCfg(){hofSyncViewScope();remember('hof',JSON.stringify(HOF.cfg));}
+  function hofForget(){try{localStorage.removeItem('hoja-airhockey-hof');localStorage.removeItem('hoja-airhockey-hof-board');}catch{}HOF.cfg=null;hofSyncViewScope();if(EMBED&&COIN.v2)coinPost({type:'hoja-setup',hof:null,classId:COIN.classId});}
   async function hofRpc(name,args={}){
     const r=await fetch(HOF_API+name,{method:'POST',headers:{apikey:HOF_KEY,'Content-Type':'application/json'},body:JSON.stringify(args)});
     const text=await r.text();let data=null;try{data=text?JSON.parse(text):null;}catch{}
