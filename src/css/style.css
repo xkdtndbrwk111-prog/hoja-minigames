@@ -1374,5 +1374,18 @@ html[data-device=tablet] .sx-stage{transform-origin:50% 50%}
 
 /* Small novelty badge on the tournament category entry. */
 #openTournament.control{position:relative;display:flex;align-items:center;justify-content:center;gap:5px;min-width:clamp(108px,11vw,205px);padding:0 clamp(5px,.65vw,13px)}
-#openTournament .tm-new-tag{display:inline-block;flex:none;padding:2px 4px;border-radius:5px;background:#f34d45;border:1px solid #b92722;box-shadow:0 1px 0 #84352755;color:#fff;font:800 clamp(8px,.65vw,12px)/1.1 Arial,sans-serif;letter-spacing:.025em;text-shadow:none;transform:rotate(7deg);pointer-events:none}
+#openTournament .tm-new-tag{display:inline-block;flex:none;padding:2px 4px;border-radius:5px;background:#f34d45;border:1px solid #b92722;box-shadow:0 1px 0 #84352755;color:#fff;font:800 clamp(8px,.65vw,12px)/1.1 Arial,sans-serif;letter-spacing:.025em;text-shadow:none;transform:rotate(-18deg);pointer-events:none}
 @media(max-width:900px){#openTournament.control{min-width:0;gap:3px;padding:0 5px}#openTournament .tm-new-tag{font-size:8px;padding:1px 3px}}
+
+/* NEW is a sticker overlapping the upper-left corner, not inline text. */
+#openTournament.control{overflow:visible;gap:0;min-width:clamp(100px,10vw,190px)}
+#openTournament .tm-new-tag{position:absolute;top:-9px;left:-9px;z-index:4;transform:rotate(-18deg);animation:tmNewBlink 1.2s ease-in-out infinite;box-shadow:0 2px 0 #84352755}
+@keyframes tmNewBlink{0%,100%{opacity:1;transform:rotate(-18deg) scale(1)}50%{opacity:.35;transform:rotate(-18deg) scale(1.08)}}
+@media(max-width:900px){#openTournament.control{min-width:0}#openTournament .tm-new-tag{top:-7px;left:-5px}}
+@media(prefers-reduced-motion:reduce){#openTournament .tm-new-tag{animation:none}}
+#tmScreen.tm-setup-screen .tm-world-selection-bar{width:min(100%,1280px);display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+#tmScreen.tm-setup-screen .tm-world-reset.control.big{min-width:0;min-height:38px;font-size:clamp(12px,1vw,18px);padding:4px 10px}
+#tmScreen.tm-setup-screen .tm-world-student.tm-included{background:linear-gradient(#dff5e8,#bde5ce);color:#254e39;border:2px solid #4b9e71;box-shadow:0 3px 0 #76a98a;text-shadow:none}
+#tmScreen.tm-setup-screen .tm-world-student.tm-excluded{background:#ddd9d1;color:#68645c;border:2px solid #a6a198;box-shadow:0 3px 0 #aca79e;text-shadow:none}
+#tmScreen.tm-setup-screen .tm-world-student.tm-excluded .tm-student-name{text-decoration:line-through}
+#tmScreen.tm-setup-screen .tm-world-state{font-size:clamp(11px,.95vw,16px)}
