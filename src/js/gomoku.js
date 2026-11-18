@@ -247,7 +247,7 @@
   }
   function gEndDraw(){
     roundFinish();if(tournamentResult(-1))return;
-    GO.phase='over';gSyncUI();stopBgm(.6);sfx('goal',.7);gMood(1,'surprised','판이 꽉 찼어!');gMood(2,'surprised','다시 붙자!');
+    hofWin('gomoku',-1);GO.phase='over';gSyncUI();stopBgm(.6);sfx('goal',.7);gMood(1,'surprised','판이 꽉 찼어!');gMood(2,'surprised','다시 붙자!');
     gResult('무승부!',GO.moves+'수 · 판이 가득 찼어요',600);
   }
   function gWin(p,line,c){

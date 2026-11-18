@@ -301,7 +301,7 @@
     const line=`${a} : ${d}`+(O.stage.misere?'   ·   거꾸로 판: 적은 쪽 승리':'');
     let title;
     if(winner<0){
-      title='무승부!';oMood(1,'surprised','똑같네!');oMood(2,'surprised','다시 붙자!');sfx('goal',.7);
+      hofWin('othello',-1);title='무승부!';oMood(1,'surprised','똑같네!');oMood(2,'surprised','다시 붙자!');sfx('goal',.7);
     }else{
       const repeat=streak.side===winner&&streak.id===choices[winner];
       streak={side:winner,id:choices[winner],count:repeat?streak.count+1:1};

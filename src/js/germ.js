@@ -221,7 +221,7 @@
       hofWin('germ',w);
       title=streak.count>=2?`${gamePlayerName(w)} ${streak.count}연승!`:`${gamePlayerName(w)} 승리!`;
       xMood(w+1,'happy','판을 뒤덮었다!');xMood(2-w,'sad','아쉬워…');cheer(1.1);victoryJingle();
-    }else{xMood(1,'surprised','똑같아!');xMood(2,'surprised','다시 붙자!');sfx('goal',.7);}
+    }else{hofWin('germ',-1);xMood(1,'surprised','똑같아!');xMood(2,'surprised','다시 붙자!');sfx('goal',.7);}
     const next=button('다음 도전자 ▶','primary',()=>{leaveGerm();enterSelection();});
     const again=button('↻ 바로 재대결','',xNewMatch);
     const home=button('← 모음집','',xHome);

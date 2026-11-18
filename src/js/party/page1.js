@@ -129,7 +129,7 @@
     RALLY.on=false;
     roundFinish();
     victoryJingle();cheer(.7);
-    hofRecord('rally',w,1);
+    hofWin('rally',w);
     paOverlay(gamePlayerName(w)+' 랠리 우승!',`${a} : ${b}`,[
       button('↻ 다시 하기','primary',()=>{PS.game='rally';paStart();}),
       button('인물 변경','',()=>{leaveParty();enterSelection();}),

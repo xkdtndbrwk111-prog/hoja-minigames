@@ -367,25 +367,32 @@
     box.hidden=false;draw();
   }
   /* Ranking */
+  const HOF_WIN_GAMES=new Set(['hockey','volley','bubble','othello','gomoku','ttt','germ','rally']);
   function hofRank(rows,game){
-    // Rows from a finished week carry 'reached': equal values are then ordered by who got there first.
-    const strict=rows.some(r=>r.reached);
-    const list=rows.filter(r=>r.game===game&&r.value>0).sort((a,b)=>b.value-a.value||(strict?String(a.reached).localeCompare(String(b.reached)):0));
+    const strict=rows.some(r=>r.reached),all=rows.filter(r=>r.game===game);
+    const balanced=HOF_WIN_GAMES.has(game)&&all.length>0&&all.every(r=>Number.isInteger(r.played)&&r.played>=r.value&&r.legacy_wins===0);
+    const max=Math.max(0,...all.map(r=>r.value));
+    const list=all.filter(r=>r.value>0).map(r=>({...r,rankScore:balanced?Math.round(1e6*(.5*r.value/max+.5*r.value/r.played))/10000:r.value,balanced}));
+    list.sort((a,b)=>b.rankScore-a.rankScore||(strict?String(a.reached).localeCompare(String(b.reached))||a.seat-b.seat||JSON.stringify(a.members||[]).localeCompare(JSON.stringify(b.members||[])):0));
     let place=0,last=null;
-    list.forEach((r,i)=>{if(strict||r.value!==last){place=i+1;last=r.value;}r.place=place;});
+    list.forEach((r,i)=>{if(strict||r.rankScore!==last){place=i+1;last=r.rankScore;}r.place=place;});
     return list;
+  }
+  function hofModeAwards(rows,game,limit=true){
+    const ranked=hofRank(rows,game.id),eligible=limit?ranked.slice(0,3):ranked.filter(r=>r.place<=3),seen=new Set();
+    return eligible.map(r=>({r,seats:[...new Set(hofEntrySeats(r))].filter(seat=>{if(seen.has(seat))return false;seen.add(seat);return true;})}));
   }
   function hofChampion(rows){
     const points=new Map();
     for(const g of HOF_GAMES)if(g.id!=='rally'&&!g.legacy)
-      for(const r of hofRank(rows,g.id))if(r.place<=3)
-        for(const seat of hofEntrySeats(r))points.set(seat,(points.get(seat)||0)+4-r.place);
+      for(const {r,seats} of hofModeAwards(rows,g,false))for(const seat of seats)points.set(seat,(points.get(seat)||0)+4-r.place);
     let best=0;for(const v of points.values())best=Math.max(best,v);
     return {best,seats:[...points.entries()].filter(([,v])=>v===best&&best>0).map(([s])=>s)};
   }
   function hofEntrySeats(r){return Array.isArray(r.members)&&r.members.length?r.members:[r.seat];}
   function hofEntryName(r){return hofEntrySeats(r).map(hofName).join(' · ');}
   function hofValue(g,v){return g.id==='shop'||g.id.startsWith('shop_')?shWon(v):v+g.unit;}
+  function hofRankValue(g,r){return r.balanced?r.value+'승 · '+Math.round(100*r.value/r.played)+'% · '+Number(r.rankScore.toFixed(1))+'점':hofValue(g,r.value)+(HOF_WIN_GAMES.has(g.id)?' (승수)':'');}
   /* Height markers: each student's best of this week, and the year's top climb, placed on the floor they reached. */
   let hofMarkCache={};
   function hofMarks(game){
@@ -570,7 +577,7 @@
         if(!top.length)mode.append(hofEl('span','hof-empty','아직 기록 없음'));
         for(const r of top){
           const line=hofEl('div','hof-line'+(g.team?' hof-team-line':''));line.title=hofEntryName(r);
-          line.append(hofEl('i','',r.place+''),hofEl('span','',hofEntryName(r)),hofEl('em','',hofValue(g,r.value)));
+          line.append(hofEl('i','',r.place+''),hofEl('span','',hofEntryName(r)),hofEl('em','',hofRankValue(g,r)));
           mode.append(line);
         }
         modeGrid.append(mode);
@@ -640,10 +647,10 @@
     const person=seat=>COIN.everyone.find(s=>Number.isInteger(seat)&&s.number===seat);
     const awards=[],wins=[];
     for(const g of hofPrizeGames()){
-      for(const r of hofRank(last.rows,g.id).slice(0,3)){
-        const sts=[...new Set(hofEntrySeats(r))].map(person);
+      for(const {r,seats} of hofModeAwards(last.rows,g)){
+        const sts=seats.map(person).filter(Boolean);
         wins.push({g,r,sts});
-        for(const st of sts)if(st)awards.push({id:st.id,game:g.id,place:r.place});
+        for(const st of sts)awards.push({id:st.id,game:g.id,place:r.place});
       }
     }
     msg.textContent='코인을 주는 중이에요…';
@@ -660,30 +667,48 @@
     hofSyncDue();
     hofShowSettled(week,wins,reply);
   }
+  function hofCeremonyGroups(games,wins){
+    const groups=new Map();
+    for(const g of games){const key=g.family||g.name;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(g);}
+    return [...groups].map(([family,modes])=>({family,modes,wins:wins.filter(w=>modes.includes(w.g))}));
+  }
   function hofShowSettled(week,wins,reply){
-    HOF.view='settled';
-    const given=new Map((reply.given||[]).map(x=>[x.id,x]));
-    const head=hofEl('p','hof-note',reply.already?`${hofWeekText(week)} 결산은 이미 했어요. 결과만 보여 줄게요.`:`${hofWeekText(week)} · 게임마다 1등 1코인, 2등·3등 0.5코인`);
-    const grid=hofEl('div','hof-grid');
-    for(const g of hofPrizeGames()){
-      const card=hofEl('div','hof-card');card.append(hofEl('b','',g.name));
-      const mine=wins.filter(w=>w.g===g);
-      if(!mine.length)card.append(hofEl('span','hof-empty','-'));
-      for(const {r,sts} of mine){
-        const line=hofEl('div','hof-line');
-        line.append(hofEl('i','',r.place+''),hofEl('span','',hofEntryName(r)),
-          hofEl('em','',hofValue(g,r.value)),
-          hofEl('small','hof-plus',sts.filter(Boolean).length?'각 +'+coinText(HOF_PRIZE[r.place]):''));
-        card.append(line);
+    const epoch=hofViewScope(),groups=hofCeremonyGroups(hofPrizeGames(),wins);
+    const totals=(reply.given||[]).filter(x=>x.given>0).map(x=>x.name+' +'+coinText(x.given)+(x.capped?'(상한)':''));
+    let index=0;
+    const valid=()=>hofScopeCurrent(epoch)&&!$('hallScreen').hidden;
+    const summary=()=>{
+      if(!valid())return;HOF.view='settled';
+      const head=hofEl('p','hof-note',hofWeekText(week)+(reply.already?' · 이미 결산했어요.':' · 결산 완료'));
+      const sum=hofEl('p','hof-note hof-sum',reply.already?'이미 지급된 코인은 다시 지급하지 않아요.':totals.length?'받은 코인: '+totals.join(' · '):'지난주에는 받을 사람이 없어요.');
+      const grid=hofEl('div','hof-grid');
+      for(const group of groups){const card=hofEl('div','hof-card hof-family');card.append(hofEl('b','',group.family));for(const g of group.modes){const mode=hofEl('div','hof-mode');if(group.modes.length>1)mode.append(hofEl('strong','hof-mode-title',g.mode||g.name));const mine=group.wins.filter(w=>w.g===g);if(!mine.length)mode.append(hofEl('span','hof-empty','기록 없음'));for(const {r,sts} of mine){const line=hofEl('div','hof-line');line.append(hofEl('i','',r.place+''),hofEl('span','',hofEntryName(r)),hofEl('em','',hofRankValue(g,r)),hofEl('small','hof-plus',sts.length?'+'+coinText(HOF_PRIZE[r.place])+'코인 × '+sts.length:''));mode.append(line);}card.append(mode);}grid.append(card);}
+      const row=hofEl('div','hof-row');row.append(hofBtn('시상식 다시 보기','',()=>{index=0;show(false);}),hofBtn('← 명예의 전당','primary',hofShowMain));hofSet('🏆 지난주 결산',head,grid,sum,row);
+    };
+    const show=(celebrate=true)=>{
+      if(!valid())return;if(index>=groups.length)return summary();
+      const group=groups[index];HOF.view='ceremony';
+      const head=hofEl('div','hof-award-heading');head.append(hofEl('small','',hofWeekText(week)+' · '+(index+1)+' / '+groups.length),hofEl('h2','',group.family));
+      const stage=hofEl('div','hof-award-stage');
+      for(const g of group.modes){
+        const panel=hofEl('section','hof-award-mode');if(group.modes.length>1)panel.append(hofEl('h3','',g.mode||g.name));
+        const podium=hofEl('div','hof-podium');
+        for(const place of [2,1,3]){
+          const match=group.wins.find(w=>w.g===g&&w.r.place===place),card=hofEl('div','hof-podium-card hof-place-'+place);
+          card.append(hofEl('strong','hof-medal',place===1?'🏆 챔피언 · 1위':place+'위'),hofEl('b','hof-award-name',match?hofEntryName(match.r):'—'));
+          if(match){card.append(hofEl('small','hof-award-score',hofRankValue(g,match.r)));const eligible=match.sts.map(st=>st.name).join(' · ');card.append(hofEl('small','hof-award-coin',match.sts.length?'+'+coinText(HOF_PRIZE[place])+'코인'+(g.team?' · '+eligible:''):'중복 지급 제외 / 지급 대상 없음'));}
+          else card.append(hofEl('small','hof-award-score','기록 없음'));
+          podium.append(card);
+        }
+        panel.append(podium);stage.append(panel);
       }
-      grid.append(card);
-    }
-    const sum=hofEl('p','hof-note hof-sum');
-    const totals=[...given.values()].filter(x=>x.given>0).map(x=>`${x.name} +${coinText(x.given)}${x.capped?'(상한)':''}`);
-    sum.textContent=reply.already?'':totals.length?'받은 코인: '+totals.join(' · '):'지난주에는 받을 사람이 없어요.';
-    const row=hofEl('div','hof-row');row.append(hofBtn('← 명예의 전당','primary',hofShowMain));
-    hofSet('🏆 지난주 결산',head,grid,sum,row);
-    if(!reply.already){sfx('coin',1);cheer(.6);}
+      if(group.wins.length){const conf=hofEl('div','hof-award-confetti');conf.setAttribute('aria-hidden','true');for(let i=0;i<44;i++){const p=hofEl('i','');p.style.cssText='--x:'+((i*37)%100)+'%;--d:'+((i%9)*.065)+'s;--r:'+((i*47)%360)+'deg;--h:'+([40,155,205,12,290][i%5]*1)+'deg';conf.append(p);}stage.append(conf);}
+      const row=hofEl('div','hof-row hof-award-controls');const prev=hofBtn('← 이전 종목','',()=>{if(index>0){index--;show(false);}});prev.disabled=index===0;
+      row.append(prev,hofBtn(index===groups.length-1?'결산 결과 보기':'다음 종목 ▶','primary',()=>{index++;show();}),hofBtn('전체 결과','',summary));
+      hofSet('🏆 지난주 시상식',head,stage,row);
+      if(celebrate&&group.wins.length){victoryJingle();cheer(.65);sfx('coin',.7);}
+    };
+    show(!reply.already);
   }
   function hofShowMain(){
     HOF.view='main';hofDrawMain();hofRefresh();

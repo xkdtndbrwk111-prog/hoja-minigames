@@ -1389,3 +1389,25 @@ html[data-device=tablet] .sx-stage{transform-origin:50% 50%}
 #tmScreen.tm-setup-screen .tm-world-student.tm-excluded{background:#ddd9d1;color:#68645c;border:2px solid #a6a198;box-shadow:0 3px 0 #aca79e;text-shadow:none}
 #tmScreen.tm-setup-screen .tm-world-student.tm-excluded .tm-student-name{text-decoration:line-through}
 #tmScreen.tm-setup-screen .tm-world-state{font-size:clamp(11px,.95vw,16px)}
+
+/* Hall of fame award ceremony: one family, all its modes together.
+   Controls remain at the bottom of the lower interaction area. */
+.hof-award-heading{text-align:center;flex:none;color:#3f5141}.hof-award-heading h2{margin:3px 0;font-size:clamp(22px,3vw,48px)}
+.hof-award-heading small{font-size:clamp(12px,1.1vw,19px)}
+.hof-award-stage{position:relative;min-height:0;flex:1 1 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,310px),1fr));align-content:center;align-items:stretch;gap:clamp(6px,1vw,14px);overflow:auto;padding:4px}
+.hof-award-mode{position:relative;z-index:1;display:flex;flex-direction:column;justify-content:center;min-width:0;gap:6px;padding:clamp(5px,.65vw,12px);border:1px solid #d2c3a5;background:#fff9ebc9;border-radius:12px}
+.hof-award-mode h3{font-size:clamp(14px,1.5vw,24px);text-align:center;margin:0;color:#4d5143}
+.hof-podium{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) minmax(0,1fr);align-items:end;gap:clamp(3px,.4vw,8px)}
+.hof-podium-card{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-width:0;min-height:clamp(82px,12vh,155px);padding:6px 3px;gap:3px;border-radius:10px 10px 5px 5px;border:2px solid #adb7bc;background:linear-gradient(#eef1f4,#c9d1d8);overflow-wrap:anywhere}
+.hof-place-1{min-height:clamp(108px,16vh,200px);background:linear-gradient(#fff3b5,#eec35a);border-color:#c79728;animation:hofAwardRise .5s ease-out both}
+.hof-place-3{min-height:clamp(72px,10vh,140px);background:linear-gradient(#f6e1cb,#dcb48c);border-color:#ae8055}
+.hof-medal{font-size:clamp(12px,1.2vw,22px)}.hof-award-name{font-size:clamp(17px,1.7vw,30px);line-height:1.15;max-width:100%;word-break:keep-all}
+.hof-award-score,.hof-award-coin{font-size:clamp(10px,.9vw,17px);line-height:1.18;max-width:100%}.hof-award-coin{color:#875711;font-weight:800}
+.hof-award-controls{margin-top:auto;position:sticky;bottom:0;background:#f3ecd8;padding:5px 0;z-index:3}
+.hof-award-confetti{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:2}
+.hof-award-confetti i{position:absolute;left:var(--x);top:-14px;width:8px;height:13px;background:hsl(var(--h) 75% 56%);border-radius:2px;animation:hofAwardFall 1.9s var(--d) ease-in both}
+@keyframes hofAwardFall{to{transform:translateY(65vh) rotate(var(--r));opacity:0}}
+@keyframes hofAwardRise{from{transform:translateY(12px);opacity:.25}to{transform:none;opacity:1}}
+@media(prefers-reduced-motion:reduce){.hof-award-confetti{display:none}.hof-place-1{animation:none}}
+@media(max-width:750px){.hof-award-stage{grid-template-columns:1fr;align-content:start}}
+.hof-mode .hof-line em{white-space:normal;text-align:right;min-width:0}

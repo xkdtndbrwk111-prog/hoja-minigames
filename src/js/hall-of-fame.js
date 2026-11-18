@@ -128,14 +128,21 @@
     hofToast('팀 기록 전송 대기');
     hofFlush();
   }
-  function hofWin(game,side){roundClose();if(!aiLevel)hofRecord(game,side,1);}
+  function hofWin(game,side){
+    roundClose();if((typeof TM!=='undefined'&&TM.running)||(game!=='rally'&&aiLevel)||!HOF.cfg)return;
+    const seats=HOF.players.slice(0,2);
+    if(seats.some(n=>!Number.isInteger(n)||n<1||n>HOF_MAX)||seats[0]===seats[1])return;
+    if(![-1,0,1].includes(side))return;
+    if(HOF.pending.length>=300){hofToast('전송 대기 기록이 가득해요. 인터넷 연결을 확인해 주세요');return;}
+    HOF.pending.push({code:HOF.cfg.code,game,seats,winner:side,at:new Date().toISOString(),key:crypto.randomUUID(),match:true});remember('hof-pending',JSON.stringify(HOF.pending));hofFlush();
+  }
   async function hofFlush(){
     if(HOF.flushing||!HOF.pending.length)return;
     HOF.flushing=true;let retry=0;
     try{
       while(HOF.pending.length){
         const p=HOF.pending[0];
-        const res=p.team
+        const res=p.match?await hofRpc('hof_add_match',{p_code:p.code,p_seats:p.seats,p_game:p.game,p_winner:p.winner,p_at:p.at,p_key:p.key}):p.team
           ?await hofRpc('hof_add_team_record',{p_code:p.code,p_seats:p.seats,p_game:p.game,p_score:p.score,p_at:p.at,p_key:p.key})
           :await hofRpc('hof_add_record',{p_code:p.code,p_seat:p.seat,p_game:p.game,p_score:p.score,p_at:p.at});
         if(res!=='ok'){

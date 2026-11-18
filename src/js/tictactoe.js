@@ -189,7 +189,7 @@
       hofWin('ttt',w);
       tMood(w+1,'happy','이겼다!');tMood(2-w,'sad','아쉬워…');cheer(1.1);victoryJingle();
       title=streak.count>=2?`${gamePlayerName(w)} ${streak.count}연승!`:`${gamePlayerName(w)} 승리!`;
-    }else{tMood(1,'surprised','막상막하!');tMood(2,'surprised','막상막하!');sfx('goal',.7);}
+    }else{hofWin('ttt',-1);tMood(1,'surprised','막상막하!');tMood(2,'surprised','막상막하!');sfx('goal',.7);}
     const next=button('다음 도전자 ▶','primary',()=>{leaveTtt();enterSelection();});
     const again=button('↻ 바로 재대결','',tNewMatch);
     const home=button('← 모음집','',tHome);

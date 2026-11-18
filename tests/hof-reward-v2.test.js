@@ -1,0 +1,11 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
+const c=fs.readFileSync('src/js/coins.js','utf8'),h=fs.readFileSync('src/js/hall-of-fame.js','utf8');
+const games=h.slice(h.indexOf('  const HOF_GAMES='),h.indexOf('  const HOF_PERIODS='));
+const logic=c.slice(c.indexOf('  const HOF_WIN_GAMES='),c.indexOf('  function hofEntryName('));
+const {hofRank,hofModeAwards,hofChampion}=new Function(games+logic+'return {hofRank,hofModeAwards,hofChampion}')();
+const row=(seat,value,played,legacy_wins=0)=>({game:'hockey',seat,value,played,legacy_wins});
+test('50/50 normalized win count and win rate',()=>{const r=hofRank([row(1,10,20),row(2,8,10),row(3,6,6),row(4,0,4)],'hockey');assert.deepEqual(r.map(x=>x.seat),[2,3,1]);assert.equal(r[0].rankScore,80);assert.equal(r[1].rankScore,80);assert.equal(r[2].rankScore,75);assert.equal(r[0].place,1);assert.equal(r[1].place,1);assert.equal(r[2].place,3);});
+test('any legacy win disables rate for entire mode; no fabricated losses',()=>{const r=hofRank([row(1,10,0,10),row(2,8,8)],'hockey');assert.deepEqual(r.map(x=>x.seat),[1,2]);assert(r.every(x=>!x.balanced));});
+test('draws included in denominator; no win earns no podium',()=>{const r=hofRank([row(1,1,4),row(2,1,1),row(3,0,3)],'hockey');assert.equal(r[0].seat,2);assert.equal(r[1].rankScore,62.5);assert.equal(r.length,2);});
+test('team members receive only their best team placement once per mode',()=>{const game={id:'shop_co2',team:true},rows=[{game:game.id,seat:1,members:[1,2],value:500,reached:'2026-11-11'},{game:game.id,seat:1,members:[1,3],value:400,reached:'2026-11-12'},{game:game.id,seat:2,members:[2,4],value:300,reached:'2026-11-13'}];const w=hofModeAwards(rows,game);assert.deepEqual(w.map(x=>x.seats),[[1,2],[3],[4]]);assert.deepEqual(hofChampion(rows),{best:3,seats:[1,2]});});
+test('highest score modes keep raw best value',()=>{const r=hofRank([{game:'stairs_solo',seat:1,value:35},{game:'stairs_solo',seat:2,value:20}],'stairs_solo');assert.equal(r[0].rankScore,35);assert(!r[0].balanced);});
