@@ -32,7 +32,9 @@ async function startNormal(n){await until(()=>click('일반 토너먼트'),'norm
  const s=await api('/session','POST',{capabilities:{alwaysMatch:{browserName:'chrome','goog:chromeOptions':{args:['--headless=new','--no-sandbox','--disable-dev-shm-usage','--window-size=1600,1000','--host-resolver-rules=MAP aolfbqfchzipyevtdhdy.supabase.co ~NOTFOUND']}}}});session=s.sessionId;
  await cmd('/url','POST',{url:'http://127.0.0.1:17439/'});await frame();
  assert(await exec('const b=document.getElementById("openTournament"),p=document.querySelector(".menu-pages");return b.parentElement===p&&p.lastElementChild===b&&getComputedStyle(b).backgroundImage.includes("98, 185, 255")&&b.getBoundingClientRect().right<=innerWidth+1'));
- await open();await startNormal(8);
+ await open();
+ assert(await exec('const foot=document.querySelector(".tm-home-foot"),starts=foot.querySelector(".tm-new-actions"),nav=foot.querySelector(".tm-home-nav"),g=starts.querySelector(".tm-start-normal"),w=starts.querySelector(".tm-start-world"),[back,hist]=nav.children;const r=e=>e.getBoundingClientRect();return g.textContent==="일반 토너먼트 대회 시작"&&w.textContent.includes("교실 월드컵 시작")&&getComputedStyle(g).backgroundImage.includes("47, 208, 144")&&getComputedStyle(w).backgroundImage.includes("98, 185, 255")&&r(starts).bottom<=r(nav).top&&r(nav).bottom<=innerHeight+1&&Math.abs(r(back).width-r(hist).width)<1&&Math.abs(r(back).height-r(hist).height)<1'));
+ await startNormal(8);
  assert.equal(await exec('return document.querySelectorAll(".tm-tree .tm-match").length'),7);
  await confirmClick('환불하고 토너먼트 취소');await text('일반 토너먼트');
  await parent();await until(()=>exec('return mock.refunds.length===1'),'refund');
@@ -114,6 +116,7 @@ async function startNormal(n){await until(()=>click('일반 토너먼트'),'norm
  const legacy=await loadSaved();assert.equal(legacy.completed,1);
  await exec('const t=arguments[0];delete t.id;localStorage.setItem("hoja-tournament-v1:class-test",JSON.stringify(t));',legacy);
  assert(await click('← 게임 모음집'));await openResume();
+ assert(await exec('const a=document.querySelector(".tm-resume-section").getBoundingClientRect(),b=document.querySelector(".tm-new-actions").getBoundingClientRect(),c=document.querySelector(".tm-home-nav").getBoundingClientRect();return a.bottom<=b.top&&b.top-a.bottom<100&&b.bottom<=c.top&&c.bottom<=innerHeight+1'));
  await startNormal(4);
  let all=await loadAll();assert.equal(all.length,2);const world=all.find(x=>x.mode==="world"),paid=all.find(x=>x.mode==="normal");
  assert.equal(world.completed,1);assert.deepEqual(world.groups,legacy.groups);assert.equal(paid.completed,0);assert(paid.charge);
@@ -134,5 +137,5 @@ async function startNormal(n){await until(()=>click('일반 토너먼트'),'norm
  all=await loadAll();assert.equal(all.length,1);assert.equal(all[0].id,world.id);assert.deepEqual(all[0].groups,world.groups);
  await parent();assert.deepEqual(await exec('return mock.spends.map(s=>s.ids.length)'),[8,4,4]);assert.equal(await exec('return mock.refunds.length'),1);await frame();
  assert(await resumeMode('교실 월드컵'));await text('1/35경기 완료');
- console.log('PASS browser: payment/refund, upward bracket, compact 21-player 24 seeds, defeat shading, crash reload and same random character, PIN rollback, 21-player dual group save, centered names and VS, two-stage intro, skip/cancel/automatic start, tie, champion, no additional spend, legacy migration, parallel tournaments, public World Cup history, isolated completion, blue rightmost tab');
+ console.log('PASS browser: payment/refund, upward bracket, compact 21-player 24 seeds, defeat shading, crash reload and same random character, PIN rollback, 21-player dual group save, centered names and VS, two-stage intro, skip/cancel/automatic start, tie, champion, no additional spend, legacy migration, parallel tournaments, public World Cup history, isolated completion, blue rightmost tab, lower green/blue start actions and equal navigation buttons');
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{if(session)try{await api('/session/'+session,'DELETE')}catch{}if(driver)driver.kill();host.close();game.close();});

@@ -1332,3 +1332,18 @@ html[data-device=tablet] .sx-stage{transform-origin:50% 50%}
 #tmScreen .tm-history-row{display:grid;grid-template-columns:1fr 1fr auto;align-items:center;gap:8px;background:#fff9ec;border:1px solid #baa98c;border-radius:8px;padding:10px;text-align:center}
 #tmScreen .tm-history-row strong{font-size:clamp(16px,1.6vw,28px)}
 @media(max-width:600px){#tmScreen .tm-new-actions{grid-template-columns:1fr}#tmScreen .tm-history-row{grid-template-columns:1fr}}
+
+/* Board home: keep the two start actions reachable at the bottom, and
+   the saved-event list directly above them. Only the list area scrolls. */
+#tmScreen .tm-home-body{display:flex;flex-direction:column;min-height:0;overflow:auto}
+#tmScreen .tm-resume-section{margin-top:auto;flex:none;display:flex;flex-direction:column;gap:8px;width:100%}
+#tmScreen .tm-home-foot{flex-direction:column;align-items:center;gap:clamp(8px,1.3vh,16px);padding-top:4px}
+#tmScreen .tm-home-foot .tm-new-actions{width:min(100%,1080px);margin:0 auto}
+#tmScreen .tm-home-foot .tm-new-actions .control.big{min-height:clamp(48px,8vh,86px);min-width:0;font-size:clamp(15px,1.5vw,28px);white-space:normal}
+#tmScreen .tm-home-foot .tm-start-normal{background:linear-gradient(#2fd090,#17b676 58%,#10a468);border-color:#0a7049;color:#fff;text-shadow:0 1px 0 #185b43}
+#tmScreen .tm-home-foot .tm-start-world{background:linear-gradient(#62b9ff,#3286dc 60%,#2168b7);border-color:#1b589a;color:#fff;text-shadow:0 1px 0 #174e8a}
+#tmScreen .tm-home-foot .tm-new-actions .control:disabled{opacity:.5;filter:grayscale(.4)}
+#tmScreen .tm-home-foot .tm-home-nav{width:min(100%,460px);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#tmScreen .tm-home-foot .tm-home-nav:has(> :only-child){grid-template-columns:minmax(0,1fr);width:min(100%,225px)}
+#tmScreen .tm-home-foot .tm-home-nav .control.big{width:100%;min-width:0;min-height:clamp(42px,6vh,64px);font-size:clamp(13px,1.15vw,22px);white-space:normal;padding:4px 8px}
+@media(max-width:600px){#tmScreen .tm-home-foot .tm-new-actions{grid-template-columns:repeat(2,minmax(0,1fr))}}
