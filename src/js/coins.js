@@ -42,7 +42,7 @@
     return aiLevel?1:2;
   }
   const COIN_SESSION=EMBED?crypto.randomUUID():'';
-  function coinPost(data){window.parent.postMessage({...data,coinUnit:COIN.coinUnit,sessionId:COIN_SESSION},DASHBOARD_ORIGIN);}
+  function coinPost(data){window.parent.postMessage({...data,coinProtocol:4,coinUnit:COIN.coinUnit,sessionId:COIN_SESSION},DASHBOARD_ORIGIN);}
   const RECOVERY_KEY='hoja-board-coin-v3-recovery';
   function saveCoinRecovery(){
     if(!EMBED)return;
