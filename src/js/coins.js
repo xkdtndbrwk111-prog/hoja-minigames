@@ -161,7 +161,7 @@
   function replayGate(fn){refreshGameGate(()=>replayGateFresh(fn));}
   function replayGateFresh(fn){
     if(EMBED&&(!COIN.ready||COIN.paying||COIN.uncertain&&!COIN.on||COIN.enabled&&!COIN.on)){hofToast('대시보드 코인 연결을 확인해 주세요.');return;}
-    if(roundClose(true)){hofToast('환불을 처리했어요. 다시 시작하려면 한 번 더 눌러 주세요.');return;}
+    if(roundClose(true)){refundExitToMenu();return;}
     if(tryOpen()){TRY.left--;round={freeRetry:true,t0:null};hofToast(TRY.left?`남은 판 ${TRY.left}`:'마지막 판이에요');fn();return;}
     if(EMBED&&COIN.on){
       coinSpend(COIN.lastIds,fn,text=>hofToast(text));

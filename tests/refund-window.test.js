@@ -7,7 +7,8 @@ const mocks=String.raw`const EMBED=true,DASHBOARD_ORIGIN='https://board.invalid'
 HOF={players:[],playerNames:[]},HOF_GAMES=[],PARTY_GAMES={},aiLevel=1,
 localStorage={getItem:()=>null,setItem:()=>{}},crypto={randomUUID:()=>String(++seed)},
 document={addEventListener:()=>{}},listeners={},sent=[],timers=new Map();
-let seed=0,idx=0,currentGame='stairs',now=100000,played=0;
+let seed=0,idx=0,currentGame='stairs',now=100000,played=0,exits=0;
+const refundExitToMenu=()=>{exits++;};
 const Date={now:()=>now};
 const window={parent:{postMessage:m=>sent.push(m)},addEventListener:(k,f)=>listeners[k]=f};
 const setTimeout=f=>{timers.set(++idx,f);return idx},clearTimeout=id=>timers.delete(id),setInterval=()=>0;
@@ -42,7 +43,7 @@ test('free retry never refunds original payment, and count decreases once',()=>r
  'pay(); roundBegin(); now+=10001; roundFinish(); replayGateFresh(()=>played++); assert.equal(TRY.left,3); assert.equal(round.freeRetry,true); roundBegin(); now+=100; assert(!roundRefundable()); assert(!roundClose()); assert.equal(refunds().length,0); assert.equal(TRY.left,0);'
 ));
 test('replay after short paid round cancels entitlement rather than issuing free retry',()=>run(
- 'const id=pay(); roundBegin(); now+=500; replayGateFresh(()=>played++); assert.equal(played,1); assert.equal(TRY.left,0); assert.equal(refunds().length,1); assert.equal(COIN.refunds.size,1); confirm(id); assert.equal(COIN.refunds.size,0);'
+ 'const id=pay(); roundBegin(); now+=500; replayGateFresh(()=>played++); assert.equal(played,1); assert.equal(exits,1); assert.equal(TRY.left,0); assert.equal(refunds().length,1); assert.equal(COIN.refunds.size,1); confirm(id); assert.equal(COIN.refunds.size,0);'
 ));
 test('all game families have explicit start and terminal hooks, no generic capture timer',()=>{
  assert(!coins.includes("document.addEventListener('pointerdown'"));

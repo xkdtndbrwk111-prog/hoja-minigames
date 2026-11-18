@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           ref: ${{ github.sha }}
-      - name: Verify and build exact source
+      - name: Verify refund-exit and build exact source
         run: |
           set -euo pipefail
           node --test tests/*.test.js

@@ -29,8 +29,24 @@
     window.addEventListener('pagehide',()=>roundClose());
     coinPost({type:'hoja-ready'});
   }
-  // One shared, non-overlapping refund action, visible only while a paid
-  // session can be refunded. Normal gameplay controls remain unchanged.
+  // A refunded round must not be resumed from its old pause/result screen.
+  function refundExitToMenu(){
+    clearIntro();$('choiceScreen').hidden=true;
+    if(CJ.on)CJ.home();
+    else if(PS.on)paHome();
+    else if(O.on)leaveOthello();
+    else if(GO.on)leaveGomoku();
+    else if(BB.on)leaveBubble();
+    else if(SH.on)leaveShop();
+    else if(ST.on)leaveStairs();
+    else if(VB.on)leaveVolley();
+    else if(TT.on)leaveTtt();
+    else if(GX.on)leaveGerm();
+    else if(inGame)leaveGame();
+    $('menuScreen').hidden=false;playBgm('menu',{gain:.8});
+  }
+  // A single conditional refund-and-exit control. The top display area is
+  // outside the usual board touch zone; no new images or game overlays.
   if(EMBED){
     const refundButton=document.createElement('button');refundButton.type='button';refundButton.className='control primary';
     refundButton.textContent='코인 환불하고 나가기';refundButton.hidden=true;
@@ -39,19 +55,7 @@
     const syncRefund=()=>{refundButton.hidden=!(round?.charge&&roundRefundable());};
     refundButton.addEventListener('click',()=>{
       if(!round?.charge||!roundRefundable()){syncRefund();return;}
-      roundClose();clearIntro();$('choiceScreen').hidden=true;
-      if(CJ.on)CJ.home();
-      else if(PS.on)paHome();
-      else if(O.on)leaveOthello();
-      else if(GO.on)leaveGomoku();
-      else if(BB.on)leaveBubble();
-      else if(SH.on)leaveShop();
-      else if(ST.on)leaveStairs();
-      else if(VB.on)leaveVolley();
-      else if(TT.on)leaveTtt();
-      else if(GX.on)leaveGerm();
-      else if(inGame)leaveGame();
-      $('menuScreen').hidden=false;playBgm('menu',{gain:.8});syncRefund();
+      roundClose();refundExitToMenu();syncRefund();
     });
     setInterval(syncRefund,100);
   }
