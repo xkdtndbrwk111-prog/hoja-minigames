@@ -76,7 +76,7 @@ function laneUi(){
   }
 }
 function setMode(mode){
-  if(mode!=='menu')roundBegin();
+  if(mode==='menu')roundClose();
   G.mode=mode;G.seed=Math.floor(Math.random()*1e6);G.rush=false;$('cjTimer').style.color='';G.best=+preference('jump-best','0');$('jumpOverlay').hidden=true;setBgmTempo(1);
   W=mode==='duel'?960:640;resize();
   G.lanes=mode==='duel'?[makeLane(0,0,480,2,1),makeLane(1,480,480,1,2)]:[makeLane(0,0,640,2,2)];
@@ -132,6 +132,7 @@ function banner(L,txt){const e=L.el.banner;if(!e)return;e.textContent=txt;e.clas
 function jump(L){
   const p=L.p;
   if(G.phase!=='play'||L.out>0||p.lock>0||p.left<=0||p.boost>0)return;
+  roundBegin();
   if(!L.started){L.started=true;L.el.hint.style.display='none';}
   const n=3-p.left;p.vy=-JV[n];p.left--;p.on=null;p.landT=0;p.sx=.78;p.sy=1.28;
   burst(L,p.x,p.y,n===2?12:6,n===2?'#ffe27a':'#fff8e8',70+n*30);
@@ -240,6 +241,7 @@ function respawn(L){
   else{p.on=null;p.y=L.cam+70;p.vy=0;p.x=(L.LX+L.RX)/2;}
 }
 function endSolo(L){
+  roundFinish();
   G.phase='over';G.overT=0;const n=Math.floor(L.maxAlt/FLOOR),b=readBest();
   if(n>b){remember('jump-best',String(n));G.best=n;}
   hofRecord('jump_solo',0,n);
@@ -247,6 +249,7 @@ function endSolo(L){
   beep(200,.3,'triangle',.08);stopBgm(.4);
 }
 function endDuel(){
+  roundFinish();
   G.phase='over';G.overT=0;$('cjTimer').style.display='none';
   const [a,b]=G.lanes,na=Math.floor(a.maxAlt/FLOOR),nb=Math.floor(b.maxAlt/FLOOR);
   hofRecord('jump_duel',0,na);hofRecord('jump_duel',1,nb);
@@ -259,7 +262,7 @@ function step(dt){
   if(G.phase==='count'){
     G.count-=dt;const n=Math.ceil(G.count);$('cjCount').textContent=n>0?n:'시작!';
     if(n!==G.lastSec){G.lastSec=n;beep(n>0?520:880,.12,'square',.06);}
-    if(G.count<=0){G.phase='play';setTimeout(()=>{$('cjCount').style.display='none';},450);}
+    if(G.count<=0){roundBegin();G.phase='play';setTimeout(()=>{$('cjCount').style.display='none';},450);}
     for(const L of G.lanes)stepLane(L,dt,false);
     return;
   }
@@ -527,6 +530,6 @@ function scene(ctx,o){
   return true;
 }
 function key(side){if(!G.lanes.length)return;jump(G.lanes[G.mode==='duel'?side:0]);}
-return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,setMode,leave,openMenu,get H(){return H;},
+return {enter,scene,key,openMenu,home,get on(){return on;},debug:{G,step,render,jump,setMode,leave,openMenu,get H(){return H;},
   warp(a,i){const L=G.lanes[i||0],p=L.p;L.started=true;L.el.hint.style.display='none';L.nextY=-a;L.prev={x:L.LX,w:L.sw,ground:true};L.cam=-a-H*.5;L.plats=[{x:L.LX+70,y:-a+40,w:150,wall:0,type:'n',x0:L.LX+70,range:0,ph:0,t:0,fall:false,sq:0}];L.fish=[];p.on=L.plats[0];p.x=L.LX+120;p.y=L.plats[0].y;L.maxAlt=a;L.nextMile=Math.floor(a/FLOOR/10+1)*10;L.scroll=0;fillPlats(L);}}};
 })();

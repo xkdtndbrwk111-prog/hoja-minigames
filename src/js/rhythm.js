@@ -644,6 +644,7 @@
     };
   }
   function rhBegin(stage,host,song,style){
+    roundBegin();
     // The road takes the whole screen, so the class goes on before anything measures the stage.
     $('partyScreen').classList.toggle('rh-full',Boolean(style.full));
     if(stage.coop){$('paLabel0').textContent='우리 반';$('paName0').textContent='다 같이';}

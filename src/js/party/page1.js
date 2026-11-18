@@ -65,7 +65,7 @@
     if(PS.ended)return;
     PS.ended=true;PS.live=false;PS.timers=[];
     if(RALLY.on){rallyLeg(winner,detail);return;}
-    roundClose();
+    roundFinish();
     if(winner===-1){sfx('soft',.8);}else{victoryJingle();cheer(.7);}
     const title=winner===null?'끝!':winner===-1?'무승부!':gamePlayerName(winner)+' 승리!';
     paOverlay(title,detail||'',[
@@ -126,6 +126,7 @@
     }
     const w=a>b?0:1;
     RALLY.on=false;
+    roundFinish();
     victoryJingle();cheer(.7);
     hofRecord('rally',w,1);
     paOverlay(gamePlayerName(w)+' 랠리 우승!',`${a} : ${b}`,[
@@ -154,7 +155,7 @@
     if(PS.run&&typeof PS.run.stop==='function')PS.run.stop();
     PS.run=def.make(stage,host)||{};
     PS.counting=def.noCount?0:3;PS.lastCount=0;
-    if(PS.counting){$('paCount').hidden=false;}else{$('paCount').hidden=true;PS.live=true;PS.run.begin&&PS.run.begin();}
+    if(PS.counting){$('paCount').hidden=false;}else{$('paCount').hidden=true;PS.live=true;if(!def.rhythm)roundBegin();PS.run.begin&&PS.run.begin();}
     if(def.rhythm)stopBgm(.2);else playMood(def.mood||'action');
   }
   function paFrame(now){
@@ -164,7 +165,7 @@
       PS.counting-=dt;
       const n=Math.ceil(PS.counting);
       if(n!==PS.lastCount&&n>0){PS.lastCount=n;$('paCount').textContent=n;paFlash($('paCount'),'pa-pop',600);sfx('soft',.7);}
-      if(PS.counting<=0){PS.counting=0;$('paCount').hidden=true;sfx('goal',.6);PS.live=true;PS.run.begin&&PS.run.begin();}
+      if(PS.counting<=0){PS.counting=0;$('paCount').hidden=true;sfx('goal',.6);PS.live=true;roundBegin();PS.run.begin&&PS.run.begin();}
     }
     if(PS.live){
       PS.elapsed+=dt;

@@ -153,6 +153,7 @@
     playMood('calm');
   }
   function xBeginTurn(p){
+    roundBegin();
     GX.turn=p;GX.sel=-1;GX.hover=-1;GX.pid=null;GX.dragFrom=-1;GX.hint=null;
     GX.moves=xMoves(GX.board,GX.geo,p);
     GX.phase=xIsAI(p)?'ai':'human';
@@ -207,6 +208,7 @@
     if(!empt.length)xEnd(0,'');
   }
   function xEnd(forced,note){
+    roundFinish();
     const [a,d]=xCount(GX.board);
     const w=forced?forced-1:a===d?-1:a>d?0:1;
     GX.phase='over';xSync();

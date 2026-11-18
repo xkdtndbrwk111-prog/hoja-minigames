@@ -29,6 +29,33 @@
     window.addEventListener('pagehide',()=>roundClose());
     coinPost({type:'hoja-ready'});
   }
+  // One shared, non-overlapping refund action, visible only while a paid
+  // session can be refunded. Normal gameplay controls remain unchanged.
+  if(EMBED){
+    const refundButton=document.createElement('button');refundButton.type='button';refundButton.className='control primary';
+    refundButton.textContent='코인 환불하고 나가기';refundButton.hidden=true;
+    refundButton.style.cssText='position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:9999;max-width:90vw;font-size:clamp(14px,1.25vw,22px);padding:.35em .8em;';
+    document.body.append(refundButton);
+    const syncRefund=()=>{refundButton.hidden=!(round?.charge&&roundRefundable());};
+    refundButton.addEventListener('click',()=>{
+      if(!round?.charge||!roundRefundable()){syncRefund();return;}
+      roundClose();clearIntro();$('choiceScreen').hidden=true;
+      if(CJ.on)CJ.home();
+      else if(PS.on)paHome();
+      else if(O.on)leaveOthello();
+      else if(GO.on)leaveGomoku();
+      else if(BB.on)leaveBubble();
+      else if(SH.on)leaveShop();
+      else if(ST.on)leaveStairs();
+      else if(VB.on)leaveVolley();
+      else if(TT.on)leaveTtt();
+      else if(GX.on)leaveGerm();
+      else if(inGame)leaveGame();
+      $('menuScreen').hidden=false;playBgm('menu',{gain:.8});syncRefund();
+    });
+    setInterval(syncRefund,100);
+  }
+  if(!EMBED)window.addEventListener('pagehide',()=>roundClose());
   $('deviceButton').addEventListener('click',()=>{remember('device',TABLET?'board':'tablet');location.reload();});
   $('choiceBack').addEventListener('click',()=>{sfx('menu',.7);streak={side:-1,id:null,count:0};leaveSelection();});
   $('choiceStart').addEventListener('click',()=>playGate(playersNeeded(),hofNeeded(),startBattleIntro));

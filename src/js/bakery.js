@@ -351,6 +351,7 @@
       sfx(ok?'goal':'soft',ok?1:.9);if(ok)cheer(.6);
       return;
     }
+    roundFinish();
     if(SH.mode==='versus'){
       const [a,b]=SH.shops.map(s=>s.earned),w=a===b?-1:(a>b?0:1);
       hofRecord('shop_vs2',0,a);hofRecord('shop_vs2',1,b);
@@ -371,6 +372,7 @@
     shResult(['조금 아쉬워요','잘했어요!','훌륭해요!','최고의 팀!'][stars]+'  '+'★'.repeat(stars)+'☆'.repeat(3-stars),`팀원 ${Array.from({length:SH.people},(_,i)=>gamePlayerName(i)).join(' · ')} · 매출 ${shWon(SH.earned)} · 손님 ${SH.shops[0].served}명 · 다음 별 ${stars<3?shWon(tg[stars]):'완성!'}`,[['↻ 한 번 더','primary',()=>replayGate(shNewGame)],['인물 변경','',()=>{leaveShop();enterSelection();}],['← 모음집','',shHome]]);
   }
   function shFinishSolo(){
+    roundFinish();
     SH.phase='over';
     hofRecord('shop_solo',0,SH.totalEarned);
     const prev=+preference('shop-best','0');const record=SH.money>prev;
@@ -415,7 +417,7 @@
       SH.countdown-=dt;
       const show=Math.ceil(SH.countdown/.8);
       if(show!==SH.cShown&&show>0){SH.cShown=show;sfx('menu',1,1+(3-show)*.16);}
-      if(SH.countdown<=0){SH.phase='day';sfx('goal',.8);}
+      if(SH.countdown<=0){roundBegin();SH.phase='day';sfx('goal',.8);}
       return;
     }
     if(SH.phase==='cut'){

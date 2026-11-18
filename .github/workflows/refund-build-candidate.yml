@@ -1,0 +1,40 @@
+name: Refund build review candidate
+on:
+  push:
+    branches: [codex/refund-window-v2]
+    paths: ['.github/workflows/refund-build-candidate.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    if: github.ref == 'refs/heads/codex/refund-window-v2'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify and build exact source
+        run: |
+          set -euo pipefail
+          node --test tests/*.test.js
+          python3 build.py
+          python3 build.py --check
+          python3 - <<'PY'
+          import re,pathlib,tempfile,subprocess
+          scripts=re.findall(r'<script\b([^>]*)>([\s\S]*?)</script>',pathlib.Path('index.html').read_text(),re.I)
+          with tempfile.TemporaryDirectory() as d:
+              for i,(attrs,body) in enumerate(scripts):
+                  if body.strip() and not re.search(r'\bsrc\s*=',attrs,re.I):
+                      p=pathlib.Path(d)/f'{i}.js';p.write_text(body);subprocess.run(['node','--check',str(p)],check=True)
+          PY
+          sha256sum index.html
+      - name: Commit generated page to review branch only
+        run: |
+          set -euo pipefail
+          git add -- index.html
+          test "$(git diff --cached --name-only)" = index.html
+          git config user.name "hoja-build"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Rebuild minigame HTML for refund review"
+          git push origin HEAD:refs/heads/codex/refund-window-v2

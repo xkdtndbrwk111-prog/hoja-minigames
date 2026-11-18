@@ -221,6 +221,7 @@
     playMood('calm');
   }
   function oBeginTurn(p){
+    roundBegin();
     O.turn=p;O.moves=oMoves(O.board,O.geo,p);O.flipsAt=new Map(O.moves.map(c=>[c,oFlips(O.board,O.geo,c,p)]));
     O.hintCell=-1;O.hover=-1;O.pid=null;
     O.phase=oIsAI(p)?'ai':'human';
@@ -278,6 +279,7 @@
     oEndGame();
   }
   function oEndGame(){
+    roundFinish();
     // Count the discs out one by one: the final score reveal is the best moment of the game for the room.
     O.phase='count';oSyncTurnUI();stopBgm(.8);
     const cells=[[],[]];

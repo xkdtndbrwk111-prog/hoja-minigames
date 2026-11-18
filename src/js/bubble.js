@@ -240,6 +240,7 @@
     f.warned=danger;
   }
   function bEnd(w){
+    roundFinish();
     BB.phase='over';BB.result=w;
     BB.fields.forEach(f=>{f.shot=null;f.pid=null;f.trace=null;});
     const loser=BB.fields[1-w];
@@ -333,7 +334,7 @@
       BB.countdown-=dt;
       const show=Math.ceil(BB.countdown/.8);
       if(show!==BB.cShown&&show>0){BB.cShown=show;sfx('menu',1,1+(3-show)*.16);}
-      if(BB.countdown<=0){BB.phase='playing';sfx('goal',.9);}
+      if(BB.countdown<=0){roundBegin();BB.phase='playing';sfx('goal',.9);}
       return;
     }
     if(BB.phase!=='playing')return;

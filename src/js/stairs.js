@@ -60,6 +60,7 @@
     p.stun=1;p.idx=Math.max(0,p.idx-5);p.dir=stNextDir(p.idx);
   }
   function stGameOver(p){
+    roundFinish();
     p.over=true;p.fallV=-500;
     ST.phase='over';stopBgm(.4);
     hofRecord('stairs_solo',0,p.idx);
@@ -72,6 +73,7 @@
     },900);
   }
   function stRaceEnd(){
+    roundFinish();
     ST.phase='over';
     ST.players.forEach(p=>hofRecord('stairs_race',p.i,p.idx));
     const rank=[...ST.players].sort((a,b)=>b.idx-a.idx),top=rank[0].idx,leaders=rank.filter(p=>p.idx===top);
@@ -109,7 +111,7 @@
       ST.countdown-=dt;
       const show=Math.ceil(ST.countdown/.8);
       if(show!==ST.cShown&&show>0){ST.cShown=show;sfx('menu',1,1+(3-show)*.16);}
-      if(ST.countdown<=0){ST.phase='run';sfx('goal',.8);}
+      if(ST.countdown<=0){roundBegin();ST.phase='run';sfx('goal',.8);}
       return;
     }
     if(ST.phase!=='run')return;

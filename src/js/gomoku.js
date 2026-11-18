@@ -206,6 +206,7 @@
     playMood('calm');
   }
   function gBeginTurn(p){
+    roundBegin();
     GO.turn=p;GO.hintCell=-1;GO.hover=-1;GO.pid=null;
     GO.phase=gIsAI(p)?'ai':'human';
     GO.timer=GO.stage.clock&&GO.phase==='human'?GO.stage.clock:0;
@@ -245,11 +246,12 @@
     gBeginTurn(opp);
   }
   function gEndDraw(){
+    roundFinish();
     GO.phase='over';gSyncUI();stopBgm(.6);sfx('goal',.7);gMood(1,'surprised','판이 꽉 찼어!');gMood(2,'surprised','다시 붙자!');
     gResult('무승부!',GO.moves+'수 · 판이 가득 찼어요',600);
   }
   function gWin(p,line,c){
-    GO.phase='over';GO.win={line,t0:performance.now(),p};
+    roundFinish();GO.phase='over';GO.win={line,t0:performance.now(),p};
     const w=p-1;
     const repeat=streak.side===w&&streak.id===choices[w];
     streak={side:w,id:choices[w],count:repeat?streak.count+1:1};

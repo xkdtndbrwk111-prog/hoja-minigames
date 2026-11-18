@@ -60,6 +60,7 @@
     VB.phase='point';VB.timer=1.6;
   }
   function vbFinish(w){
+    roundFinish();
     VB.phase='over';VB.winner=w;VB.pointers.clear();
     const repeat=streak.side===w&&streak.id===choices[w];
     streak={side:w,id:choices[w],count:repeat?streak.count+1:1};
@@ -198,7 +199,7 @@
       if(VB.phase==='countdown'){const show=Math.ceil(VB.timer/.8);if(show!==VB.cShown&&show>0){VB.cShown=show;sfx('menu',1,1+(3-show)*.16);}}
       VB.timer-=dt;
       VB.players.forEach(p=>vbStepPlayer(p,dt));
-      if(VB.timer<=0){VB.phase='play';if(VB.cShown>0){sfx('goal',.7);VB.cShown=0;}}
+      if(VB.timer<=0){roundBegin();VB.phase='play';if(VB.cShown>0){sfx('goal',.7);VB.cShown=0;}}
       return;
     }
     if(VB.phase==='point'){
