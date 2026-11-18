@@ -198,6 +198,7 @@
     }else if(msg.type==='hoja-refund-result'){
       const r=COIN.refunds.get(msg.charge);if(!r)return;if(msg.retryable)return;COIN.refunds.delete(msg.charge);saveCoinRecovery();
       if(msg.ok){if(msg.classId===COIN.classId)for(const [id,b] of Object.entries(msg.balances||{})){const st=COIN.students.find(x=>x.id===id);if(st)st.balance=b;}hofToast(r.why+' 코인을 돌려줬어요');}else hofToast('환불을 확인할 수 없어요. 선생님께 알려 주세요.');
+      if(typeof tournamentRefundAck==='function')tournamentRefundAck();
     }else if(msg.type==='hoja-coin-result'||msg.type==='hoja-hof-week-result'||msg.type==='hoja-tournament-auth-result'){
       const cb=COIN.pending.get(msg.req);if(cb){COIN.pending.delete(msg.req);cb(msg);}
     }
