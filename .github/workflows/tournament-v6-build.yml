@@ -1,0 +1,42 @@
+name: Tournament V6 reachable setup and normal single-only
+on:
+  push:
+    branches: [codex/tournament-v6]
+    paths: ['.github/workflows/tournament-v6-build.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    if: github.ref == 'refs/heads/codex/tournament-v6'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify tournament engine and build exact source
+        run: |
+          set -euo pipefail
+          node --test tests/*.test.js
+          python3 build.py
+          python3 build.py --check
+          python3 - <<'PY'
+          import re,pathlib,tempfile,subprocess
+          scripts=re.findall(r'<script\b([^>]*)>([\s\S]*?)</script>',pathlib.Path('index.html').read_text(),re.I)
+          with tempfile.TemporaryDirectory() as d:
+              for i,(attrs,body) in enumerate(scripts):
+                  if body.strip() and not re.search(r'\bsrc\s*=',attrs,re.I):
+                      p=pathlib.Path(d)/f'{i}.js';p.write_text(body);subprocess.run(['node','--check',str(p)],check=True)
+          PY
+          sha256sum index.html
+      - name: Browser integration with recovery and dual selection
+        run: node tests/tournament-browser.cjs
+      - name: Commit generated page to review branch only
+        run: |
+          set -euo pipefail
+          git add -- index.html
+          test "$(git diff --cached --name-only)" = index.html
+          git config user.name "hoja-build"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Rebuild minigame HTML for tournament V6 review"
+          git push origin HEAD:refs/heads/codex/tournament-v6

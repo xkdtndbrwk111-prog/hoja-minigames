@@ -1347,3 +1347,27 @@ html[data-device=tablet] .sx-stage{transform-origin:50% 50%}
 #tmScreen .tm-home-foot .tm-home-nav:has(> :only-child){grid-template-columns:minmax(0,1fr);width:min(100%,225px)}
 #tmScreen .tm-home-foot .tm-home-nav .control.big{width:100%;min-width:0;min-height:clamp(42px,6vh,64px);font-size:clamp(13px,1.15vw,22px);white-space:normal;padding:4px 8px}
 @media(max-width:600px){#tmScreen .tm-home-foot .tm-new-actions{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Tournament setup uses the same 34% display / 66% interaction split as
+   the existing board selection UI. The scrollable body is clipped to the
+   lower area, and its footer can never be pushed outside the viewport. */
+#tmScreen.tm-setup-screen{display:grid;grid-template-rows:34% minmax(0,1fr) auto;gap:0;padding:0;inset:0;width:100%;height:100%;overflow:hidden}
+#tmScreen.tm-setup-screen[hidden]{display:none!important}
+#tmScreen.tm-setup-screen .tm-head{display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:0;overflow:hidden;padding:8px 16px;pointer-events:none;text-align:center}
+#tmScreen.tm-setup-screen .tm-head h2{font-size:clamp(26px,3.6vw,64px);line-height:1.2}
+#tmScreen.tm-setup-screen .tm-head p{font-size:clamp(15px,1.6vw,27px)}
+#tmScreen.tm-setup-screen .tm-setup-body{min-height:0;min-width:0;overflow:auto;overscroll-behavior:contain;touch-action:pan-y;padding:8px clamp(10px,2vw,30px);gap:clamp(5px,.8vh,10px);align-items:center;justify-content:flex-start}
+#tmScreen.tm-setup-screen .tm-setup-body>*{flex-shrink:0}
+#tmScreen.tm-setup-screen .tm-settings{width:min(100%,1250px);gap:8px;align-items:center}
+#tmScreen.tm-setup-screen .tm-select{font-size:clamp(13px,1.25vw,23px);min-height:44px;padding:5px 10px;min-width:0;max-width:100%;flex:0 1 auto;touch-action:manipulation}
+#tmScreen.tm-setup-screen .tm-count-settings .control.big{min-width:clamp(100px,13vw,220px);min-height:clamp(44px,6vh,66px);font-size:clamp(16px,1.4vw,26px)}
+#tmScreen.tm-setup-screen .tm-roster{width:min(100%,1280px);display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:8px;padding:4px;align-items:stretch;min-width:0}
+#tmScreen.tm-setup-screen .tm-roster .tm-student.control.big{width:100%;max-width:100%;min-width:0;min-height:clamp(49px,7vh,76px);padding:4px 5px;white-space:normal;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;overflow:hidden;line-height:1.15;touch-action:manipulation;font-size:clamp(14px,1.35vw,23px)}
+#tmScreen.tm-setup-screen .tm-student-name{max-width:100%;overflow-wrap:anywhere;text-align:center}
+#tmScreen.tm-setup-screen .tm-student-balance{font-size:clamp(11px,.95vw,16px);line-height:1.15;color:#715125}
+#tmScreen.tm-setup-screen .tm-roster .tm-chosen{outline:2px solid #278571;outline-offset:0;color:#25493d;border-color:#278571}
+#tmScreen.tm-setup-screen .tm-roster .tm-student:disabled{opacity:.48}
+#tmScreen.tm-setup-screen .tm-roster .tm-person{text-align:center;min-width:0;overflow-wrap:anywhere}
+#tmScreen.tm-setup-screen .tm-setup-foot{min-width:0;gap:9px;padding:6px 10px clamp(8px,1.3vh,15px);flex-wrap:nowrap;background:#f4e9d4}
+#tmScreen.tm-setup-screen .tm-setup-foot .control.big{min-width:0;min-height:clamp(44px,7vh,80px);font-size:clamp(15px,1.4vw,26px);flex:0 1 230px;white-space:normal;padding:4px 8px}
+@media(max-width:700px){#tmScreen.tm-setup-screen .tm-roster{grid-template-columns:repeat(auto-fit,minmax(min(100%,100px),1fr));gap:6px}#tmScreen.tm-setup-screen .tm-settings{gap:5px}}

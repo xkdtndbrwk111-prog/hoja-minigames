@@ -24,7 +24,10 @@ const pick=(i)=>exec('const e=document.querySelectorAll(".tm-roster button")[arg
 const selectGame=id=>exec('let e=document.querySelector("select[aria-label=게임]");e.value=arguments[0];e.dispatchEvent(new Event("change"));return e.value;',id);
 async function open(){await until(()=>exec('const x=document.getElementById("openTournament");if(!x||document.getElementById("menuScreen").hidden)return false;x.click();return true;'),'menu');await text('일반 토너먼트');}
 async function openResume(){await until(()=>exec('const b=document.getElementById("openTournament");if(!b||document.getElementById("menuScreen").hidden)return false;b.click();return true;'),'resume menu');await text('이어하기');}
-async function startNormal(n){await until(()=>click('일반 토너먼트'),'normal');await text('대진표 추첨');assert.equal(await selectGame('stairs'),'stairs');assert(await click(n+'인전'));for(let j=0;j<n;j++)assert(await pick(j));assert(await click('대진표 추첨'));await text('경기 시작');}
+async function startNormal(n){await until(()=>click('일반 토너먼트'),'normal');await text('대진표 추첨');
+ assert(await exec('const root=document.querySelector("#tmScreen"),body=root.querySelector(".tm-setup-body"),foot=root.querySelector(".tm-setup-foot"),r=e=>e.getBoundingClientRect(),bounds=r(root),edge=bounds.top+bounds.height*.34;return root.classList.contains("tm-setup-screen")&&r(body).top>=edge-.5&&r(foot).bottom<=bounds.bottom+1&&[...root.querySelectorAll("button,select")].filter(e=>e.getClientRects().length).every(e=>r(e).top>=edge-.5)&&!root.querySelector("select[aria-label=\\\"경기 방식\\\"]")&&root.innerText.includes("싱글 토너먼트")'));
+ assert(await exec('const cards=[...document.querySelectorAll(".tm-student")],grid=document.querySelector(".tm-roster").getBoundingClientRect();return cards.length===21&&cards.every((a,i)=>{const x=a.getBoundingClientRect();return x.left>=grid.left-1&&x.right<=grid.right+1&&a.scrollWidth<=a.clientWidth+1&&cards.slice(i+1).every(b=>{const y=b.getBoundingClientRect();return x.right<=y.left+.5||y.right<=x.left+.5||x.bottom<=y.top+.5||y.bottom<=x.top+.5})})'));
+ assert.equal(await selectGame('stairs'),'stairs');assert(await click(n+'인전'));for(let j=0;j<n;j++)assert(await pick(j));assert(await click('대진표 추첨'));await text('경기 시작');}
 (async()=>{
  await listen(host,17439);await listen(game,17440);
  driver=spawn('chromedriver',['--port=9515','--allowed-ips=127.0.0.1'],{stdio:['ignore','ignore','inherit']});
@@ -119,7 +122,7 @@ async function startNormal(n){await until(()=>click('일반 토너먼트'),'norm
  assert(await exec('const a=document.querySelector(".tm-resume-section").getBoundingClientRect(),b=document.querySelector(".tm-new-actions").getBoundingClientRect(),c=document.querySelector(".tm-home-nav").getBoundingClientRect();return a.bottom<=b.top&&b.top-a.bottom<100&&b.bottom<=c.top&&c.bottom<=innerHeight+1'));
  await startNormal(4);
  let all=await loadAll();assert.equal(all.length,2);const world=all.find(x=>x.mode==="world"),paid=all.find(x=>x.mode==="normal");
- assert.equal(world.completed,1);assert.deepEqual(world.groups,legacy.groups);assert.equal(paid.completed,0);assert(paid.charge);
+ assert.equal(world.completed,1);assert.deepEqual(world.groups,legacy.groups);assert.equal(paid.completed,0);assert.equal(paid.format,'single');assert.equal(paid.groups.length,0);assert(paid.charge);
  await play(10,1);await text('1/3경기 완료');
  assert(await click('저장하고 나가기'));await text('진행 중인 토너먼트 · 2개');
  await parent();await exec('mock.allow=false;');const authCount=await exec('return mock.auth.length');await frame();
@@ -137,5 +140,5 @@ async function startNormal(n){await until(()=>click('일반 토너먼트'),'norm
  all=await loadAll();assert.equal(all.length,1);assert.equal(all[0].id,world.id);assert.deepEqual(all[0].groups,world.groups);
  await parent();assert.deepEqual(await exec('return mock.spends.map(s=>s.ids.length)'),[8,4,4]);assert.equal(await exec('return mock.refunds.length'),1);await frame();
  assert(await resumeMode('교실 월드컵'));await text('1/35경기 완료');
- console.log('PASS browser: payment/refund, upward bracket, compact 21-player 24 seeds, defeat shading, crash reload and same random character, PIN rollback, 21-player dual group save, centered names and VS, two-stage intro, skip/cancel/automatic start, tie, champion, no additional spend, legacy migration, parallel tournaments, public World Cup history, isolated completion, blue rightmost tab, lower green/blue start actions and equal navigation buttons');
+ console.log('PASS browser: payment/refund, upward bracket, compact 21-player 24 seeds, defeat shading, crash reload and same random character, PIN rollback, 21-player dual group save, centered names and VS, two-stage intro, skip/cancel/automatic start, tie, champion, no additional spend, legacy migration, parallel tournaments, public World Cup history, isolated completion, blue rightmost tab, lower green/blue start actions and equal navigation buttons, setup lower 66%, non-overlapping student cards, paid single-only and world dual');
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{if(session)try{await api('/session/'+session,'DELETE')}catch{}if(driver)driver.kill();host.close();game.close();});
