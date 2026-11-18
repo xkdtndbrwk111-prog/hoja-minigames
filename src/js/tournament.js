@@ -174,21 +174,25 @@
     tmIntroClear();
     TM.t=null;TM.auth=false;TM.match=null;TM.running=false;
     const {body,foot}=tmLayout('토너먼트','참가자를 추첨하고 한 경기씩 진행해요.');
+    body.classList.add('tm-home-body');foot.classList.add('tm-home-foot');
+    const nav=tmEl('div','tm-home-nav');
+    const back=tmButton('← 게임 모음집 돌아가기',()=>{TM.screen.hidden=true;$('menuScreen').hidden=false;});
+    nav.append(back);
     if(TM.notice){body.append(tmEl('p','tm-notice',TM.notice));TM.notice='';}
     if(!EMBED||!COIN.classId||!TM.bridge){
       body.append(tmEl('p','tm-notice',!EMBED?'호자보드 안에서 실행해 주세요.':!COIN.ready?'호자보드와 연결 중이에요.':!COIN.classId?'학급 명단을 연결해 주세요.':'학급은 연결됐지만 토너먼트 지원 버전이 아니에요. 호자보드 업데이트 후 다시 열어 주세요.'));
       if(EMBED)foot.append(tmButton('연결 확인',()=>tmFresh(()=>tmHome())));
     }else{
       let saved;
-      try{saved=tmSavedList();}catch(e){body.append(tmEl('p','tm-notice',e.message));foot.append(tmButton('← 게임 모음집',()=>{TM.screen.hidden=true;$('menuScreen').hidden=false;}));return;}
+      try{saved=tmSavedList();}catch(e){body.append(tmEl('p','tm-notice',e.message));foot.append(nav);return;}
       const actions=tmEl('div','tm-new-actions');
-      const normal=tmButton('일반 토너먼트 · 새 대회',()=>tmSetup('normal'),true);normal.disabled=!COIN.on||COIN.refunds.size>0;
-      const world=tmButton('교실 월드컵 · 새 대회 🔒',()=>tmFresh(ok=>{if(ok)tmAuth(()=>tmSetup('world'));}));world.disabled=!TM.pin;
-      actions.append(normal,world);body.append(actions);
+      const normal=tmButton('일반 토너먼트 대회 시작',()=>tmSetup('normal'));normal.classList.add('tm-start-normal');normal.disabled=!COIN.on||COIN.refunds.size>0;
+      const world=tmButton('교실 월드컵 시작 🔒',()=>tmFresh(ok=>{if(ok)tmAuth(()=>tmSetup('world'));}));world.classList.add('tm-start-world');world.disabled=!TM.pin;
+      actions.append(normal,world);
       if(!COIN.on)body.append(tmEl('p','tm-note','일반 토너먼트는 코인 사용이 켜져 있어야 해요.'));
       if(!TM.pin)body.append(tmEl('p','tm-note','교실 월드컵은 공통 교사 인증번호 설정이 필요해요.'));
       if(saved.length){
-        body.append(tmEl('h3','tm-saved-heading','진행 중인 토너먼트 · '+saved.length+'개'));
+        const section=tmEl('section','tm-resume-section');section.append(tmEl('h3','tm-saved-heading','진행 중인 토너먼트 · '+saved.length+'개'));
         const list=tmEl('div','tm-saved-list');
         for(const t of saved){
           const card=tmEl('article','tm-save-card'),info=tmEl('div','tm-save-info');
@@ -198,11 +202,12 @@
           const resume=tmButton('이어하기'+(t.mode==='world'?' 🔒':''),()=>tmResume(t),true);resume.disabled=t.mode==='world'&&!TM.pin;
           card.append(info,resume);list.append(card);
         }
-        body.append(list);
+        section.append(list);body.append(section);
       }
-      body.append(tmButton('토너먼트 우승 기록',()=>tmHistory('all')));
+      foot.append(actions);
+      nav.append(tmButton('토너먼트 우승 기록',()=>tmHistory('all')));
     }
-    foot.append(tmButton('← 게임 모음집',()=>{TM.screen.hidden=true;$('menuScreen').hidden=false;}));
+    foot.append(nav);
   }
   function tmOpen(){tmHome();if(EMBED)tmFresh(()=>tmHome());}
   function tmSetup(mode){
