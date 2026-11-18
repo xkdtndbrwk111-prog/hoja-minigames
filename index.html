@@ -14084,7 +14084,7 @@ return {enter,scene,key,openMenu,home,get on(){return on;},debug:{G,step,render,
   function replayGate(fn){refreshGameGate(()=>replayGateFresh(fn));}
   function replayGateFresh(fn){
     if(EMBED&&(!COIN.ready||COIN.paying||COIN.uncertain&&!COIN.on||COIN.enabled&&!COIN.on)){hofToast('대시보드 코인 연결을 확인해 주세요.');return;}
-    if(roundClose(true)){hofToast('환불을 처리했어요. 다시 시작하려면 한 번 더 눌러 주세요.');return;}
+    if(roundClose(true)){refundExitToMenu();return;}
     if(tryOpen()){TRY.left--;round={freeRetry:true,t0:null};hofToast(TRY.left?`남은 판 ${TRY.left}`:'마지막 판이에요');fn();return;}
     if(EMBED&&COIN.on){
       coinSpend(COIN.lastIds,fn,text=>hofToast(text));
@@ -14752,8 +14752,24 @@ return {enter,scene,key,openMenu,home,get on(){return on;},debug:{G,step,render,
     window.addEventListener('pagehide',()=>roundClose());
     coinPost({type:'hoja-ready'});
   }
-  // One shared, non-overlapping refund action, visible only while a paid
-  // session can be refunded. Normal gameplay controls remain unchanged.
+  // A refunded round must not be resumed from its old pause/result screen.
+  function refundExitToMenu(){
+    clearIntro();$('choiceScreen').hidden=true;
+    if(CJ.on)CJ.home();
+    else if(PS.on)paHome();
+    else if(O.on)leaveOthello();
+    else if(GO.on)leaveGomoku();
+    else if(BB.on)leaveBubble();
+    else if(SH.on)leaveShop();
+    else if(ST.on)leaveStairs();
+    else if(VB.on)leaveVolley();
+    else if(TT.on)leaveTtt();
+    else if(GX.on)leaveGerm();
+    else if(inGame)leaveGame();
+    $('menuScreen').hidden=false;playBgm('menu',{gain:.8});
+  }
+  // A single conditional refund-and-exit control. The top display area is
+  // outside the usual board touch zone; no new images or game overlays.
   if(EMBED){
     const refundButton=document.createElement('button');refundButton.type='button';refundButton.className='control primary';
     refundButton.textContent='코인 환불하고 나가기';refundButton.hidden=true;
@@ -14762,19 +14778,7 @@ return {enter,scene,key,openMenu,home,get on(){return on;},debug:{G,step,render,
     const syncRefund=()=>{refundButton.hidden=!(round?.charge&&roundRefundable());};
     refundButton.addEventListener('click',()=>{
       if(!round?.charge||!roundRefundable()){syncRefund();return;}
-      roundClose();clearIntro();$('choiceScreen').hidden=true;
-      if(CJ.on)CJ.home();
-      else if(PS.on)paHome();
-      else if(O.on)leaveOthello();
-      else if(GO.on)leaveGomoku();
-      else if(BB.on)leaveBubble();
-      else if(SH.on)leaveShop();
-      else if(ST.on)leaveStairs();
-      else if(VB.on)leaveVolley();
-      else if(TT.on)leaveTtt();
-      else if(GX.on)leaveGerm();
-      else if(inGame)leaveGame();
-      $('menuScreen').hidden=false;playBgm('menu',{gain:.8});syncRefund();
+      roundClose();refundExitToMenu();syncRefund();
     });
     setInterval(syncRefund,100);
   }
