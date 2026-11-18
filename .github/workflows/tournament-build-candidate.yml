@@ -29,7 +29,7 @@ jobs:
                       p=pathlib.Path(d)/f'{i}.js';p.write_text(body);subprocess.run(['node','--check',str(p)],check=True)
           PY
           sha256sum index.html
-      - name: Browser smoke test with isolated mock host
+      - name: Browser integration with native confirmation handled separately
         run: node tests/tournament-browser.cjs
       - name: Commit generated page to review branch only
         run: |

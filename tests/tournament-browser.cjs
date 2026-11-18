@@ -17,6 +17,7 @@ const exec=(script,...args)=>cmd('/execute/sync','POST',{script,args});
 const frame=async()=>{const el=await cmd('/element','POST',{using:'css selector',value:'#mini'});await cmd('/frame','POST',{id:el});};
 const parent=()=>cmd('/frame/parent');
 const click=label=>exec('const b=[...document.querySelectorAll("#tmScreen button")].find(b=>b.textContent.includes(arguments[0])&&!b.disabled);if(!b)return false;b.click();return true;',label);
+const confirmClick=async label=>{assert(await exec('const b=[...document.querySelectorAll("#tmScreen button")].find(b=>b.textContent.includes(arguments[0])&&!b.disabled);if(!b)return false;setTimeout(()=>b.click(),50);return true;',label));await until(()=>cmd('/alert/text','GET'),'confirmation alert');await cmd('/alert/accept');};
 const shown=()=>exec('const e=document.querySelector("#tmScreen");return e&&!e.hidden?e.innerText:"";');
 const text=label=>until(async()=>String(await shown()).includes(label),label);
 const pick=(i)=>exec('const e=document.querySelectorAll(".tm-roster button")[arguments[0]];if(!e||e.disabled)return false;e.click();return true;',i);
@@ -31,7 +32,7 @@ async function startNormal(n){await until(()=>click('일반 토너먼트'),'norm
  await cmd('/url','POST',{url:'http://127.0.0.1:17439/'});await frame();
  await open();await startNormal(8);
  assert.equal(await exec('return document.querySelectorAll(".tm-round:first-child .tm-match").length'),4);
- assert(await click('환불하고 토너먼트 취소'));await cmd('/alert/accept');await text('일반 토너먼트');
+ await confirmClick('환불하고 토너먼트 취소');await text('일반 토너먼트');
  await parent();await until(()=>exec('return mock.refunds.length===1'),'refund');
  assert.deepEqual(await exec('return mock.spends.map(s=>s.ids.length)'),[8]);
  await frame();await startNormal(4);assert(await click('경기 시작'));
@@ -43,9 +44,14 @@ async function startNormal(n){await until(()=>click('일반 토너먼트'),'norm
  assert(await click('이어하기'));await text('1/3경기 완료');
  await parent();assert.deepEqual(await exec('return mock.spends.map(s=>s.ids.length)'),[8,4]);
  await frame();
- // First game ended under ten seconds in this accelerated test, so cancel by refund.
- assert(await click('환불하고 토너먼트 취소'));await cmd('/alert/accept');await text('일반 토너먼트');
- await parent();await until(()=>exec('return mock.refunds.length===2'),'second refund');await frame();
+ // A tie must keep the current bracket slot and a later win must advance once.
+ const play=async(a,b)=>{assert(await click('경기 시작'));await until(()=>exec('return window.__hoja?.st?.ST.on'),'stairs running');await exec('const s=window.__hoja.st;s.stStep(3);s.ST.players[0].idx=arguments[0];s.ST.players[1].idx=arguments[1];s.ST.time=s.ST.limit-.1;s.stStep(.2);',a,b);};
+ await play(5,5);await text('무승부');await text('1/3경기 완료');
+ await play(1,10);await text('2/3경기 완료');
+ await play(10,1);await text('우승!');
+ assert(await click('우승 기록 저장'));await text('일반 토너먼트');
+ assert(await click('토너먼트 우승 기록'));await text('무한의 계단');assert(await click('← 토너먼트'));await text('일반 토너먼트');
+ await parent();assert.equal(await exec('return mock.spends.length'),2);assert.equal(await exec('return mock.refunds.length'),1);await frame();
  await until(()=>click('교실 월드컵'),'world denied');await parent();await until(()=>exec('return mock.auth.length===1'),'auth request');await wait(300);await frame();
  assert(String(await shown()).includes('일반 토너먼트'));
  await parent();await exec('mock.allow=true;');await frame();
@@ -55,5 +61,5 @@ async function startNormal(n){await until(()=>click('일반 토너먼트'),'norm
  assert(await click('저장하고 나가기'));await text('이어하기');
  await parent();assert.equal(await exec('return mock.spends.length'),2);await exec('mock.allow=false;');await frame();
  await until(()=>click('이어하기'),'world reauth');await parent();await until(()=>exec('return mock.auth.length===3'),'new auth');await wait(200);await frame();assert(String(await shown()).includes('이어하기'));
- console.log('PASS browser: 8-player charge/refund, real stairs result, saved resume, 25-player seven byes, world auth denied/allowed/rechecked, no extra charge');
+ console.log('PASS browser: 8-player charge/refund, real stairs result, saved resume, 25-player seven byes, world auth denied/allowed/rechecked, no extra charge, tie replay and champion history');
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{if(session)try{await api('/session/'+session,'DELETE')}catch{}if(driver)driver.kill();host.close();game.close();});
