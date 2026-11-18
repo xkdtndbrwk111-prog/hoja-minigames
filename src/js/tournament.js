@@ -477,5 +477,5 @@
     document.addEventListener('visibilitychange',()=>{if(document.hidden&&TM.intro)tmIntroCancel(TM.intro);});
     window.addEventListener('pagehide',tmIntroClear);
     document.head.append(style);TM.screen=tmEl('section','');TM.screen.id='tmScreen';TM.screen.hidden=true;document.body.append(TM.screen);
-    const b=tmButton('토너먼트',tmOpen);b.className='control tm-menu-tab';b.id='openTournament';document.querySelector('.menu-pages').append(b);
+    const b=tmButton('토너먼트 대회',tmOpen);b.className='control tm-menu-tab';b.id='openTournament';const tag=tmEl('span','tm-new-tag','NEW');tag.setAttribute('aria-hidden','true');b.append(tag);document.querySelector('.menu-pages').append(b);
   }
