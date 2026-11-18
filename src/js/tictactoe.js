@@ -180,7 +180,7 @@
     setTimeout(()=>{if(TT.on&&tk===TT.token&&TT.phase==='round'){tMood(1,'neutral','');tMood(2,'neutral','');tNewRound();}},1950);
   }
   function tFinish(w){
-    roundFinish();
+    roundFinish();if(tournamentResult(w))return;
     TT.phase='over';tSync();
     let title='무승부!';
     if(w>=0){

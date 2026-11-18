@@ -252,6 +252,7 @@ function endDuel(){
   roundFinish();
   G.phase='over';G.overT=0;$('cjTimer').style.display='none';
   const [a,b]=G.lanes,na=Math.floor(a.maxAlt/FLOOR),nb=Math.floor(b.maxAlt/FLOOR);
+  if(tournamentResult(na===nb?-1:na>nb?0:1))return;
   hofRecord('jump_duel',0,na);hofRecord('jump_duel',1,nb);
   showResult(na===nb?'무승부!':(na>nb?'왼쪽 승리!':'오른쪽 승리!'),na+'층 : '+nb+'층');
   victoryJingle();
@@ -506,13 +507,13 @@ const ready=Promise.all(Object.entries(A.img).map(([k,s])=>load(k,s))).then(()=>
   const ic=$('cjIcon').getContext('2d');ic.imageSmoothingEnabled=false;ic.drawImage(IMG.HOJA,A.frames.indexOf(21)*CELL,0,CELL,CELL,0,0,CELL,CELL);
 });
 press('cjBSolo',()=>playGate(1,HOF.cfg?1:0,()=>setMode('solo')));press('cjBDuo',()=>playGate(2,HOF.cfg?2:0,()=>setMode('duel')));
-press('cjBAgain',()=>replayGate(()=>setMode(G.mode)));press('cjBBack',()=>setMode('menu'));
-press('cjHome',home);press('cjPause',openMenu);
+press('cjBAgain',()=>replayGate(()=>setMode(G.mode)));press('cjBBack',()=>{if(!tournamentSuspend())setMode('menu');});
+press('cjHome',()=>{if(!tournamentSuspend())home();});press('cjPause',openMenu);
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&location.hash!=='#debug')openMenu();});
-function enter(){
+function enter(mode='menu'){
   $('menuScreen').hidden=true;$('gameScreen').hidden=true;screen.hidden=false;on=true;
   observer=new ResizeObserver(resize);observer.observe(screen);
-  ready.then(()=>{if(!on)return;last=0;acc=0;setMode('menu');raf=requestAnimationFrame(loop);});
+  ready.then(()=>{if(!on)return;last=0;acc=0;setMode(mode);raf=requestAnimationFrame(loop);});
 }
 // Paints the scenery into a column of another game's canvas, in that canvas's own units.
 function scene(ctx,o){

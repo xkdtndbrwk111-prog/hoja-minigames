@@ -71,6 +71,7 @@
   }
   function neutralMoods(){setMood(0,'neutral','집중 중!');setMood(1,'neutral',aiLevel?'컴퓨터 상대':'집중 중!');}
   function button(label,cls,fn){
+    if(typeof TM!=='undefined'&&TM.running&&/모음집|인물 변경|방식 고르기|다시 하기|재대결|다시 오르기|다시 경주|처음부터|다음 도전자/.test(label)){label='← 대진표로 돌아가기';fn=()=>tournamentSuspend();}
     if(/다시 하기|재대결|다시 오르기|다시 경주|처음부터/.test(label)){const run=fn;fn=()=>replayGate(run);if(tryOpen()&&!roundRefundable())label+=' · 남은 '+TRY.left+'판';}
     const b=document.createElement('button');b.type='button';b.className='control big '+cls;b.textContent=label;
     b.addEventListener('click',()=>{sfx('menu',.7);fn();});return b;
@@ -190,6 +191,7 @@
     roundFinish();
     resetShots();closeCut();hideGoalBanner();floats=[];resetGoalCamp();phase='finished';releaseTouches();
     const winner=scores[0]>scores[1]?0:1;
+    if(tournamentResult(winner))return;
     const repeat=streak.side===winner&&streak.id===choices[winner];
     streak={side:winner,id:choices[winner],count:repeat?streak.count+1:1};
     hofWin('hockey',winner);

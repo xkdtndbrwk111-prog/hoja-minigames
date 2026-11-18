@@ -95,6 +95,7 @@
     const t=el.textContent;if(noteSeen.get(el)===t)continue;noteSeen.set(el,t);el.classList.remove('say');void el.offsetWidth;if(t)el.classList.add('say');}});
   document.querySelectorAll('.emotion-note').forEach(el=>{noteSeen.set(el,el.textContent);noteObs.observe(el,{childList:true,characterData:true,subtree:true});});
   syncMode();
+  tournamentInit();
   if(location.hash==='#debug'){
     window.__hoja={
       bakery:{SH,SH_DAYS,SH_UP,SH_SP,shStep,shTapMold,shServe,shBuy,shNextDay,shCovers,shCookTime,shTarget,shNewGame,shSpecial,shTrayCap,shGold,shBurn,setStage(v){shopStage=v;},setChoice(i,id){choices[i]=id;}},

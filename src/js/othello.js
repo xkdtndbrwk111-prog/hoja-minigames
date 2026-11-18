@@ -296,6 +296,7 @@
   function oFinish(){
     const [a,d]=O.finalCounts;let winner=a===d?-1:(a>d?0:1);
     if(O.stage.misere&&winner>=0)winner=1-winner;
+    if(tournamentResult(winner))return;
     O.phase='over';
     const line=`${a} : ${d}`+(O.stage.misere?'   ·   거꾸로 판: 적은 쪽 승리':'');
     let title;

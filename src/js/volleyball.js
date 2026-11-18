@@ -60,7 +60,7 @@
     VB.phase='point';VB.timer=1.6;
   }
   function vbFinish(w){
-    roundFinish();
+    roundFinish();if(tournamentResult(w))return;
     VB.phase='over';VB.winner=w;VB.pointers.clear();
     const repeat=streak.side===w&&streak.id===choices[w];
     streak={side:w,id:choices[w],count:repeat?streak.count+1:1};

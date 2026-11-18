@@ -75,6 +75,7 @@
   function stRaceEnd(){
     roundFinish();
     ST.phase='over';
+    if(ST.n===2&&tournamentResult(ST.players[0].idx===ST.players[1].idx?-1:ST.players[0].idx>ST.players[1].idx?0:1))return;
     ST.players.forEach(p=>hofRecord('stairs_race',p.i,p.idx));
     const rank=[...ST.players].sort((a,b)=>b.idx-a.idx),top=rank[0].idx,leaders=rank.filter(p=>p.idx===top);
     let title='';

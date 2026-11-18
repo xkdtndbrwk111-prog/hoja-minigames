@@ -354,6 +354,7 @@
     roundFinish();
     if(SH.mode==='versus'){
       const [a,b]=SH.shops.map(s=>s.earned),w=a===b?-1:(a>b?0:1);
+      if(tournamentResult(w))return;
       hofRecord('shop_vs2',0,a);hofRecord('shop_vs2',1,b);
       let title='무승부!';
       if(w>=0){

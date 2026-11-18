@@ -629,6 +629,8 @@
   }
   function rhMake(stage,host,buildStyle){
     host.classList.add('pa-rhythm');
+    const fixed=typeof tournamentSong==='function'?tournamentSong():null;
+    if(fixed){rhBegin(stage,host,fixed,buildStyle());return {frame(dt){if(RH.sess)RH.sess.frame(dt);},stop(){RH.sess=null;}};}
     const picker=paEl('div','rh-picker');
     const head=paEl('div','rh-picker-head');head.append(paEl('div','rh-picker-title','노래를 골라요'));picker.append(head);
     const grid=paEl('div','rh-songs');

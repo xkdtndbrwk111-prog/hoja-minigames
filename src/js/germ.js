@@ -211,6 +211,7 @@
     roundFinish();
     const [a,d]=xCount(GX.board);
     const w=forced?forced-1:a===d?-1:a>d?0:1;
+    if(tournamentResult(w))return;
     GX.phase='over';xSync();
     const line=`${a} : ${d}`+(note?'   ·   '+note:'');
     let title='무승부!';

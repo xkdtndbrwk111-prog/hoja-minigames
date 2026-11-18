@@ -240,7 +240,7 @@
     f.warned=danger;
   }
   function bEnd(w){
-    roundFinish();
+    roundFinish();if(tournamentResult(w))return;
     BB.phase='over';BB.result=w;
     BB.fields.forEach(f=>{f.shot=null;f.pid=null;f.trace=null;});
     const loser=BB.fields[1-w];

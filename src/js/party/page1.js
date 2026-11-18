@@ -66,6 +66,7 @@
     PS.ended=true;PS.live=false;PS.timers=[];
     if(RALLY.on){rallyLeg(winner,detail);return;}
     roundFinish();
+    if(tournamentResult(winner))return;
     if(winner===-1){sfx('soft',.8);}else{victoryJingle();cheer(.7);}
     const title=winner===null?'끝!':winner===-1?'무승부!':gamePlayerName(winner)+' 승리!';
     paOverlay(title,detail||'',[
