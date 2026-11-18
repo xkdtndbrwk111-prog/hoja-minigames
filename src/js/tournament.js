@@ -242,8 +242,8 @@
         }
         reset.disabled=excluded.size===0;
       }
-      else{status.textContent=selected.size+'/'+count+'명 선택 · 모두 0.5코인씩';
-        for(const st of students){const b=tmButton('',()=>{if(selected.has(st.id))selected.delete(st.id);else if(selected.size<count)selected.add(st.id);draw();});b.classList.add('tm-student');b.append(tmEl('strong','tm-student-name',st.name),tmEl('small','tm-student-balance','코인 '+coinText(st.balance)));b.setAttribute('aria-pressed',String(selected.has(st.id)));b.classList.toggle('tm-chosen',selected.has(st.id));b.disabled=!selected.has(st.id)&&(selected.size>=count||st.balance-.5<COIN.floor);roster.append(b);}
+      else{status.textContent=selected.size+'/'+count+'명 선택 · 모두 '+coinText(coinPrice(count))+'코인씩';
+        for(const st of students){const b=tmButton('',()=>{if(selected.has(st.id))selected.delete(st.id);else if(selected.size<count)selected.add(st.id);draw();});b.classList.add('tm-student');b.append(tmEl('strong','tm-student-name',st.name),tmEl('small','tm-student-balance','코인 '+coinText(st.balance)));b.setAttribute('aria-pressed',String(selected.has(st.id)));b.classList.toggle('tm-chosen',selected.has(st.id));b.disabled=!selected.has(st.id)&&(selected.size>=count||st.balance-coinPrice(count)<COIN.floor);roster.append(b);}
       }
       start.disabled=mode==='world'?n<2||n>40:selected.size!==count;
     };

@@ -2,7 +2,7 @@
      Inside the dashboard, games cost coins from the ledger on that PC.
      On a device opened through a class link, the limit is five plays a day, kept in this browser.
      Anywhere else nothing changes. */
-  const COIN={on:false,students:[],everyone:[],v2:false,mapped:true,chosen:true,className:'',dismissed:false,pending:new Map(),seq:0,lastIds:[],ready:false,protocol:0,classId:'',paying:false,uncertain:null,refunds:new Map(),refresh:null,closing:false};
+  const COIN={on:false,students:[],everyone:[],v2:false,mapped:true,chosen:true,className:'',dismissed:false,pending:new Map(),seq:0,lastIds:[],ready:false,protocol:0,coinUnit:1,classId:'',paying:false,uncertain:null,refunds:new Map(),refresh:null,closing:false};
   const TRY_PLAN={flap:5,stack:5,tiles:5,simon:5,stairs:5,jump:5,dodge:3,draw:3,bomb:3,tron:3,rush:3};
   const TRY={game:null,left:0};
   function tryStart(){const n=TRY_PLAN[currentGame]||0;TRY.game=currentGame;TRY.left=n?n-1:0;}
@@ -42,7 +42,7 @@
     return aiLevel?1:2;
   }
   const COIN_SESSION=EMBED?crypto.randomUUID():'';
-  function coinPost(data){window.parent.postMessage({...data,sessionId:COIN_SESSION},DASHBOARD_ORIGIN);}
+  function coinPost(data){window.parent.postMessage({...data,coinProtocol:4,coinUnit:COIN.coinUnit,sessionId:COIN_SESSION},DASHBOARD_ORIGIN);}
   const RECOVERY_KEY='hoja-board-coin-v3-recovery';
   function saveCoinRecovery(){
     if(!EMBED)return;
@@ -92,15 +92,17 @@
     });
     send();
   }
+  const coinPrice=n=>(n>1?0.5:1)*COIN.coinUnit;
+  const hofCoinPrize=place=>HOF_PRIZE[place]*COIN.coinUnit;
   const coinText=v=>Number.isInteger(v)?String(v):v.toFixed(1);
   function coinPick(n,done){
     const box=$('hofPicker'),picked=[],pickedClass=COIN.classId;
     HOF.players=Array(6).fill(null);
     HOF.playerNames=Array(6).fill(null);
-    const price=n>1?0.5:1;
+    const price=coinPrice(n);
     const draw=(note)=>{
       const head=document.createElement('div');head.className='hof-pick-title';
-      head.textContent=note||(n===1?'누가 하나요? (1코인)':`${picked.length+1}번째 사람, 이름을 골라요 (${n}명 · 한 명당 ${coinText(price)}코인)`);
+      head.textContent=note||(n===1?`누가 하나요? (${coinText(price)}코인)`:`${picked.length+1}번째 사람, 이름을 골라요 (${n}명 · 한 명당 ${coinText(price)}코인)`);
       const grid=document.createElement('div');grid.className='hof-seats';
       for(const st of COIN.students){
         const b=document.createElement('button');b.type='button';b.className='hof-seat';b.dataset.student=st.id;
@@ -182,11 +184,14 @@
     if(!EMBED||event.origin!==DASHBOARD_ORIGIN||event.source!==window.parent||!event.data)return;
     const msg=event.data;
     if((msg.version>=3||COIN.protocol>=3)&&msg.sessionId!==COIN_SESSION)return;
+    if(msg.type==='hoja-routine-stop'){
+      roundClose();cancelPendingPayment();coinPost({type:'hoja-close'});return;
+    }
     if(msg.type==='hoja-roster'){
       const nextClass=typeof msg.classId==='string'?msg.classId:'';
       if(COIN.ready&&COIN.protocol>=3&&nextClass!==COIN.classId){roundClose();TRY.left=0;COIN.lastIds=[];HOF.players=Array(6).fill(null);HOF.playerNames=Array(6).fill(null);}
       if(COIN.uncertain&&COIN.uncertain.classId!==nextClass&&!COIN.paying){const p=COIN.uncertain;COIN.uncertain=null;queueRefund(p.txId,p.classId,'학급이 변경되어');}
-      COIN.ready=true;COIN.protocol=Number(msg.version)||0;COIN.classId=nextClass;
+      COIN.ready=true;COIN.protocol=Number(msg.version)||0;COIN.coinUnit=msg.version>=4&&msg.coinUnit===2?2:1;COIN.classId=nextClass;
       COIN.students=msg.students||[];COIN.floor=typeof msg.floor==='number'?msg.floor:-3;
       COIN.on=Boolean(msg.enabled)&&COIN.students.length>0;COIN.enabled=Boolean(msg.enabled);
       COIN.hofWeeks=Array.isArray(msg.hofWeeks)?msg.hofWeeks:null;
@@ -682,7 +687,7 @@
       const head=hofEl('p','hof-note',hofWeekText(week)+(reply.already?' · 이미 결산했어요.':' · 결산 완료'));
       const sum=hofEl('p','hof-note hof-sum',reply.already?'이미 지급된 코인은 다시 지급하지 않아요.':totals.length?'받은 코인: '+totals.join(' · '):'지난주에는 받을 사람이 없어요.');
       const grid=hofEl('div','hof-grid');
-      for(const group of groups){const card=hofEl('div','hof-card hof-family');card.append(hofEl('b','',group.family));for(const g of group.modes){const mode=hofEl('div','hof-mode');if(group.modes.length>1)mode.append(hofEl('strong','hof-mode-title',g.mode||g.name));const mine=group.wins.filter(w=>w.g===g);if(!mine.length)mode.append(hofEl('span','hof-empty','기록 없음'));for(const {r,sts} of mine){const line=hofEl('div','hof-line');line.append(hofEl('i','',r.place+''),hofEl('span','',hofEntryName(r)),hofEl('em','',hofRankValue(g,r)),hofEl('small','hof-plus',sts.length?'+'+coinText(HOF_PRIZE[r.place])+'코인 × '+sts.length:''));mode.append(line);}card.append(mode);}grid.append(card);}
+      for(const group of groups){const card=hofEl('div','hof-card hof-family');card.append(hofEl('b','',group.family));for(const g of group.modes){const mode=hofEl('div','hof-mode');if(group.modes.length>1)mode.append(hofEl('strong','hof-mode-title',g.mode||g.name));const mine=group.wins.filter(w=>w.g===g);if(!mine.length)mode.append(hofEl('span','hof-empty','기록 없음'));for(const {r,sts} of mine){const line=hofEl('div','hof-line');line.append(hofEl('i','',r.place+''),hofEl('span','',hofEntryName(r)),hofEl('em','',hofRankValue(g,r)),hofEl('small','hof-plus',sts.length?'+'+coinText(hofCoinPrize(r.place))+'코인 × '+sts.length:''));mode.append(line);}card.append(mode);}grid.append(card);}
       const row=hofEl('div','hof-row');row.append(hofBtn('시상식 다시 보기','',()=>{index=0;show(false);}),hofBtn('← 명예의 전당','primary',hofShowMain));hofSet('🏆 지난주 결산',head,grid,sum,row);
     };
     const show=(celebrate=true)=>{
@@ -696,7 +701,7 @@
         for(const place of [2,1,3]){
           const match=group.wins.find(w=>w.g===g&&w.r.place===place),card=hofEl('div','hof-podium-card hof-place-'+place);
           card.append(hofEl('strong','hof-medal',place===1?'🏆 챔피언 · 1위':place+'위'),hofEl('b','hof-award-name',match?hofEntryName(match.r):'—'));
-          if(match){card.append(hofEl('small','hof-award-score',hofRankValue(g,match.r)));const eligible=match.sts.map(st=>st.name).join(' · ');card.append(hofEl('small','hof-award-coin',match.sts.length?'+'+coinText(HOF_PRIZE[place])+'코인'+(g.team?' · '+eligible:''):'중복 지급 제외 / 지급 대상 없음'));}
+          if(match){card.append(hofEl('small','hof-award-score',hofRankValue(g,match.r)));const eligible=match.sts.map(st=>st.name).join(' · ');card.append(hofEl('small','hof-award-coin',match.sts.length?'+'+coinText(hofCoinPrize(place))+'코인'+(g.team?' · '+eligible:''):'중복 지급 제외 / 지급 대상 없음'));}
           else card.append(hofEl('small','hof-award-score','기록 없음'));
           podium.append(card);
         }
