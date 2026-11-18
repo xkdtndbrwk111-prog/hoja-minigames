@@ -1383,6 +1383,11 @@ html[data-device=tablet] .sx-stage{transform-origin:50% 50%}
 #tmScreen.tm-setup-screen .tm-setup-foot{min-width:0;gap:9px;padding:6px 10px clamp(8px,1.3vh,15px);flex-wrap:nowrap;background:#f4e9d4}
 #tmScreen.tm-setup-screen .tm-setup-foot .control.big{min-width:0;min-height:clamp(44px,7vh,80px);font-size:clamp(15px,1.4vw,26px);flex:0 1 230px;white-space:normal;padding:4px 8px}
 @media(max-width:700px){#tmScreen.tm-setup-screen .tm-roster{grid-template-columns:repeat(auto-fit,minmax(min(100%,100px),1fr));gap:6px}#tmScreen.tm-setup-screen .tm-settings{gap:5px}}
+
+/* Small novelty badge on the tournament category entry. */
+#openTournament.control{position:relative;display:flex;align-items:center;justify-content:center;gap:5px;min-width:clamp(108px,11vw,205px);padding:0 clamp(5px,.65vw,13px)}
+#openTournament .tm-new-tag{display:inline-block;flex:none;padding:2px 4px;border-radius:5px;background:#f34d45;border:1px solid #b92722;box-shadow:0 1px 0 #84352755;color:#fff;font:800 clamp(8px,.65vw,12px)/1.1 Arial,sans-serif;letter-spacing:.025em;text-shadow:none;transform:rotate(7deg);pointer-events:none}
+@media(max-width:900px){#openTournament.control{min-width:0;gap:3px;padding:0 5px}#openTournament .tm-new-tag{font-size:8px;padding:1px 3px}}
 </style>
 </head>
 <!--
@@ -15278,7 +15283,7 @@ return {enter,scene,key,openMenu,home,get on(){return on;},debug:{G,step,render,
     document.addEventListener('visibilitychange',()=>{if(document.hidden&&TM.intro)tmIntroCancel(TM.intro);});
     window.addEventListener('pagehide',tmIntroClear);
     document.head.append(style);TM.screen=tmEl('section','');TM.screen.id='tmScreen';TM.screen.hidden=true;document.body.append(TM.screen);
-    const b=tmButton('토너먼트',tmOpen);b.className='control tm-menu-tab';b.id='openTournament';document.querySelector('.menu-pages').append(b);
+    const b=tmButton('토너먼트 대회',tmOpen);b.className='control tm-menu-tab';b.id='openTournament';const tag=tmEl('span','tm-new-tag','NEW');tag.setAttribute('aria-hidden','true');b.append(tag);document.querySelector('.menu-pages').append(b);
   }
   /* ---------- Controls ---------- */
   function openGame(g){if(currentGame!==g)streak={side:-1,id:null,count:0};currentGame=g;sfx('menu',.8);toggleFullscreen(true);enterSelection();}
