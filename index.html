@@ -1386,8 +1386,21 @@ html[data-device=tablet] .sx-stage{transform-origin:50% 50%}
 
 /* Small novelty badge on the tournament category entry. */
 #openTournament.control{position:relative;display:flex;align-items:center;justify-content:center;gap:5px;min-width:clamp(108px,11vw,205px);padding:0 clamp(5px,.65vw,13px)}
-#openTournament .tm-new-tag{display:inline-block;flex:none;padding:2px 4px;border-radius:5px;background:#f34d45;border:1px solid #b92722;box-shadow:0 1px 0 #84352755;color:#fff;font:800 clamp(8px,.65vw,12px)/1.1 Arial,sans-serif;letter-spacing:.025em;text-shadow:none;transform:rotate(7deg);pointer-events:none}
+#openTournament .tm-new-tag{display:inline-block;flex:none;padding:2px 4px;border-radius:5px;background:#f34d45;border:1px solid #b92722;box-shadow:0 1px 0 #84352755;color:#fff;font:800 clamp(8px,.65vw,12px)/1.1 Arial,sans-serif;letter-spacing:.025em;text-shadow:none;transform:rotate(-18deg);pointer-events:none}
 @media(max-width:900px){#openTournament.control{min-width:0;gap:3px;padding:0 5px}#openTournament .tm-new-tag{font-size:8px;padding:1px 3px}}
+
+/* NEW is a sticker overlapping the upper-left corner, not inline text. */
+#openTournament.control{overflow:visible;gap:0;min-width:clamp(100px,10vw,190px)}
+#openTournament .tm-new-tag{position:absolute;top:-9px;left:-9px;z-index:4;transform:rotate(-18deg);animation:tmNewBlink 1.2s ease-in-out infinite;box-shadow:0 2px 0 #84352755}
+@keyframes tmNewBlink{0%,100%{opacity:1;transform:rotate(-18deg) scale(1)}50%{opacity:.35;transform:rotate(-18deg) scale(1.08)}}
+@media(max-width:900px){#openTournament.control{min-width:0}#openTournament .tm-new-tag{top:-7px;left:-5px}}
+@media(prefers-reduced-motion:reduce){#openTournament .tm-new-tag{animation:none}}
+#tmScreen.tm-setup-screen .tm-world-selection-bar{width:min(100%,1280px);display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+#tmScreen.tm-setup-screen .tm-world-reset.control.big{min-width:0;min-height:38px;font-size:clamp(12px,1vw,18px);padding:4px 10px}
+#tmScreen.tm-setup-screen .tm-world-student.tm-included{background:linear-gradient(#dff5e8,#bde5ce);color:#254e39;border:2px solid #4b9e71;box-shadow:0 3px 0 #76a98a;text-shadow:none}
+#tmScreen.tm-setup-screen .tm-world-student.tm-excluded{background:#ddd9d1;color:#68645c;border:2px solid #a6a198;box-shadow:0 3px 0 #aca79e;text-shadow:none}
+#tmScreen.tm-setup-screen .tm-world-student.tm-excluded .tm-student-name{text-decoration:line-through}
+#tmScreen.tm-setup-screen .tm-world-state{font-size:clamp(11px,.95vw,16px)}
 </style>
 </head>
 <!--
@@ -14918,6 +14931,8 @@ return {enter,scene,key,openMenu,home,get on(){return on;},debug:{G,step,render,
   }
   function tmUpsert(items,t){const i=items.findIndex(x=>x.id===t.id);if(i<0)return [...items,t];return items.map((x,j)=>j===i?t:x);}
   function tmRemove(items,id){return items.filter(x=>x.id!==id);}
+  function tmWorldEntrants(roster,excluded){return roster.filter(p=>!excluded.has(p.id)).map(p=>p.id);}
+  function tmWorldRosterSame(roster,original){return roster.length===original.length&&new Set(roster.map(p=>p.id)).size===original.length&&roster.every(p=>original.includes(p.id));}
   /* UI / host adapters (pure bracket helpers above are separately tested). */
   const TM={screen:null,t:null,running:false,begun:false,match:null,auth:false,busy:false,ready:null,bridge:false,pin:false,notice:'',restore:null,intro:null};
   const tmKey=cls=>'hoja-tournament-v1:'+cls,tmHistoryKey=cls=>'hoja-tournament-history-v1:'+cls;
@@ -15018,7 +15033,7 @@ return {enter,scene,key,openMenu,home,get on(){return on;},debug:{G,step,render,
   function tmOpen(){tmHome();if(EMBED)tmFresh(()=>tmHome());}
   function tmSetup(mode){
     if(mode==='world'&&!TM.auth)return;
-    const cls=COIN.classId,games=tmCatalog(),selected=new Set();
+    const cls=COIN.classId,games=tmCatalog(),selected=new Set(),excluded=new Set(),original=COIN.everyone.map(p=>p.id);
     let count=4;
     const {body,foot}=tmLayout(mode==='world'?'교실 월드컵':'일반 토너먼트',(COIN.className||'우리 반')+(mode==='normal'?' · 싱글 토너먼트 (1패 탈락)':''));
     TM.screen.classList.add('tm-setup-screen');body.classList.add('tm-setup-body');foot.classList.add('tm-setup-foot');
@@ -15035,23 +15050,35 @@ return {enter,scene,key,openMenu,home,get on(){return on;},debug:{G,step,render,
     if(mode==='world')settings.append(format);settings.append(game,stage,song,face);body.append(settings);
     const roster=tmEl('div','tm-roster'),status=tmEl('p','tm-note');
     const draw=()=>{
-      roster.replaceChildren();const students=mode==='world'?COIN.everyone:COIN.students;const n=mode==='world'?students.length:count;if(mode==='world'){format.options[1].disabled=!tmDualAllowed(n);if(format.options[1].disabled){format.value='single';format.options[1].textContent='듀얼 · 3명 또는 4명 또는 6명 이상 필요';}else format.options[1].textContent='듀얼 토너먼트 · 조별 예선';}
-      if(mode==='world'){status.textContent=students.length+'명 전원 참가 · 부전승 자동 추첨';for(const st of students)roster.append(tmEl('span','tm-person',st.name));}
+      roster.replaceChildren();const students=mode==='world'?COIN.everyone:COIN.students;const n=mode==='world'?tmWorldEntrants(students,excluded).length:count;if(mode==='world'){format.options[1].disabled=!tmDualAllowed(n);if(format.options[1].disabled){format.value='single';format.options[1].textContent='듀얼 · 3명 또는 4명 또는 6명 이상 필요';}else format.options[1].textContent='듀얼 토너먼트 · 조별 예선';}
+      if(mode==='world'){
+        status.textContent=(n===students.length?students.length+'명 전원 참가':n+'/'+students.length+'명 참가 · '+(students.length-n)+'명 제외')+' · 최소 2명';
+        for(const st of students){
+          const included=!excluded.has(st.id),b=tmButton('',()=>{if(excluded.has(st.id))excluded.delete(st.id);else excluded.add(st.id);draw();});
+          b.classList.add('tm-student','tm-world-student',included?'tm-included':'tm-excluded');
+          b.append(tmEl('strong','tm-student-name',st.name),tmEl('small','tm-world-state',included?'✓ 참가':'제외'));
+          b.setAttribute('aria-pressed',String(included));b.setAttribute('aria-label',st.name+' · '+(included?'참가 중, 누르면 제외':'제외 중, 누르면 참가'));roster.append(b);
+        }
+        reset.disabled=excluded.size===0;
+      }
       else{status.textContent=selected.size+'/'+count+'명 선택 · 모두 0.5코인씩';
         for(const st of students){const b=tmButton('',()=>{if(selected.has(st.id))selected.delete(st.id);else if(selected.size<count)selected.add(st.id);draw();});b.classList.add('tm-student');b.append(tmEl('strong','tm-student-name',st.name),tmEl('small','tm-student-balance','코인 '+coinText(st.balance)));b.setAttribute('aria-pressed',String(selected.has(st.id)));b.classList.toggle('tm-chosen',selected.has(st.id));b.disabled=!selected.has(st.id)&&(selected.size>=count||st.balance-.5<COIN.floor);roster.append(b);}
       }
-      start.disabled=mode==='world'?students.length<2||students.length>40:selected.size!==count;
+      start.disabled=mode==='world'?n<2||n>40:selected.size!==count;
     };
     if(mode==='normal'){
       const row=tmEl('div','tm-settings tm-count-settings');for(const n of [4,8]){const b=tmButton(n+'인전',()=>{count=n;selected.clear();for(const item of row.children)item.classList.toggle('tm-chosen',item===b);draw();});b.classList.toggle('tm-chosen',n===count);row.append(b);}body.append(row);
     }
-    body.append(status,roster);
+    const reset=tmButton('전원 참가로 되돌리기',()=>{excluded.clear();draw();});reset.classList.add('tm-world-reset');
+    if(mode==='world'){const bar=tmEl('div','tm-world-selection-bar');bar.append(status,reset);body.append(tmEl('p','tm-note','학생을 누르면 제외하거나 다시 참가시킬 수 있어요.'),bar,roster);}
+    else body.append(status,roster);
     const start=tmButton('대진표 추첨 · 시작',()=>{
-      const wanted=mode==='world'?COIN.everyone.map(p=>p.id):[...selected],g=tmGame(game.value),st=stage.value,track=song.value,character=face.value,method=mode==='normal'?'single':format.value;
+      const wanted=mode==='world'?tmWorldEntrants(COIN.everyone,excluded):[...selected],g=tmGame(game.value),st=stage.value,track=song.value,character=face.value,method=mode==='normal'?'single':format.value;
       tmFresh(ok=>{
         if(!ok||COIN.classId!==cls||!TM.bridge||mode==='world'&&(!TM.auth||!TM.pin))return tmHome();
         const list=mode==='world'?COIN.everyone:COIN.students;
-        if(mode==='world'&&(list.length!==wanted.length||list.some(p=>!wanted.includes(p.id)))||wanted.some(id=>!list.some(p=>p.id===id))){hofToast('명단이 변경됐어요. 다시 선택해 주세요.');return tmSetup(mode);}
+        if(mode==='world'&&!tmWorldRosterSame(list,original)||wanted.some(id=>!list.some(p=>p.id===id))){hofToast('명단이 변경됐어요. 다시 선택해 주세요.');return tmSetup(mode);}
+        if(mode==='world'&&(wanted.length<2||wanted.length>40||!['single','dual'].includes(method)||method==='dual'&&!tmDualAllowed(wanted.length))){hofToast('참가 인원과 경기 방식을 다시 확인해 주세요.');return;}
         if(mode==='normal'&&(wanted.length!==count||!COIN.on||COIN.refunds.size))return tmHome();
         const players=wanted.map(id=>{const p=list.find(s=>s.id===id);return {id:p.id,name:p.name,number:p.number??null};});
         const t={version:2,id:crypto.randomUUID(),classId:cls,mode,format:method,game:g.id,stage:st,song:g.rhythm?track:null,character,players,...tmPlan(wanted,method),charge:null,firstStart:null,firstEnd:null,refundLocked:false,completed:0,created:Date.now(),drawSeed:Math.floor(Math.random()*4294967296),faces:{},journal:[],active:null};
