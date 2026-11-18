@@ -124,7 +124,7 @@
   function tmEl(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!==undefined)e.textContent=txt;return e;}
   function tmButton(label,fn,primary=false){const b=tmEl('button','control big '+(primary?'primary':''),label);b.type='button';b.onclick=()=>{if(!TM.busy){sfx('menu',.65);fn();}};return b;}
   function tmLayout(title,detail=''){
-    const s=TM.screen;TM.view=title;s.hidden=false;$('menuScreen').hidden=true;
+    const s=TM.screen;s.classList.remove('tm-setup-screen');TM.view=title;s.hidden=false;$('menuScreen').hidden=true;
     s.replaceChildren();const head=tmEl('header','tm-head');head.append(tmEl('h2','',title),tmEl('p','',detail));
     const body=tmEl('div','tm-body'),foot=tmEl('footer','tm-foot');s.append(head,body,foot);return {body,foot};
   }
@@ -214,33 +214,34 @@
     if(mode==='world'&&!TM.auth)return;
     const cls=COIN.classId,games=tmCatalog(),selected=new Set();
     let count=4;
-    const {body,foot}=tmLayout(mode==='world'?'교실 월드컵':'일반 토너먼트',COIN.className||'우리 반');
+    const {body,foot}=tmLayout(mode==='world'?'교실 월드컵':'일반 토너먼트',(COIN.className||'우리 반')+(mode==='normal'?' · 싱글 토너먼트 (1패 탈락)':''));
+    TM.screen.classList.add('tm-setup-screen');body.classList.add('tm-setup-body');foot.classList.add('tm-setup-foot');
     const settings=tmEl('div','tm-settings');
     const game=tmEl('select','tm-select'),stage=tmEl('select','tm-select'),song=tmEl('select','tm-select'),face=tmEl('select','tm-select'),format=tmEl('select','tm-select');
     game.setAttribute('aria-label','게임');stage.setAttribute('aria-label','스테이지');song.setAttribute('aria-label','공통 곡');face.setAttribute('aria-label','공통 캐릭터');
     const option=(sel,id,label)=>{const o=tmEl('option','',label);o.value=id;sel.append(o);};
     for(const g of games)option(game,g.id,g.name);
     for(const s of RH_SONGS)option(song,s.id,s.name);
-    option(format,'single','싱글 토너먼트 · 1패 탈락');option(format,'dual','듀얼 토너먼트 · 조별 예선');format.setAttribute('aria-label','경기 방식');
+    option(format,'single','싱글 토너먼트 · 1패 탈락');if(mode==='world')option(format,'dual','듀얼 토너먼트 · 조별 예선');format.setAttribute('aria-label','경기 방식');
     option(face,'random','캐릭터 · 경기별 랜덤 (공통)');for(const ch of CHARACTERS)option(face,ch.id,'공통 캐릭터 · '+ch.name);face.value='random';
     const updateStage=()=>{stage.replaceChildren();const g=tmGame(game.value);for(const s of g.stages)option(stage,s.id,s.name);song.hidden=!g.rhythm;face.hidden=g.id==='jump';};
     game.onchange=updateStage;updateStage();
-    settings.append(format,game,stage,song,face);body.append(settings);
+    if(mode==='world')settings.append(format);settings.append(game,stage,song,face);body.append(settings);
     const roster=tmEl('div','tm-roster'),status=tmEl('p','tm-note');
     const draw=()=>{
-      roster.replaceChildren();const students=mode==='world'?COIN.everyone:COIN.students;const n=mode==='world'?students.length:count;format.options[1].disabled=!tmDualAllowed(n);if(format.options[1].disabled){format.value='single';format.options[1].textContent='듀얼 · 3명 또는 4명 또는 6명 이상 필요';}else format.options[1].textContent='듀얼 토너먼트 · 조별 예선';
+      roster.replaceChildren();const students=mode==='world'?COIN.everyone:COIN.students;const n=mode==='world'?students.length:count;if(mode==='world'){format.options[1].disabled=!tmDualAllowed(n);if(format.options[1].disabled){format.value='single';format.options[1].textContent='듀얼 · 3명 또는 4명 또는 6명 이상 필요';}else format.options[1].textContent='듀얼 토너먼트 · 조별 예선';}
       if(mode==='world'){status.textContent=students.length+'명 전원 참가 · 부전승 자동 추첨';for(const st of students)roster.append(tmEl('span','tm-person',st.name));}
       else{status.textContent=selected.size+'/'+count+'명 선택 · 모두 0.5코인씩';
-        for(const st of students){const b=tmButton(st.name+' · '+coinText(st.balance),()=>{if(selected.has(st.id))selected.delete(st.id);else if(selected.size<count)selected.add(st.id);draw();});b.classList.toggle('tm-chosen',selected.has(st.id));b.disabled=!selected.has(st.id)&&(selected.size>=count||st.balance-.5<COIN.floor);roster.append(b);}
+        for(const st of students){const b=tmButton('',()=>{if(selected.has(st.id))selected.delete(st.id);else if(selected.size<count)selected.add(st.id);draw();});b.classList.add('tm-student');b.append(tmEl('strong','tm-student-name',st.name),tmEl('small','tm-student-balance','코인 '+coinText(st.balance)));b.setAttribute('aria-pressed',String(selected.has(st.id)));b.classList.toggle('tm-chosen',selected.has(st.id));b.disabled=!selected.has(st.id)&&(selected.size>=count||st.balance-.5<COIN.floor);roster.append(b);}
       }
       start.disabled=mode==='world'?students.length<2||students.length>40:selected.size!==count;
     };
     if(mode==='normal'){
-      const row=tmEl('div','tm-settings');for(const n of [4,8]){const b=tmButton(n+'인전',()=>{count=n;selected.clear();for(const item of row.children)item.classList.toggle('tm-chosen',item===b);draw();});b.classList.toggle('tm-chosen',n===count);row.append(b);}body.append(row);
+      const row=tmEl('div','tm-settings tm-count-settings');for(const n of [4,8]){const b=tmButton(n+'인전',()=>{count=n;selected.clear();for(const item of row.children)item.classList.toggle('tm-chosen',item===b);draw();});b.classList.toggle('tm-chosen',n===count);row.append(b);}body.append(row);
     }
     body.append(status,roster);
     const start=tmButton('대진표 추첨 · 시작',()=>{
-      const wanted=mode==='world'?COIN.everyone.map(p=>p.id):[...selected],g=tmGame(game.value),st=stage.value,track=song.value,character=face.value,method=format.value;
+      const wanted=mode==='world'?COIN.everyone.map(p=>p.id):[...selected],g=tmGame(game.value),st=stage.value,track=song.value,character=face.value,method=mode==='normal'?'single':format.value;
       tmFresh(ok=>{
         if(!ok||COIN.classId!==cls||!TM.bridge||mode==='world'&&(!TM.auth||!TM.pin))return tmHome();
         const list=mode==='world'?COIN.everyone:COIN.students;
