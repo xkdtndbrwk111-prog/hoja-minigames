@@ -4294,7 +4294,7 @@ var qrcode = function() {
     if(PS.ended)return;
     PS.ended=true;PS.live=false;PS.timers=[];
     if(RALLY.on){rallyLeg(winner,detail);return;}
-    roundClose();
+    roundFinish();
     if(winner===-1){sfx('soft',.8);}else{victoryJingle();cheer(.7);}
     const title=winner===null?'끝!':winner===-1?'무승부!':gamePlayerName(winner)+' 승리!';
     paOverlay(title,detail||'',[
@@ -4355,6 +4355,7 @@ var qrcode = function() {
     }
     const w=a>b?0:1;
     RALLY.on=false;
+    roundFinish();
     victoryJingle();cheer(.7);
     hofRecord('rally',w,1);
     paOverlay(gamePlayerName(w)+' 랠리 우승!',`${a} : ${b}`,[
@@ -4383,7 +4384,7 @@ var qrcode = function() {
     if(PS.run&&typeof PS.run.stop==='function')PS.run.stop();
     PS.run=def.make(stage,host)||{};
     PS.counting=def.noCount?0:3;PS.lastCount=0;
-    if(PS.counting){$('paCount').hidden=false;}else{$('paCount').hidden=true;PS.live=true;PS.run.begin&&PS.run.begin();}
+    if(PS.counting){$('paCount').hidden=false;}else{$('paCount').hidden=true;PS.live=true;if(!def.rhythm)roundBegin();PS.run.begin&&PS.run.begin();}
     if(def.rhythm)stopBgm(.2);else playMood(def.mood||'action');
   }
   function paFrame(now){
@@ -4393,7 +4394,7 @@ var qrcode = function() {
       PS.counting-=dt;
       const n=Math.ceil(PS.counting);
       if(n!==PS.lastCount&&n>0){PS.lastCount=n;$('paCount').textContent=n;paFlash($('paCount'),'pa-pop',600);sfx('soft',.7);}
-      if(PS.counting<=0){PS.counting=0;$('paCount').hidden=true;sfx('goal',.6);PS.live=true;PS.run.begin&&PS.run.begin();}
+      if(PS.counting<=0){PS.counting=0;$('paCount').hidden=true;sfx('goal',.6);PS.live=true;roundBegin();PS.run.begin&&PS.run.begin();}
     }
     if(PS.live){
       PS.elapsed+=dt;
@@ -6996,6 +6997,7 @@ var qrcode = function() {
     };
   }
   function rhBegin(stage,host,song,style){
+    roundBegin();
     // The road takes the whole screen, so the class goes on before anything measures the stage.
     $('partyScreen').classList.toggle('rh-full',Boolean(style.full));
     if(stage.coop){$('paLabel0').textContent='우리 반';$('paName0').textContent='다 같이';}
@@ -7667,7 +7669,7 @@ var qrcode = function() {
     $('menuScreen').hidden=true;$('gameScreen').hidden=true;$('choiceScreen').hidden=false;
     renderChoices();renderStages();syncMode();$('modeButton').hidden=currentGame==='shop'||currentGame==='stairs'||Boolean(PARTY_GAMES[currentGame]);syncSelectionHint();playBgm('menu',{gain:.8});
   }
-  function leaveSelection(){clearIntro();$('choiceScreen').hidden=true;$('menuScreen').hidden=false;}
+  function leaveSelection(){roundClose();clearIntro();$('choiceScreen').hidden=true;$('menuScreen').hidden=false;}
   function syncCharacterUI(){
     $('teamNameLeft').textContent=nameFor(0);$('teamNameRight').textContent=nameFor(1);
     portraitEls.forEach((el,i)=>{el.alt=nameFor(i)+' 표정';});
@@ -7747,7 +7749,7 @@ var qrcode = function() {
   }
   function neutralMoods(){setMood(0,'neutral','집중 중!');setMood(1,'neutral',aiLevel?'컴퓨터 상대':'집중 중!');}
   function button(label,cls,fn){
-    if(/다시 하기|재대결/.test(label)){const run=fn;fn=()=>replayGate(run);if(tryOpen())label+=' · 남은 '+TRY.left+'판';}
+    if(/다시 하기|재대결|다시 오르기|다시 경주|처음부터/.test(label)){const run=fn;fn=()=>replayGate(run);if(tryOpen()&&!roundRefundable())label+=' · 남은 '+TRY.left+'판';}
     const b=document.createElement('button');b.type='button';b.className='control big '+cls;b.textContent=label;
     b.addEventListener('click',()=>{sfx('menu',.7);fn();});return b;
   }
@@ -7827,7 +7829,7 @@ var qrcode = function() {
   }
   function startCountdown(){
     if(phase!=='ready')return;
-    phase='countdown';countdown=2.4;countdownShown=0;syncStrip();neutralMoods();roundBegin();
+    phase='countdown';countdown=2.4;countdownShown=0;syncStrip();neutralMoods();
   }
   function setupServe(side){
     // Conceding player gets the puck and the first swing, like a real table.
@@ -7863,6 +7865,7 @@ var qrcode = function() {
     phase=resumePhase;hideOverlay();syncStrip();setBgmTempo(clock<=15?1.05:1);
   }
   function finish(){
+    roundFinish();
     resetShots();closeCut();hideGoalBanner();floats=[];resetGoalCamp();phase='finished';releaseTouches();
     const winner=scores[0]>scores[1]?0:1;
     const repeat=streak.side===winner&&streak.id===choices[winner];
@@ -8531,7 +8534,7 @@ var qrcode = function() {
       countdown-=dt;
       const show=Math.ceil(countdown/.8);
       if(show!==countdownShown&&show>0){countdownShown=show;sfx('menu',1,1+(3-show)*.16);}
-      if(countdown<=0){sfx('goal',.9);floatText(W/2,H/2-30,'시작!','#c0532f',70,.7);setupServe(serveFirst);}
+      if(countdown<=0){roundBegin();sfx('goal',.9);floatText(W/2,H/2-30,'시작!','#c0532f',70,.7);setupServe(serveFirst);}
       return;
     }
     if(phase==='goal'){
@@ -9214,6 +9217,7 @@ var qrcode = function() {
     playMood('calm');
   }
   function oBeginTurn(p){
+    roundBegin();
     O.turn=p;O.moves=oMoves(O.board,O.geo,p);O.flipsAt=new Map(O.moves.map(c=>[c,oFlips(O.board,O.geo,c,p)]));
     O.hintCell=-1;O.hover=-1;O.pid=null;
     O.phase=oIsAI(p)?'ai':'human';
@@ -9271,6 +9275,7 @@ var qrcode = function() {
     oEndGame();
   }
   function oEndGame(){
+    roundFinish();
     // Count the discs out one by one: the final score reveal is the best moment of the game for the room.
     O.phase='count';oSyncTurnUI();stopBgm(.8);
     const cells=[[],[]];
@@ -9823,6 +9828,7 @@ var qrcode = function() {
     playMood('calm');
   }
   function gBeginTurn(p){
+    roundBegin();
     GO.turn=p;GO.hintCell=-1;GO.hover=-1;GO.pid=null;
     GO.phase=gIsAI(p)?'ai':'human';
     GO.timer=GO.stage.clock&&GO.phase==='human'?GO.stage.clock:0;
@@ -9862,11 +9868,12 @@ var qrcode = function() {
     gBeginTurn(opp);
   }
   function gEndDraw(){
+    roundFinish();
     GO.phase='over';gSyncUI();stopBgm(.6);sfx('goal',.7);gMood(1,'surprised','판이 꽉 찼어!');gMood(2,'surprised','다시 붙자!');
     gResult('무승부!',GO.moves+'수 · 판이 가득 찼어요',600);
   }
   function gWin(p,line,c){
-    GO.phase='over';GO.win={line,t0:performance.now(),p};
+    roundFinish();GO.phase='over';GO.win={line,t0:performance.now(),p};
     const w=p-1;
     const repeat=streak.side===w&&streak.id===choices[w];
     streak={side:w,id:choices[w],count:repeat?streak.count+1:1};
@@ -10363,6 +10370,7 @@ var qrcode = function() {
     f.warned=danger;
   }
   function bEnd(w){
+    roundFinish();
     BB.phase='over';BB.result=w;
     BB.fields.forEach(f=>{f.shot=null;f.pid=null;f.trace=null;});
     const loser=BB.fields[1-w];
@@ -10456,7 +10464,7 @@ var qrcode = function() {
       BB.countdown-=dt;
       const show=Math.ceil(BB.countdown/.8);
       if(show!==BB.cShown&&show>0){BB.cShown=show;sfx('menu',1,1+(3-show)*.16);}
-      if(BB.countdown<=0){BB.phase='playing';sfx('goal',.9);}
+      if(BB.countdown<=0){roundBegin();BB.phase='playing';sfx('goal',.9);}
       return;
     }
     if(BB.phase!=='playing')return;
@@ -11014,6 +11022,7 @@ var qrcode = function() {
       sfx(ok?'goal':'soft',ok?1:.9);if(ok)cheer(.6);
       return;
     }
+    roundFinish();
     if(SH.mode==='versus'){
       const [a,b]=SH.shops.map(s=>s.earned),w=a===b?-1:(a>b?0:1);
       hofRecord('shop_vs2',0,a);hofRecord('shop_vs2',1,b);
@@ -11034,6 +11043,7 @@ var qrcode = function() {
     shResult(['조금 아쉬워요','잘했어요!','훌륭해요!','최고의 팀!'][stars]+'  '+'★'.repeat(stars)+'☆'.repeat(3-stars),`팀원 ${Array.from({length:SH.people},(_,i)=>gamePlayerName(i)).join(' · ')} · 매출 ${shWon(SH.earned)} · 손님 ${SH.shops[0].served}명 · 다음 별 ${stars<3?shWon(tg[stars]):'완성!'}`,[['↻ 한 번 더','primary',()=>replayGate(shNewGame)],['인물 변경','',()=>{leaveShop();enterSelection();}],['← 모음집','',shHome]]);
   }
   function shFinishSolo(){
+    roundFinish();
     SH.phase='over';
     hofRecord('shop_solo',0,SH.totalEarned);
     const prev=+preference('shop-best','0');const record=SH.money>prev;
@@ -11078,7 +11088,7 @@ var qrcode = function() {
       SH.countdown-=dt;
       const show=Math.ceil(SH.countdown/.8);
       if(show!==SH.cShown&&show>0){SH.cShown=show;sfx('menu',1,1+(3-show)*.16);}
-      if(SH.countdown<=0){SH.phase='day';sfx('goal',.8);}
+      if(SH.countdown<=0){roundBegin();SH.phase='day';sfx('goal',.8);}
       return;
     }
     if(SH.phase==='cut'){
@@ -11642,6 +11652,7 @@ var qrcode = function() {
     p.stun=1;p.idx=Math.max(0,p.idx-5);p.dir=stNextDir(p.idx);
   }
   function stGameOver(p){
+    roundFinish();
     p.over=true;p.fallV=-500;
     ST.phase='over';stopBgm(.4);
     hofRecord('stairs_solo',0,p.idx);
@@ -11654,6 +11665,7 @@ var qrcode = function() {
     },900);
   }
   function stRaceEnd(){
+    roundFinish();
     ST.phase='over';
     ST.players.forEach(p=>hofRecord('stairs_race',p.i,p.idx));
     const rank=[...ST.players].sort((a,b)=>b.idx-a.idx),top=rank[0].idx,leaders=rank.filter(p=>p.idx===top);
@@ -11691,7 +11703,7 @@ var qrcode = function() {
       ST.countdown-=dt;
       const show=Math.ceil(ST.countdown/.8);
       if(show!==ST.cShown&&show>0){ST.cShown=show;sfx('menu',1,1+(3-show)*.16);}
-      if(ST.countdown<=0){ST.phase='run';sfx('goal',.8);}
+      if(ST.countdown<=0){roundBegin();ST.phase='run';sfx('goal',.8);}
       return;
     }
     if(ST.phase!=='run')return;
@@ -11949,6 +11961,7 @@ var qrcode = function() {
     VB.phase='point';VB.timer=1.6;
   }
   function vbFinish(w){
+    roundFinish();
     VB.phase='over';VB.winner=w;VB.pointers.clear();
     const repeat=streak.side===w&&streak.id===choices[w];
     streak={side:w,id:choices[w],count:repeat?streak.count+1:1};
@@ -12087,7 +12100,7 @@ var qrcode = function() {
       if(VB.phase==='countdown'){const show=Math.ceil(VB.timer/.8);if(show!==VB.cShown&&show>0){VB.cShown=show;sfx('menu',1,1+(3-show)*.16);}}
       VB.timer-=dt;
       VB.players.forEach(p=>vbStepPlayer(p,dt));
-      if(VB.timer<=0){VB.phase='play';if(VB.cShown>0){sfx('goal',.7);VB.cShown=0;}}
+      if(VB.timer<=0){roundBegin();VB.phase='play';if(VB.cShown>0){sfx('goal',.7);VB.cShown=0;}}
       return;
     }
     if(VB.phase==='point'){
@@ -12437,6 +12450,7 @@ var qrcode = function() {
     tBeginTurn(TT.first);
   }
   function tBeginTurn(p){
+    roundBegin();
     TT.turn=p;TT.phase=tIsAI(p)?'ai':'human';TT.hover=-1;TT.pid=null;tSync();
     if(TT.phase==='ai'){
       const tk=TT.token;
@@ -12483,6 +12497,7 @@ var qrcode = function() {
     setTimeout(()=>{if(TT.on&&tk===TT.token&&TT.phase==='round'){tMood(1,'neutral','');tMood(2,'neutral','');tNewRound();}},1950);
   }
   function tFinish(w){
+    roundFinish();
     TT.phase='over';tSync();
     let title='무승부!';
     if(w>=0){
@@ -12790,6 +12805,7 @@ var qrcode = function() {
     playMood('calm');
   }
   function xBeginTurn(p){
+    roundBegin();
     GX.turn=p;GX.sel=-1;GX.hover=-1;GX.pid=null;GX.dragFrom=-1;GX.hint=null;
     GX.moves=xMoves(GX.board,GX.geo,p);
     GX.phase=xIsAI(p)?'ai':'human';
@@ -12844,6 +12860,7 @@ var qrcode = function() {
     if(!empt.length)xEnd(0,'');
   }
   function xEnd(forced,note){
+    roundFinish();
     const [a,d]=xCount(GX.board);
     const w=forced?forced-1:a===d?-1:a>d?0:1;
     GX.phase='over';xSync();
@@ -13187,7 +13204,7 @@ function laneUi(){
   }
 }
 function setMode(mode){
-  if(mode!=='menu')roundBegin();
+  if(mode==='menu')roundClose();
   G.mode=mode;G.seed=Math.floor(Math.random()*1e6);G.rush=false;$('cjTimer').style.color='';G.best=+preference('jump-best','0');$('jumpOverlay').hidden=true;setBgmTempo(1);
   W=mode==='duel'?960:640;resize();
   G.lanes=mode==='duel'?[makeLane(0,0,480,2,1),makeLane(1,480,480,1,2)]:[makeLane(0,0,640,2,2)];
@@ -13243,6 +13260,7 @@ function banner(L,txt){const e=L.el.banner;if(!e)return;e.textContent=txt;e.clas
 function jump(L){
   const p=L.p;
   if(G.phase!=='play'||L.out>0||p.lock>0||p.left<=0||p.boost>0)return;
+  roundBegin();
   if(!L.started){L.started=true;L.el.hint.style.display='none';}
   const n=3-p.left;p.vy=-JV[n];p.left--;p.on=null;p.landT=0;p.sx=.78;p.sy=1.28;
   burst(L,p.x,p.y,n===2?12:6,n===2?'#ffe27a':'#fff8e8',70+n*30);
@@ -13351,6 +13369,7 @@ function respawn(L){
   else{p.on=null;p.y=L.cam+70;p.vy=0;p.x=(L.LX+L.RX)/2;}
 }
 function endSolo(L){
+  roundFinish();
   G.phase='over';G.overT=0;const n=Math.floor(L.maxAlt/FLOOR),b=readBest();
   if(n>b){remember('jump-best',String(n));G.best=n;}
   hofRecord('jump_solo',0,n);
@@ -13358,6 +13377,7 @@ function endSolo(L){
   beep(200,.3,'triangle',.08);stopBgm(.4);
 }
 function endDuel(){
+  roundFinish();
   G.phase='over';G.overT=0;$('cjTimer').style.display='none';
   const [a,b]=G.lanes,na=Math.floor(a.maxAlt/FLOOR),nb=Math.floor(b.maxAlt/FLOOR);
   hofRecord('jump_duel',0,na);hofRecord('jump_duel',1,nb);
@@ -13370,7 +13390,7 @@ function step(dt){
   if(G.phase==='count'){
     G.count-=dt;const n=Math.ceil(G.count);$('cjCount').textContent=n>0?n:'시작!';
     if(n!==G.lastSec){G.lastSec=n;beep(n>0?520:880,.12,'square',.06);}
-    if(G.count<=0){G.phase='play';setTimeout(()=>{$('cjCount').style.display='none';},450);}
+    if(G.count<=0){roundBegin();G.phase='play';setTimeout(()=>{$('cjCount').style.display='none';},450);}
     for(const L of G.lanes)stepLane(L,dt,false);
     return;
   }
@@ -13638,7 +13658,7 @@ function scene(ctx,o){
   return true;
 }
 function key(side){if(!G.lanes.length)return;jump(G.lanes[G.mode==='duel'?side:0]);}
-return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,setMode,leave,openMenu,get H(){return H;},
+return {enter,scene,key,openMenu,home,get on(){return on;},debug:{G,step,render,jump,setMode,leave,openMenu,get H(){return H;},
   warp(a,i){const L=G.lanes[i||0],p=L.p;L.started=true;L.el.hint.style.display='none';L.nextY=-a;L.prev={x:L.LX,w:L.sw,ground:true};L.cam=-a-H*.5;L.plats=[{x:L.LX+70,y:-a+40,w:150,wall:0,type:'n',x0:L.LX+70,range:0,ph:0,t:0,fall:false,sq:0}];L.fish=[];p.on=L.plats[0];p.x=L.LX+120;p.y=L.plats[0].y;L.maxAlt=a;L.nextMile=Math.floor(a/FLOOR/10+1)*10;L.scroll=0;fillPlats(L);}}};
 })();
   /* ---------- Keyboard ---------- */
@@ -13908,7 +13928,8 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
   const COIN={on:false,students:[],everyone:[],v2:false,mapped:true,chosen:true,className:'',dismissed:false,pending:new Map(),seq:0,lastIds:[],ready:false,protocol:0,classId:'',paying:false,uncertain:null,refunds:new Map(),refresh:null,closing:false};
   const TRY_PLAN={flap:5,stack:5,tiles:5,simon:5,stairs:5,jump:5,dodge:3,draw:3,bomb:3,tron:3,rush:3};
   const TRY={game:null,left:0};
-  function tryStart(){const n=TRY_PLAN[currentGame]||0;TRY.game=currentGame;TRY.left=n?n-1:0;return n>0;}
+  function tryStart(){const n=TRY_PLAN[currentGame]||0;TRY.game=currentGame;TRY.left=n?n-1:0;}
+  function tryReset(){TRY.game=null;TRY.left=0;}
   const tryOpen=()=>TRY.left>0&&TRY.game===currentGame&&((EMBED&&COIN.on)||limited());
   const STUDENT_KEY='student-device',DAY_LIMIT=5,REFUND_MS=10000;
   let round=null;
@@ -13917,24 +13938,25 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
   function playsToday(){try{const v=JSON.parse(preference('plays','null'));return v&&v.day===dayKey()?v.count:0;}catch{return 0;}}
   function setPlays(n){remember('plays',JSON.stringify({day:dayKey(),count:Math.max(0,n)}));}
   const limited=()=>!EMBED&&isStudentDevice();
-  // A round starts when play really starts (the first touch on the play area, or a game's own start),
-  // not when the game screen opens, so waiting on a ready screen and leaving costs nothing.
-  function roundBegin(){if(round&&!round.t0)round.t0=Date.now();}
-  document.addEventListener('pointerdown',e=>{
-    if(!round||round.t0||!e.target.closest)return;
-    const screen=e.target.closest('.screen-game');
-    if(!screen||screen.hidden||e.target.closest('button,a,input,.o-overlay,.pa-overlay,#boardOverlay,.display-zone,#hofPicker'))return;
-    roundBegin();
-  },true);
-  // Called when a game ends or is left. Not started, or under ten seconds of play, costs nothing.
-  function roundClose(){
-    if(!round)return;
+  // The game explicitly marks its real start and final result. Ready-screen taps
+  // and time spent reading the result do not consume the refund window.
+  function roundBegin(){if(round&&round.t0===null&&round.endAt==null)round.t0=Date.now();}
+  function roundFinish(){if(round&&round.endAt==null)round.endAt=Date.now();}
+  function roundRefundable(r=round,now=Date.now()){
+    return Boolean(r&&!r.freeRetry&&(r.charge||r.day)&&
+      (r.t0===null||(r.endAt??now)-r.t0<REFUND_MS));
+  }
+  // Return true if this exit refunded a charge or daily play. Never carry
+  // unused attempts from a refunded purchase into another round.
+  function roundClose(keepRetries=false){
     const r=round;round=null;
-    if(r.tries)return;
-    if(r.t0&&Date.now()-r.t0>=REFUND_MS)return;
-    const why=r.t0?'10초 안에 끝나서':'시작하기 전에 나가서';
+    const eligible=roundRefundable(r);
+    if(eligible||!keepRetries)tryReset();
+    if(!eligible)return false;
+    const why=r.t0===null?'시작하기 전에 나가서':'10초 안에 끝나서';
     if(r.charge){if(COIN.protocol>=3){queueRefund(r.charge,r.classId,why);}else{coinPost({type:'hoja-coin-refund',charge:r.charge});hofToast('환불을 요청했어요.');coinPost({type:'hoja-ready'});}}
     else if(r.day){setPlays(playsToday()-1);hofToast(why+' 횟수를 돌려줬어요');}
+    return true;
   }
   function playersNeeded(){
     if(PARTY_GAMES[currentGame]){const g=PARTY_GAMES[currentGame];return (g.stages.find(st=>st.id===g.sel)||{}).people||2;}
@@ -13983,7 +14005,7 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
       if(v3&&(COIN.closing||COIN.classId!==p.classId)){queueRefund(msg.charge,p.classId,'학급 또는 게임 화면이 변경되어');fail('학급이 바뀌었어요. 게임을 다시 열어 주세요.');return;}
       for(const [id,balance] of Object.entries(msg.balances||{})){const st=COIN.students.find(x=>x.id===id);if(st)st.balance=balance;}
       COIN.lastIds=[...ids];
-      round={charge:msg.charge,classId:p.classId,price:msg.price,t0:null,tries:tryStart()};
+      tryStart();round={charge:msg.charge,classId:p.classId,price:msg.price,t0:null,freeRetry:false};
       done(msg);
     });
     send();
@@ -14053,7 +14075,7 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
     if(EMBED&&COIN.on){coinPick(n,done);return;}
     if(limited()){
       if(playsToday()>=DAY_LIMIT){dayLimitReached();return;}
-      hofPick(hofCount,()=>{setPlays(playsToday()+1);round={day:true,t0:null,tries:tryStart()};done();});
+      hofPick(hofCount,()=>{setPlays(playsToday()+1);tryStart();round={day:true,t0:null,freeRetry:false};done();});
       return;
     }
     hofPick(hofCount,done);
@@ -14062,15 +14084,15 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
   function replayGate(fn){refreshGameGate(()=>replayGateFresh(fn));}
   function replayGateFresh(fn){
     if(EMBED&&(!COIN.ready||COIN.paying||COIN.uncertain&&!COIN.on||COIN.enabled&&!COIN.on)){hofToast('대시보드 코인 연결을 확인해 주세요.');return;}
-    roundClose();
-    if(tryOpen()){TRY.left--;round={tries:true,t0:Date.now()};hofToast(TRY.left?`남은 판 ${TRY.left}`:'마지막 판이에요');fn();return;}
+    if(roundClose(true)){hofToast('환불을 처리했어요. 다시 시작하려면 한 번 더 눌러 주세요.');return;}
+    if(tryOpen()){TRY.left--;round={freeRetry:true,t0:null};hofToast(TRY.left?`남은 판 ${TRY.left}`:'마지막 판이에요');fn();return;}
     if(EMBED&&COIN.on){
       coinSpend(COIN.lastIds,fn,text=>hofToast(text));
       return;
     }
     if(limited()){
       if(playsToday()>=DAY_LIMIT){dayLimitReached();return;}
-      setPlays(playsToday()+1);round={day:true,t0:null,tries:tryStart()};
+      setPlays(playsToday()+1);tryStart();round={day:true,t0:null,freeRetry:false};
     }
     fn();
   }
@@ -14730,6 +14752,33 @@ return {enter,scene,key,openMenu,get on(){return on;},debug:{G,step,render,jump,
     window.addEventListener('pagehide',()=>roundClose());
     coinPost({type:'hoja-ready'});
   }
+  // One shared, non-overlapping refund action, visible only while a paid
+  // session can be refunded. Normal gameplay controls remain unchanged.
+  if(EMBED){
+    const refundButton=document.createElement('button');refundButton.type='button';refundButton.className='control primary';
+    refundButton.textContent='코인 환불하고 나가기';refundButton.hidden=true;
+    refundButton.style.cssText='position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:9999;max-width:90vw;font-size:clamp(14px,1.25vw,22px);padding:.35em .8em;';
+    document.body.append(refundButton);
+    const syncRefund=()=>{refundButton.hidden=!(round?.charge&&roundRefundable());};
+    refundButton.addEventListener('click',()=>{
+      if(!round?.charge||!roundRefundable()){syncRefund();return;}
+      roundClose();clearIntro();$('choiceScreen').hidden=true;
+      if(CJ.on)CJ.home();
+      else if(PS.on)paHome();
+      else if(O.on)leaveOthello();
+      else if(GO.on)leaveGomoku();
+      else if(BB.on)leaveBubble();
+      else if(SH.on)leaveShop();
+      else if(ST.on)leaveStairs();
+      else if(VB.on)leaveVolley();
+      else if(TT.on)leaveTtt();
+      else if(GX.on)leaveGerm();
+      else if(inGame)leaveGame();
+      $('menuScreen').hidden=false;playBgm('menu',{gain:.8});syncRefund();
+    });
+    setInterval(syncRefund,100);
+  }
+  if(!EMBED)window.addEventListener('pagehide',()=>roundClose());
   $('deviceButton').addEventListener('click',()=>{remember('device',TABLET?'board':'tablet');location.reload();});
   $('choiceBack').addEventListener('click',()=>{sfx('menu',.7);streak={side:-1,id:null,count:0};leaveSelection();});
   $('choiceStart').addEventListener('click',()=>playGate(playersNeeded(),hofNeeded(),startBattleIntro));
