@@ -37,6 +37,11 @@ async function startNormal(n){await until(()=>click('일반 토너먼트'),'norm
  await parent();await until(()=>exec('return mock.refunds.length===1'),'refund');
  assert.deepEqual(await exec('return mock.spends.map(s=>s.ids.length)'),[8]);
  await frame();await startNormal(4);assert(await click('경기 시작'));
+ await text('잠시 후 경기가 시작됩니다');
+ assert.equal(await exec('return document.querySelectorAll(".tm-fighter-name").length'),2);
+ assert.equal(await exec('return document.querySelectorAll(".tm-fighter-img[src^=data]").length'),2);
+ assert.equal(await exec('return !!window.__hoja?.st?.ST.on'),false);
+ assert(await click('연출 건너뛰기'));
  await until(()=>exec('return window.__hoja?.st?.ST.on'),'stairs running');
  // Advance actual game state and invoke the real end condition, not the bracket helper.
  await exec('const s=window.__hoja.st;s.stStep(3);s.ST.players[0].idx=10;s.ST.players[1].idx=1;s.ST.time=s.ST.limit-.1;s.stStep(.2);');
@@ -86,8 +91,23 @@ async function startNormal(n){await until(()=>click('일반 토너먼트'),'norm
  assert(await exec('const e=[...document.querySelectorAll("select")].find(s=>s.getAttribute("aria-label")==="경기 방식");e.value="dual";return e.value==="dual"'));
  assert(await click('대진표 추첨'));await text('21명 · 0/35경기');
  assert.equal(await exec('return document.querySelectorAll(".tm-group").length'),6);
- await play(10,1);await text('1/35경기 완료');
+ assert(await exec('const p=document.querySelector(".tm-group .tm-pair");return getComputedStyle(p).gridTemplateColumns.split(" ").length===3&&getComputedStyle(p.querySelector(".tm-seat")).textAlign==="center"'));
+ assert(await exec('const h=document.querySelector(".tm-head").getBoundingClientRect(),f=document.querySelector(".tm-foot").getBoundingClientRect();return h.top>=0&&f.bottom<=innerHeight+1'));
+ assert(await click('경기 시작'));await text('A조 · 경기 안내');
+ assert.equal(await exec('return document.querySelectorAll(".tm-focus-group .tm-group").length'),1);
+ assert.equal(await exec('return !!window.__hoja?.st?.ST.on'),false);
+ assert(await click('← 대진표로'));await text('경기 시작을 취소했어요');
+ const cancelled=await loadSaved();assert.equal(cancelled.active,null);assert.equal(cancelled.completed,0);
+ await wait(2500);assert.equal(await exec('return !!window.__hoja?.st?.ST.on'),false);
+ assert(await click('경기 시작'));await text('A조 · 경기 안내');await text('잠시 후 경기가 시작됩니다');
+ const activeIntro=await loadSaved();assert.deepEqual(activeIntro.faces,cancelled.faces);
+ assert.deepEqual(await exec('return [...document.querySelectorAll(".tm-fighter-name")].map(x=>x.textContent)'),[activeIntro.players.find(p=>p.id===activeIntro.groups[0].matches[0].a).name,activeIntro.players.find(p=>p.id===activeIntro.groups[0].matches[0].b).name]);
+ await until(()=>exec('return window.__hoja?.st?.ST.on'),'automatic dual intro launch');
+ await exec('const s=window.__hoja.st;s.stStep(3);s.ST.players[0].idx=10;s.ST.players[1].idx=1;s.ST.time=s.ST.limit-.1;s.stStep(.2);');
+ await text('1/35경기 완료');
+ assert(await exec('return document.querySelector(".tm-group-active .tm-member small").textContent.includes("승")'));
+ assert.equal(await exec('return document.querySelectorAll(".tm-fighter").length'),0);
  assert(await click('저장하고 나가기'));await text('이어하기');
  await parent();assert.deepEqual(await exec('return mock.spends.map(s=>s.ids.length)'),[8,4]);
- console.log('PASS browser: payment/refund, upward bracket, compact 21-player 24 seeds, defeat shading, crash reload and same random character, PIN rollback, 21-player dual group save, tie, champion, no additional spend');
+ console.log('PASS browser: payment/refund, upward bracket, compact 21-player 24 seeds, defeat shading, crash reload and same random character, PIN rollback, 21-player dual group save, centered names and VS, two-stage intro, skip/cancel/automatic start, tie, champion, no additional spend');
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{if(session)try{await api('/session/'+session,'DELETE')}catch{}if(driver)driver.kill();host.close();game.close();});
