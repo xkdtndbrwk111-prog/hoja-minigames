@@ -52,7 +52,11 @@
   if(EMBED)try{
     const prev=JSON.parse(localStorage.getItem(RECOVERY_KEY)||'null');
     for(const [charge,r] of prev?.refunds||[])if(typeof charge==='string'&&r&&typeof r.classId==='string')COIN.refunds.set(charge,r);
-    if(prev?.pending?.txId&&prev.pending.classId)COIN.refunds.set(prev.pending.txId,{classId:prev.pending.classId,why:'이전 결제가 종료되어'});
+    if(prev?.pending?.txId&&prev.pending.classId){
+      const p=prev.pending;let committed=false;
+      if(typeof p.game==='string'&&p.game.startsWith('토너먼트 · '))try{const t=JSON.parse(localStorage.getItem('hoja-tournament-v1:'+p.classId)||'null');committed=t?.classId===p.classId&&t.charge===p.txId&&!t.cancelled;}catch{}
+      if(!committed)COIN.refunds.set(p.txId,{classId:p.classId,why:'이전 결제가 종료되어'});
+    }
     saveCoinRecovery();
   }catch{}
   function queueRefund(charge,classId,why){
@@ -78,12 +82,13 @@
       clearTimeout(timer);COIN.paying=false;
       if(!msg.ok){if(v3&&msg.retryable){COIN.uncertain=null;queueRefund(p.txId,p.classId,'결제 결과를 확인하지 못해');}else{COIN.uncertain=null;saveCoinRecovery();}fail(msg.message||'시작하지 못했어요.');return;}
       if(v3&&(msg.classId!==p.classId||msg.charge!==p.txId)){COIN.uncertain=null;queueRefund(p.txId,p.classId,'결제 결과가 달라');fail('결제 결과가 일치하지 않아요.');return;}
-      COIN.uncertain=null;saveCoinRecovery();
-      if(v3&&(COIN.closing||COIN.classId!==p.classId)){queueRefund(msg.charge,p.classId,'학급 또는 게임 화면이 변경되어');fail('학급이 바뀌었어요. 게임을 다시 열어 주세요.');return;}
+      const tournament=v3&&typeof gameOverride==='string'&&gameOverride.startsWith('토너먼트 · ');
+      if(!tournament){COIN.uncertain=null;saveCoinRecovery();}
+      if(v3&&(COIN.closing||COIN.classId!==p.classId)){COIN.uncertain=null;queueRefund(msg.charge,p.classId,'학급 또는 게임 화면이 변경되어');fail('학급이 바뀌었어요. 게임을 다시 열어 주세요.');return;}
       for(const [id,balance] of Object.entries(msg.balances||{})){const st=COIN.students.find(x=>x.id===id);if(st)st.balance=balance;}
       COIN.lastIds=[...ids];
       tryStart();round={charge:msg.charge,classId:p.classId,price:msg.price,t0:null,freeRetry:false};
-      done(msg);
+      if(tournament){try{done(msg);}finally{COIN.uncertain=null;saveCoinRecovery();}}else done(msg);
     });
     send();
   }

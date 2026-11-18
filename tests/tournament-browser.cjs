@@ -83,7 +83,7 @@ async function startNormal(n){await until(()=>click('일반 토너먼트'),'norm
  await confirmClick('토너먼트 종료');await text('일반 토너먼트');
  await until(()=>click('교실 월드컵'),'world dual');await text('21명 전원 참가');
  assert.equal(await selectGame('stairs'),'stairs');
- assert(await exec('const e=document.querySelector("select[aria-label=경기 방식]");e.value="dual";return e.value==="dual"'));
+ assert(await exec('const e=[...document.querySelectorAll("select")].find(s=>s.getAttribute("aria-label")==="경기 방식");e.value="dual";return e.value==="dual"'));
  assert(await click('대진표 추첨'));await text('21명 · 0/35경기');
  assert.equal(await exec('return document.querySelectorAll(".tm-group").length'),6);
  await play(10,1);await text('1/35경기 완료');

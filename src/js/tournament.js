@@ -78,7 +78,8 @@
     }
     const n=tmNext(t.rounds);return n?{...n,key:'r'+n.r+':'+n.i}:null;
   }
-  function tmPlanResolve(t,next,id,rng=Math.random){
+  function tmSeeded(seed){let x=(seed|0)||1;return ()=>{x^=x<<13;x^=x>>>17;x^=x<<5;return (x>>>0)/4294967296;};}
+  function tmPlanResolve(t,next,id,rng=tmSeeded(t.drawSeed??t.created??1)){
     const n=tmPlanNext(t);if(!n||n.key!==next.key||![n.m.a,n.m.b].includes(id))return false;
     if(n.g!=null){n.m.winner=id;tmAdvanceGroup(t.groups[n.g]);if(t.groups.every(g=>g.qualified.length===2)&&!t.rounds.length)t.rounds=tmCompact(t.groups.flatMap(g=>g.qualified),rng);}
     else if(!tmResolve(t.rounds,n.r,n.i,id))return false;
@@ -128,7 +129,7 @@
   }
   function tmGame(id){return tmCatalog().find(g=>g.id===id);}
   function tmSaved(){
-    const t=tmRead(tmKey(COIN.classId));if(!t||![1,2].includes(t.version)||t.classId!==COIN.classId||!['normal','world'].includes(t.mode)||!tmGame(t.game)?.stages.some(s=>s.id===t.stage)||!Array.isArray(t.players)||!Array.isArray(t.rounds)||(!t.rounds.length&&!t.groups?.length))return null;
+    const t=tmRead(tmKey(COIN.classId));if(t?.classId===COIN.classId&&t.cancelled){if(t.cancelled.refund&&t.charge)queueRefund(t.charge,t.classId,'중단된 토너먼트 취소 복구');tmClear(t.classId);return null;}if(!t||![1,2].includes(t.version)||t.classId!==COIN.classId||!['normal','world'].includes(t.mode)||!tmGame(t.game)?.stages.some(s=>s.id===t.stage)||!Array.isArray(t.players)||!Array.isArray(t.rounds)||(!t.rounds.length&&!t.groups?.length))return null;
     if(t.version===1){t.version=2;t.format='single';t.groups=[];t.faces={};t.legacy=true;tmCheckpoint(t);}return t;
   }
   function tmRoster(msg){
@@ -190,7 +191,7 @@
     settings.append(format,game,stage,song,face);body.append(settings);
     const roster=tmEl('div','tm-roster'),status=tmEl('p','tm-note');
     const draw=()=>{
-      roster.replaceChildren();const students=mode==='world'?COIN.everyone:COIN.students;const n=mode==='world'?students.length:count;format.options[1].disabled=!tmDualAllowed(n);if(format.options[1].disabled)format.value='single';
+      roster.replaceChildren();const students=mode==='world'?COIN.everyone:COIN.students;const n=mode==='world'?students.length:count;format.options[1].disabled=!tmDualAllowed(n);if(format.options[1].disabled){format.value='single';format.options[1].textContent='듀얼 · 3명 또는 4명 또는 6명 이상 필요';}else format.options[1].textContent='듀얼 토너먼트 · 조별 예선';
       if(mode==='world'){status.textContent=students.length+'명 전원 참가 · 부전승 자동 추첨';for(const st of students)roster.append(tmEl('span','tm-person',st.name));}
       else{status.textContent=selected.size+'/'+count+'명 선택 · 모두 0.5코인씩';
         for(const st of students){const b=tmButton(st.name+' · '+coinText(st.balance),()=>{if(selected.has(st.id))selected.delete(st.id);else if(selected.size<count)selected.add(st.id);draw();});b.classList.toggle('tm-chosen',selected.has(st.id));b.disabled=!selected.has(st.id)&&(selected.size>=count||st.balance-.5<COIN.floor);roster.append(b);}
@@ -209,7 +210,7 @@
         if(mode==='world'&&(list.length!==wanted.length||list.some(p=>!wanted.includes(p.id)))||wanted.some(id=>!list.some(p=>p.id===id))){hofToast('명단이 변경됐어요. 다시 선택해 주세요.');return tmSetup(mode);}
         if(mode==='normal'&&(wanted.length!==count||!COIN.on||COIN.refunds.size))return tmHome();
         const players=wanted.map(id=>{const p=list.find(s=>s.id===id);return {id:p.id,name:p.name,number:p.number??null};});
-        const t={version:2,classId:cls,mode,format:method,game:g.id,stage:st,song:g.rhythm?track:null,character,players,...tmPlan(wanted,method),charge:null,firstStart:null,firstEnd:null,refundLocked:false,completed:0,created:Date.now(),faces:{},journal:[],active:null};
+        const t={version:2,classId:cls,mode,format:method,game:g.id,stage:st,song:g.rhythm?track:null,character,players,...tmPlan(wanted,method),charge:null,firstStart:null,firstEnd:null,refundLocked:false,completed:0,created:Date.now(),drawSeed:Math.floor(Math.random()*4294967296),faces:{},journal:[],active:null};
         tmCheckpoint(t);
         if(mode==='world'){TM.t=t;if(!tmStore()){TM.t=null;hofToast('대진표를 저장할 수 없어요.');return;}tmBoard();}
         else{
@@ -247,7 +248,7 @@
       const now=tmEl('div','tm-now');now.append(tmEl('small','',tmLabel(t,next)),tmEl('strong','',tmName(next.m.a)+'  VS  '+tmName(next.m.b)));body.append(now);
       foot.append(tmButton('경기 시작',()=>tmLaunch(next),true));
     }
-    if(t.lastResult)body.append(tmEl('p','tm-last','직전 경기 · '+t.lastResult));
+    if(t.lastResult&&!body.querySelector('.tm-notice'))body.append(tmEl('p','tm-last','직전 경기 · '+t.lastResult));
     if(t.savedAt)body.append(tmEl('small','tm-saved','자동 저장 · '+new Date(t.savedAt).toLocaleTimeString('ko-KR')));
     const cardFor=(m,key,label,group=false)=>{
       const card=tmEl('div','tm-match'+(next?.key===key?' tm-current':''));
@@ -319,6 +320,7 @@
     const t=TM.t;if(!t)return;
     if(refund&&!tmRefundable(t))return tmBoard();
     if(!confirm(refund?'토너먼트를 취소하고 참가비를 돌려줄까요?':'토너먼트를 종료할까요? 참가비는 반환되지 않아요.'))return;
+    t.cancelled={refund:Boolean(refund),at:Date.now()};if(!tmStore()){delete t.cancelled;hofToast('취소 상태를 저장하지 못했어요. 다시 시도해 주세요.');return;}
     if(refund)queueRefund(t.charge,t.classId,'토너먼트를 취소해서');
     tmClear(t.classId);tmHome();
   }
