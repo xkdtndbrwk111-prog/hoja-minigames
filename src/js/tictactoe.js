@@ -133,6 +133,7 @@
     tBeginTurn(TT.first);
   }
   function tBeginTurn(p){
+    roundBegin();
     TT.turn=p;TT.phase=tIsAI(p)?'ai':'human';TT.hover=-1;TT.pid=null;tSync();
     if(TT.phase==='ai'){
       const tk=TT.token;
@@ -179,6 +180,7 @@
     setTimeout(()=>{if(TT.on&&tk===TT.token&&TT.phase==='round'){tMood(1,'neutral','');tMood(2,'neutral','');tNewRound();}},1950);
   }
   function tFinish(w){
+    roundFinish();if(tournamentResult(w))return;
     TT.phase='over';tSync();
     let title='무승부!';
     if(w>=0){

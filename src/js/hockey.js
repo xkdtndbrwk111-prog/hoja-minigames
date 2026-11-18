@@ -71,7 +71,8 @@
   }
   function neutralMoods(){setMood(0,'neutral','집중 중!');setMood(1,'neutral',aiLevel?'컴퓨터 상대':'집중 중!');}
   function button(label,cls,fn){
-    if(/다시 하기|재대결/.test(label)){const run=fn;fn=()=>replayGate(run);if(tryOpen())label+=' · 남은 '+TRY.left+'판';}
+    if(typeof TM!=='undefined'&&TM.running&&/모음집|인물 변경|방식 고르기|다시 하기|재대결|다시 오르기|다시 경주|처음부터|다음 도전자/.test(label)){label='← 대진표로 돌아가기';fn=()=>tournamentSuspend();}
+    if(/다시 하기|재대결|다시 오르기|다시 경주|처음부터/.test(label)){const run=fn;fn=()=>replayGate(run);if(tryOpen()&&!roundRefundable())label+=' · 남은 '+TRY.left+'판';}
     const b=document.createElement('button');b.type='button';b.className='control big '+cls;b.textContent=label;
     b.addEventListener('click',()=>{sfx('menu',.7);fn();});return b;
   }
@@ -151,7 +152,7 @@
   }
   function startCountdown(){
     if(phase!=='ready')return;
-    phase='countdown';countdown=2.4;countdownShown=0;syncStrip();neutralMoods();roundBegin();
+    phase='countdown';countdown=2.4;countdownShown=0;syncStrip();neutralMoods();
   }
   function setupServe(side){
     // Conceding player gets the puck and the first swing, like a real table.
@@ -187,8 +188,10 @@
     phase=resumePhase;hideOverlay();syncStrip();setBgmTempo(clock<=15?1.05:1);
   }
   function finish(){
+    roundFinish();
     resetShots();closeCut();hideGoalBanner();floats=[];resetGoalCamp();phase='finished';releaseTouches();
     const winner=scores[0]>scores[1]?0:1;
+    if(tournamentResult(winner))return;
     const repeat=streak.side===winner&&streak.id===choices[winner];
     streak={side:winner,id:choices[winner],count:repeat?streak.count+1:1};
     hofWin('hockey',winner);
@@ -855,7 +858,7 @@
       countdown-=dt;
       const show=Math.ceil(countdown/.8);
       if(show!==countdownShown&&show>0){countdownShown=show;sfx('menu',1,1+(3-show)*.16);}
-      if(countdown<=0){sfx('goal',.9);floatText(W/2,H/2-30,'시작!','#c0532f',70,.7);setupServe(serveFirst);}
+      if(countdown<=0){roundBegin();sfx('goal',.9);floatText(W/2,H/2-30,'시작!','#c0532f',70,.7);setupServe(serveFirst);}
       return;
     }
     if(phase==='goal'){

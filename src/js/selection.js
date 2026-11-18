@@ -104,7 +104,7 @@
     $('menuScreen').hidden=true;$('gameScreen').hidden=true;$('choiceScreen').hidden=false;
     renderChoices();renderStages();syncMode();$('modeButton').hidden=currentGame==='shop'||currentGame==='stairs'||Boolean(PARTY_GAMES[currentGame]);syncSelectionHint();playBgm('menu',{gain:.8});
   }
-  function leaveSelection(){clearIntro();$('choiceScreen').hidden=true;$('menuScreen').hidden=false;}
+  function leaveSelection(){roundClose();clearIntro();$('choiceScreen').hidden=true;$('menuScreen').hidden=false;}
   function syncCharacterUI(){
     $('teamNameLeft').textContent=nameFor(0);$('teamNameRight').textContent=nameFor(1);
     portraitEls.forEach((el,i)=>{el.alt=nameFor(i)+' 표정';});

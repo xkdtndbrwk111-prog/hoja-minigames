@@ -98,6 +98,7 @@
   }
   /* Recording: kept on the device first, so a dropped connection never loses a result. */
   function hofRecord(game,side,score){
+    if(typeof TM!=='undefined'&&TM.running)return;
     roundClose();
     const seat=HOF.players[side];
     if(!HOF.cfg||!seat)return;
@@ -110,6 +111,7 @@
   // A cooperative bakery result belongs to the complete team, never to each
   // member as if they had independently earned the whole revenue.
   function hofRecordTeam(game,seats,score){
+    if(typeof TM!=='undefined'&&TM.running)return;
     roundClose();
     const expected=game==='shop_co2'||game==='dance_duo'?2:game==='shop_co4'?4:0;
     if(!HOF.cfg||!expected||!Array.isArray(seats)||seats.length!==expected

@@ -5,7 +5,8 @@
   const COIN={on:false,students:[],everyone:[],v2:false,mapped:true,chosen:true,className:'',dismissed:false,pending:new Map(),seq:0,lastIds:[],ready:false,protocol:0,classId:'',paying:false,uncertain:null,refunds:new Map(),refresh:null,closing:false};
   const TRY_PLAN={flap:5,stack:5,tiles:5,simon:5,stairs:5,jump:5,dodge:3,draw:3,bomb:3,tron:3,rush:3};
   const TRY={game:null,left:0};
-  function tryStart(){const n=TRY_PLAN[currentGame]||0;TRY.game=currentGame;TRY.left=n?n-1:0;return n>0;}
+  function tryStart(){const n=TRY_PLAN[currentGame]||0;TRY.game=currentGame;TRY.left=n?n-1:0;}
+  function tryReset(){TRY.game=null;TRY.left=0;}
   const tryOpen=()=>TRY.left>0&&TRY.game===currentGame&&((EMBED&&COIN.on)||limited());
   const STUDENT_KEY='student-device',DAY_LIMIT=5,REFUND_MS=10000;
   let round=null;
@@ -14,24 +15,25 @@
   function playsToday(){try{const v=JSON.parse(preference('plays','null'));return v&&v.day===dayKey()?v.count:0;}catch{return 0;}}
   function setPlays(n){remember('plays',JSON.stringify({day:dayKey(),count:Math.max(0,n)}));}
   const limited=()=>!EMBED&&isStudentDevice();
-  // A round starts when play really starts (the first touch on the play area, or a game's own start),
-  // not when the game screen opens, so waiting on a ready screen and leaving costs nothing.
-  function roundBegin(){if(round&&!round.t0)round.t0=Date.now();}
-  document.addEventListener('pointerdown',e=>{
-    if(!round||round.t0||!e.target.closest)return;
-    const screen=e.target.closest('.screen-game');
-    if(!screen||screen.hidden||e.target.closest('button,a,input,.o-overlay,.pa-overlay,#boardOverlay,.display-zone,#hofPicker'))return;
-    roundBegin();
-  },true);
-  // Called when a game ends or is left. Not started, or under ten seconds of play, costs nothing.
-  function roundClose(){
-    if(!round)return;
+  // The game explicitly marks its real start and final result. Ready-screen taps
+  // and time spent reading the result do not consume the refund window.
+  function roundBegin(){if(typeof tournamentBegin==='function')tournamentBegin();if(round&&round.t0===null&&round.endAt==null)round.t0=Date.now();}
+  function roundFinish(){if(typeof tournamentFinishClock==='function')tournamentFinishClock();if(round&&round.endAt==null)round.endAt=Date.now();}
+  function roundRefundable(r=round,now=Date.now()){
+    return Boolean(r&&!r.freeRetry&&(r.charge||r.day)&&
+      (r.t0===null||(r.endAt??now)-r.t0<REFUND_MS));
+  }
+  // Return true if this exit refunded a charge or daily play. Never carry
+  // unused attempts from a refunded purchase into another round.
+  function roundClose(keepRetries=false){
     const r=round;round=null;
-    if(r.tries)return;
-    if(r.t0&&Date.now()-r.t0>=REFUND_MS)return;
-    const why=r.t0?'10초 안에 끝나서':'시작하기 전에 나가서';
+    const eligible=roundRefundable(r);
+    if(eligible||!keepRetries)tryReset();
+    if(!eligible)return false;
+    const why=r.t0===null?'시작하기 전에 나가서':'10초 안에 끝나서';
     if(r.charge){if(COIN.protocol>=3){queueRefund(r.charge,r.classId,why);}else{coinPost({type:'hoja-coin-refund',charge:r.charge});hofToast('환불을 요청했어요.');coinPost({type:'hoja-ready'});}}
     else if(r.day){setPlays(playsToday()-1);hofToast(why+' 횟수를 돌려줬어요');}
+    return true;
   }
   function playersNeeded(){
     if(PARTY_GAMES[currentGame]){const g=PARTY_GAMES[currentGame];return (g.stages.find(st=>st.id===g.sel)||{}).people||2;}
@@ -62,10 +64,10 @@
     coinPost({type:'hoja-coin-refund',charge,classId:r.classId});
   }
   function sameRequest(p,ids,game){return p.classId===COIN.classId&&p.game===game&&JSON.stringify(p.ids)===JSON.stringify(ids);}
-  function coinSpend(ids,done,fail){
+  function coinSpend(ids,done,fail,gameOverride=null){
     if(COIN.paying)return;
     if(!COIN.ready||!COIN.on||COIN.refunds.size){fail('코인 연결을 확인해 주세요.');return;}
-    const req=++COIN.seq,game=currentGame==='shop'?'붕어빵 가게':(HOF_GAMES.find(g=>g.id===currentGame)||{}).name||(PARTY_GAMES[currentGame]||{}).name||currentGame;
+    const req=++COIN.seq,game=gameOverride||(currentGame==='shop'?'붕어빵 가게':(HOF_GAMES.find(g=>g.id===currentGame)||{}).name||(PARTY_GAMES[currentGame]||{}).name||currentGame);
     const v3=COIN.protocol>=3;
     if(COIN.uncertain&&(!v3||!sameRequest(COIN.uncertain,ids,game))){fail('이전 코인 결제 결과부터 확인해 주세요. 같은 학생으로 다시 시도해 주세요.');return;}
     const p=COIN.uncertain||{txId:crypto.randomUUID(),classId:COIN.classId,ids:[...ids],game};
@@ -80,7 +82,7 @@
       if(v3&&(COIN.closing||COIN.classId!==p.classId)){queueRefund(msg.charge,p.classId,'학급 또는 게임 화면이 변경되어');fail('학급이 바뀌었어요. 게임을 다시 열어 주세요.');return;}
       for(const [id,balance] of Object.entries(msg.balances||{})){const st=COIN.students.find(x=>x.id===id);if(st)st.balance=balance;}
       COIN.lastIds=[...ids];
-      round={charge:msg.charge,classId:p.classId,price:msg.price,t0:null,tries:tryStart()};
+      tryStart();round={charge:msg.charge,classId:p.classId,price:msg.price,t0:null,freeRetry:false};
       done(msg);
     });
     send();
@@ -150,24 +152,24 @@
     if(EMBED&&COIN.on){coinPick(n,done);return;}
     if(limited()){
       if(playsToday()>=DAY_LIMIT){dayLimitReached();return;}
-      hofPick(hofCount,()=>{setPlays(playsToday()+1);round={day:true,t0:null,tries:tryStart()};done();});
+      hofPick(hofCount,()=>{setPlays(playsToday()+1);tryStart();round={day:true,t0:null,freeRetry:false};done();});
       return;
     }
     hofPick(hofCount,done);
   }
   // "Play again" inside a game is a new round with the same players.
-  function replayGate(fn){refreshGameGate(()=>replayGateFresh(fn));}
+  function replayGate(fn){if(typeof tournamentSuspend==='function'&&tournamentSuspend())return;refreshGameGate(()=>replayGateFresh(fn));}
   function replayGateFresh(fn){
     if(EMBED&&(!COIN.ready||COIN.paying||COIN.uncertain&&!COIN.on||COIN.enabled&&!COIN.on)){hofToast('대시보드 코인 연결을 확인해 주세요.');return;}
-    roundClose();
-    if(tryOpen()){TRY.left--;round={tries:true,t0:Date.now()};hofToast(TRY.left?`남은 판 ${TRY.left}`:'마지막 판이에요');fn();return;}
+    if(roundClose(true)){refundExitToMenu();return;}
+    if(tryOpen()){TRY.left--;round={freeRetry:true,t0:null};hofToast(TRY.left?`남은 판 ${TRY.left}`:'마지막 판이에요');fn();return;}
     if(EMBED&&COIN.on){
       coinSpend(COIN.lastIds,fn,text=>hofToast(text));
       return;
     }
     if(limited()){
       if(playsToday()>=DAY_LIMIT){dayLimitReached();return;}
-      setPlays(playsToday()+1);round={day:true,t0:null,tries:tryStart()};
+      setPlays(playsToday()+1);tryStart();round={day:true,t0:null,freeRetry:false};
     }
     fn();
   }
@@ -191,11 +193,13 @@
         HOF.cfg.names=names;hofSaveCfg();
       }
       if(COIN.protocol>=3)for(const charge of COIN.refunds.keys())sendRefund(charge);
+      if(typeof tmRoster==='function')tmRoster(msg);
       if(COIN.refresh&&msg.readyReq===COIN.refresh.req){const gate=COIN.refresh;COIN.refresh=null;clearTimeout(gate.timer);gate.finish();}
     }else if(msg.type==='hoja-refund-result'){
       const r=COIN.refunds.get(msg.charge);if(!r)return;if(msg.retryable)return;COIN.refunds.delete(msg.charge);saveCoinRecovery();
       if(msg.ok){if(msg.classId===COIN.classId)for(const [id,b] of Object.entries(msg.balances||{})){const st=COIN.students.find(x=>x.id===id);if(st)st.balance=b;}hofToast(r.why+' 코인을 돌려줬어요');}else hofToast('환불을 확인할 수 없어요. 선생님께 알려 주세요.');
-    }else if(msg.type==='hoja-coin-result'||msg.type==='hoja-hof-week-result'){
+      if(typeof tournamentRefundAck==='function')tournamentRefundAck();
+    }else if(msg.type==='hoja-coin-result'||msg.type==='hoja-hof-week-result'||msg.type==='hoja-tournament-auth-result'){
       const cb=COIN.pending.get(msg.req);if(cb){COIN.pending.delete(msg.req);cb(msg);}
     }
   });

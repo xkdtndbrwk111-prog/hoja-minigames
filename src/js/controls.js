@@ -29,6 +29,37 @@
     window.addEventListener('pagehide',()=>roundClose());
     coinPost({type:'hoja-ready'});
   }
+  // A refunded round must not be resumed from its old pause/result screen.
+  function refundExitToMenu(){
+    clearIntro();$('choiceScreen').hidden=true;
+    if(CJ.on)CJ.home();
+    else if(PS.on)paHome();
+    else if(O.on)leaveOthello();
+    else if(GO.on)leaveGomoku();
+    else if(BB.on)leaveBubble();
+    else if(SH.on)leaveShop();
+    else if(ST.on)leaveStairs();
+    else if(VB.on)leaveVolley();
+    else if(TT.on)leaveTtt();
+    else if(GX.on)leaveGerm();
+    else if(inGame)leaveGame();
+    $('menuScreen').hidden=false;playBgm('menu',{gain:.8});
+  }
+  // A single conditional refund-and-exit control. The top display area is
+  // outside the usual board touch zone; no new images or game overlays.
+  if(EMBED){
+    const refundButton=document.createElement('button');refundButton.type='button';refundButton.className='control primary';
+    refundButton.textContent='코인 환불하고 나가기';refundButton.hidden=true;
+    refundButton.style.cssText='position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:9999;max-width:90vw;font-size:clamp(14px,1.25vw,22px);padding:.35em .8em;';
+    document.body.append(refundButton);
+    const syncRefund=()=>{refundButton.hidden=!(round?.charge&&roundRefundable());};
+    refundButton.addEventListener('click',()=>{
+      if(!round?.charge||!roundRefundable()){syncRefund();return;}
+      roundClose();refundExitToMenu();syncRefund();
+    });
+    setInterval(syncRefund,100);
+  }
+  if(!EMBED)window.addEventListener('pagehide',()=>roundClose());
   $('deviceButton').addEventListener('click',()=>{remember('device',TABLET?'board':'tablet');location.reload();});
   $('choiceBack').addEventListener('click',()=>{sfx('menu',.7);streak={side:-1,id:null,count:0};leaveSelection();});
   $('choiceStart').addEventListener('click',()=>playGate(playersNeeded(),hofNeeded(),startBattleIntro));
@@ -64,6 +95,7 @@
     const t=el.textContent;if(noteSeen.get(el)===t)continue;noteSeen.set(el,t);el.classList.remove('say');void el.offsetWidth;if(t)el.classList.add('say');}});
   document.querySelectorAll('.emotion-note').forEach(el=>{noteSeen.set(el,el.textContent);noteObs.observe(el,{childList:true,characterData:true,subtree:true});});
   syncMode();
+  tournamentInit();
   if(location.hash==='#debug'){
     window.__hoja={
       bakery:{SH,SH_DAYS,SH_UP,SH_SP,shStep,shTapMold,shServe,shBuy,shNextDay,shCovers,shCookTime,shTarget,shNewGame,shSpecial,shTrayCap,shGold,shBurn,setStage(v){shopStage=v;},setChoice(i,id){choices[i]=id;}},
