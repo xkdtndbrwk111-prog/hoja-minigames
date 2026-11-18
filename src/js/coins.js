@@ -54,7 +54,7 @@
     for(const [charge,r] of prev?.refunds||[])if(typeof charge==='string'&&r&&typeof r.classId==='string')COIN.refunds.set(charge,r);
     if(prev?.pending?.txId&&prev.pending.classId){
       const p=prev.pending;let committed=false;
-      if(typeof p.game==='string'&&p.game.startsWith('토너먼트 · '))try{const t=JSON.parse(localStorage.getItem('hoja-tournament-v1:'+p.classId)||'null');committed=t?.classId===p.classId&&t.charge===p.txId&&!t.cancelled;}catch{}
+      if(typeof p.game==='string'&&p.game.startsWith('토너먼트 · '))try{const raw=JSON.parse(localStorage.getItem('hoja-tournament-v1:'+p.classId)||'null');const entries=raw?.schema===3&&Array.isArray(raw.tournaments)?raw.tournaments:[raw];committed=entries.some(t=>t?.classId===p.classId&&t.charge===p.txId&&!t.cancelled);}catch{}
       if(!committed)COIN.refunds.set(p.txId,{classId:p.classId,why:'이전 결제가 종료되어'});
     }
     saveCoinRecovery();
