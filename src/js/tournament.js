@@ -102,13 +102,25 @@
     return t.faces[key].slice();
   }
 
+  // One atomic, class-scoped collection. Legacy single saves are imported
+  // without changing their brackets, charges or checkpoints.
+  function tmCollection(raw,cls){
+    if(raw==null)return [];
+    const entries=raw.schema===3&&Array.isArray(raw.tournaments)?raw.tournaments:[raw];
+    if(entries.some(t=>!t||t.classId!==cls||![1,2].includes(t.version)))throw Error('invalid tournament storage');
+    return entries.map(t=>({...t,id:t.id||'legacy-'+String(t.created)+'-'+String(t.charge||t.game)}));
+  }
+  function tmUpsert(items,t){const i=items.findIndex(x=>x.id===t.id);if(i<0)return [...items,t];return items.map((x,j)=>j===i?t:x);}
+  function tmRemove(items,id){return items.filter(x=>x.id!==id);}
   /* UI / host adapters (pure bracket helpers above are separately tested). */
   const TM={screen:null,t:null,running:false,begun:false,match:null,auth:false,busy:false,ready:null,bridge:false,pin:false,notice:'',restore:null,intro:null};
   const tmKey=cls=>'hoja-tournament-v1:'+cls,tmHistoryKey=cls=>'hoja-tournament-history-v1:'+cls;
   function tmRead(key,fallback=null){try{return JSON.parse(localStorage.getItem(key)||'null')??fallback;}catch{return fallback;}}
   function tmWrite(key,value){try{localStorage.setItem(key,JSON.stringify(value));return true;}catch{return false;}}
-  function tmClear(cls){try{localStorage.removeItem(tmKey(cls));}catch{}}
-  function tmStore(){if(!TM.t)return false;TM.t.savedAt=Date.now();return tmWrite(tmKey(TM.t.classId),TM.t);}
+  function tmLoadAll(cls){return tmCollection(JSON.parse(localStorage.getItem(tmKey(cls))||'null'),cls);}
+  function tmWriteAll(cls,items){return tmWrite(tmKey(cls),{schema:3,tournaments:items});}
+  function tmClear(t){try{return tmWriteAll(t.classId,tmRemove(tmLoadAll(t.classId),t.id));}catch{return false;}}
+  function tmStore(){if(!TM.t)return false;const t=TM.t;t.savedAt=Date.now();try{return tmWriteAll(t.classId,tmUpsert(tmLoadAll(t.classId),t));}catch{return false;}}
   function tmEl(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!==undefined)e.textContent=txt;return e;}
   function tmButton(label,fn,primary=false){const b=tmEl('button','control big '+(primary?'primary':''),label);b.type='button';b.onclick=()=>{if(!TM.busy){sfx('menu',.65);fn();}};return b;}
   function tmLayout(title,detail=''){
@@ -128,9 +140,16 @@
     })).filter(g=>g.stages.length));
   }
   function tmGame(id){return tmCatalog().find(g=>g.id===id);}
-  function tmSaved(){
-    const t=tmRead(tmKey(COIN.classId));if(t?.classId===COIN.classId&&t.cancelled){if(t.cancelled.refund&&t.charge)queueRefund(t.charge,t.classId,'중단된 토너먼트 취소 복구');tmClear(t.classId);return null;}if(!t||![1,2].includes(t.version)||t.classId!==COIN.classId||!['normal','world'].includes(t.mode)||!tmGame(t.game)?.stages.some(s=>s.id===t.stage)||!Array.isArray(t.players)||!Array.isArray(t.rounds)||(!t.rounds.length&&!t.groups?.length))return null;
-    if(t.version===1){t.version=2;t.format='single';t.groups=[];t.faces={};t.legacy=true;tmCheckpoint(t);}return t;
+  function tmSavedList(){
+    let items;try{items=tmLoadAll(COIN.classId);}catch{throw Error('저장된 대회 데이터를 확인해 주세요. 기존 데이터는 변경하지 않았어요.');}
+    const valid=[];
+    for(const t of items){
+      if(t.cancelled){if(t.cancelled.refund&&t.charge)queueRefund(t.charge,t.classId,'중단된 토너먼트 취소 복구');tmClear(t);continue;}
+      if(!['normal','world'].includes(t.mode)||!tmGame(t.game)?.stages.some(s=>s.id===t.stage)||!Array.isArray(t.players)||!Array.isArray(t.rounds)||(!t.rounds.length&&!t.groups?.length))continue;
+      if(t.version===1){t.version=2;t.format='single';t.groups=[];t.faces={};t.legacy=true;tmCheckpoint(t);}
+      valid.push(t);
+    }
+    return valid.sort((a,b)=>(b.savedAt||b.created)-(a.savedAt||a.created));
   }
   function tmRoster(msg){
     TM.bridge=msg.tournamentV1===true;TM.pin=msg.teacherPinConfigured===true;
@@ -160,16 +179,28 @@
       body.append(tmEl('p','tm-notice',!EMBED?'호자보드 안에서 실행해 주세요.':!COIN.ready?'호자보드와 연결 중이에요.':!COIN.classId?'학급 명단을 연결해 주세요.':'학급은 연결됐지만 토너먼트 지원 버전이 아니에요. 호자보드 업데이트 후 다시 열어 주세요.'));
       if(EMBED)foot.append(tmButton('연결 확인',()=>tmFresh(()=>tmHome())));
     }else{
-      const saved=tmSaved();
-      if(saved){body.append(tmEl('h3','','진행 중인 토너먼트'),tmButton((saved.mode==='world'?'교실 월드컵':'일반 토너먼트')+' · '+tmGame(saved.game).name+' 이어하기',()=>tmResume(saved),true));body.append(tmEl('p','tm-note',(saved.format==='dual'?'듀얼':'싱글')+' · '+saved.completed+'/'+tmTotal(saved)+'경기 · '+(saved.savedAt?new Date(saved.savedAt).toLocaleString('ko-KR'):'저장된 대회')+(saved.active?' · 중단 경기 재시작':'')));}
-      else{
-        const normal=tmButton('일반 토너먼트 · 4인 / 8인 · 1인 0.5코인',()=>tmSetup('normal'),true);normal.disabled=!COIN.on||COIN.refunds.size>0;
-        const world=tmButton('교실 월드컵 · 학급 전체 · 무료 🔒',()=>tmFresh(ok=>{if(ok)tmAuth(()=>tmSetup('world'));}));world.disabled=!TM.pin;
-        body.append(normal,world);
-        if(!COIN.on)body.append(tmEl('p','tm-note','일반 토너먼트는 코인 사용이 켜져 있어야 해요.'));
-        if(!TM.pin)body.append(tmEl('p','tm-note','교실 월드컵은 공통 교사 인증번호 설정이 필요해요.'));
+      let saved;
+      try{saved=tmSavedList();}catch(e){body.append(tmEl('p','tm-notice',e.message));foot.append(tmButton('← 게임 모음집',()=>{TM.screen.hidden=true;$('menuScreen').hidden=false;}));return;}
+      const actions=tmEl('div','tm-new-actions');
+      const normal=tmButton('일반 토너먼트 · 새 대회',()=>tmSetup('normal'),true);normal.disabled=!COIN.on||COIN.refunds.size>0;
+      const world=tmButton('교실 월드컵 · 새 대회 🔒',()=>tmFresh(ok=>{if(ok)tmAuth(()=>tmSetup('world'));}));world.disabled=!TM.pin;
+      actions.append(normal,world);body.append(actions);
+      if(!COIN.on)body.append(tmEl('p','tm-note','일반 토너먼트는 코인 사용이 켜져 있어야 해요.'));
+      if(!TM.pin)body.append(tmEl('p','tm-note','교실 월드컵은 공통 교사 인증번호 설정이 필요해요.'));
+      if(saved.length){
+        body.append(tmEl('h3','tm-saved-heading','진행 중인 토너먼트 · '+saved.length+'개'));
+        const list=tmEl('div','tm-saved-list');
+        for(const t of saved){
+          const card=tmEl('article','tm-save-card'),info=tmEl('div','tm-save-info');
+          info.append(tmEl('strong','',(t.mode==='world'?'교실 월드컵':'일반 토너먼트')+' · '+tmGame(t.game).name),
+            tmEl('p','',(t.format==='dual'?'듀얼':'싱글')+' · '+t.players.length+'명 · '+t.completed+'/'+tmTotal(t)+'경기'+(t.active?' · 중단 경기 재시작':'')),
+            tmEl('small','',(t.savedAt?new Date(t.savedAt).toLocaleString('ko-KR'):'저장된 대회')));
+          const resume=tmButton('이어하기'+(t.mode==='world'?' 🔒':''),()=>tmResume(t),true);resume.disabled=t.mode==='world'&&!TM.pin;
+          card.append(info,resume);list.append(card);
+        }
+        body.append(list);
       }
-      body.append(tmButton('토너먼트 우승 기록',()=>tmHistory(false)));
+      body.append(tmButton('토너먼트 우승 기록',()=>tmHistory('all')));
     }
     foot.append(tmButton('← 게임 모음집',()=>{TM.screen.hidden=true;$('menuScreen').hidden=false;}));
   }
@@ -211,7 +242,7 @@
         if(mode==='world'&&(list.length!==wanted.length||list.some(p=>!wanted.includes(p.id)))||wanted.some(id=>!list.some(p=>p.id===id))){hofToast('명단이 변경됐어요. 다시 선택해 주세요.');return tmSetup(mode);}
         if(mode==='normal'&&(wanted.length!==count||!COIN.on||COIN.refunds.size))return tmHome();
         const players=wanted.map(id=>{const p=list.find(s=>s.id===id);return {id:p.id,name:p.name,number:p.number??null};});
-        const t={version:2,classId:cls,mode,format:method,game:g.id,stage:st,song:g.rhythm?track:null,character,players,...tmPlan(wanted,method),charge:null,firstStart:null,firstEnd:null,refundLocked:false,completed:0,created:Date.now(),drawSeed:Math.floor(Math.random()*4294967296),faces:{},journal:[],active:null};
+        const t={version:2,id:crypto.randomUUID(),classId:cls,mode,format:method,game:g.id,stage:st,song:g.rhythm?track:null,character,players,...tmPlan(wanted,method),charge:null,firstStart:null,firstEnd:null,refundLocked:false,completed:0,created:Date.now(),drawSeed:Math.floor(Math.random()*4294967296),faces:{},journal:[],active:null};
         tmCheckpoint(t);
         if(mode==='world'){TM.t=t;if(!tmStore()){TM.t=null;hofToast('대진표를 저장할 수 없어요.');return;}tmBoard();}
         else{
@@ -229,7 +260,7 @@
   function tmResume(saved){
     tmFresh(ok=>{
       if(!ok||saved.classId!==COIN.classId||!TM.bridge)return tmHome();
-      const resume=()=>{const t=tmSaved();if(!t)return tmHome();const ids=new Set(COIN.everyone.map(p=>p.id));if(t.players.some(p=>!ids.has(p.id)))TM.notice='참가 명단이 변경되어 경기를 시작할 수 없어요. 대진표를 확인하고 종료해 주세요.';TM.t=t;if(t.active)TM.notice='직전 경기가 중단됐어요. 같은 참가자·캐릭터로 다시 시작합니다.';tmBoard();};
+      const resume=()=>{let t;try{t=tmSavedList().find(x=>x.id===saved.id);}catch(e){hofToast(e.message);return tmHome();}if(!t)return tmHome();const ids=new Set(COIN.everyone.map(p=>p.id));if(t.players.some(p=>!ids.has(p.id)))TM.notice='참가 명단이 변경되어 경기를 시작할 수 없어요. 대진표를 확인하고 종료해 주세요.';TM.t=t;if(t.active)TM.notice='직전 경기가 중단됐어요. 같은 참가자·캐릭터로 다시 시작합니다.';tmBoard();};
       if(saved.mode==='world')tmAuth(resume);else resume();
     });
   }
@@ -245,7 +276,7 @@
     if(TM.notice){body.append(tmEl('p','tm-notice',TM.notice));TM.notice='';}
     if(winner){
       body.append(tmEl('h3','tm-champion','🏆 '+tmName(winner)+' 우승!'));
-      foot.append(tmButton('우승 기록 저장 · 완료',()=>{if(tmSaveWinner()){tmClear(t.classId);tmHome();}},true));
+      foot.append(tmButton('우승 기록 저장 · 완료',()=>{if(tmSaveWinner()&&tmClear(t)){tmHome();}else hofToast('우승 기록 또는 완료 상태 저장에 실패했어요. 다시 시도해 주세요.');},true));
     }else if(next){
       const now=tmEl('div','tm-now');now.append(tmEl('small','',tmLabel(t,next)),tmEl('strong','',tmName(next.m.a)+'  VS  '+tmName(next.m.b)));body.append(now);
       foot.append(tmButton('경기 시작',()=>tmLaunch(next),true));
@@ -289,14 +320,20 @@
   function tmSaveWinner(){
     const t=TM.t,w=tmChampion(t);if(!w)return false;
     const hist=tmRead(tmHistoryKey(t.classId),[]);if(!Array.isArray(hist))return false;
-    const old=hist.findIndex(x=>x.created===t.created);if(old>=0)hist.splice(old,1);hist.unshift({mode:t.mode,game:tmGame(t.game).name,stage:tmGame(t.game).stages.find(s=>s.id===t.stage)?.name,winner:tmName(w),count:t.players.length,created:t.created,ended:Date.now()});
+    const old=hist.findIndex(x=>x.id===t.id||(!x.id&&x.created===t.created));if(old>=0)hist.splice(old,1);hist.unshift({id:t.id,mode:t.mode,game:tmGame(t.game).name,stage:tmGame(t.game).stages.find(s=>s.id===t.stage)?.name,winner:tmName(w),count:t.players.length,created:t.created,ended:Date.now()});
     return tmWrite(tmHistoryKey(t.classId),hist.slice(0,100));
   }
-  function tmHistory(world){
-    const {body,foot}=tmLayout('토너먼트 우승 기록','일반 명예의 전당 및 주간 코인 보상과 분리됩니다.');
-    const hist=tmRead(tmHistoryKey(COIN.classId),[]);
-    for(const h of Array.isArray(hist)?hist:[]){if(h.mode==='world'&&!world)continue;body.append(tmEl('p','tm-person',new Date(h.ended).toLocaleDateString('ko-KR')+' · '+h.game+' · '+h.count+'명 · 🏆 '+h.winner));}
-    if(!world&&TM.pin)foot.append(tmButton('교실 월드컵 기록 🔒',()=>tmAuth(()=>tmHistory(true))));
+  function tmHistory(filter='all'){
+    TM.auth=false;
+    const {body,foot}=tmLayout('토너먼트 우승 기록','우리 반의 우승 기록 · 누구나 볼 수 있어요.');
+    const tabs=tmEl('div','tm-history-tabs');
+    for(const [key,label] of [['all','전체'],['normal','일반 토너먼트'],['world','교실 월드컵']]){
+      const b=tmButton(label,()=>tmHistory(key),filter===key);b.setAttribute('aria-pressed',String(filter===key));tabs.append(b);
+    }
+    body.append(tabs);
+    const hist=tmRead(tmHistoryKey(COIN.classId),[]),items=(Array.isArray(hist)?hist:[]).filter(h=>filter==='all'||h.mode===filter);
+    if(!items.length)body.append(tmEl('p','tm-note','아직 우승 기록이 없어요.'));
+    for(const h of items){const row=tmEl('div','tm-history-row');row.append(tmEl('span','',(h.mode==='world'?'교실 월드컵':'일반')+' · '+h.game+' · '+h.count+'명'),tmEl('strong','','🏆 '+h.winner),tmEl('small','',new Date(h.ended).toLocaleDateString('ko-KR')));body.append(row);}
     foot.append(tmButton('← 토너먼트',tmHome));
   }
   function tmCancel(refund){
@@ -305,7 +342,7 @@
     if(!confirm(refund?'토너먼트를 취소하고 참가비를 돌려줄까요?':'토너먼트를 종료할까요? 참가비는 반환되지 않아요.'))return;
     t.cancelled={refund:Boolean(refund),at:Date.now()};if(!tmStore()){delete t.cancelled;hofToast('취소 상태를 저장하지 못했어요. 다시 시도해 주세요.');return;}
     if(refund)queueRefund(t.charge,t.classId,'토너먼트를 취소해서');
-    tmClear(t.classId);tmHome();
+    if(tmClear(t))tmHome();else{hofToast('종료 상태가 저장됐어요. 목록으로 돌아가 다시 확인해 주세요.');tmHome();}
   }
   function tmGroupLabel(g,j){return g.members.length===4?['1경기','2경기','승자전','패자전','최종전'][j]:(j>=3?'동률 재경기 ':'순위전 ')+(j%3+1);}
   function tmMatchCard(m,key,label,next,group=false){
@@ -434,5 +471,5 @@
     document.addEventListener('visibilitychange',()=>{if(document.hidden&&TM.intro)tmIntroCancel(TM.intro);});
     window.addEventListener('pagehide',tmIntroClear);
     document.head.append(style);TM.screen=tmEl('section','');TM.screen.id='tmScreen';TM.screen.hidden=true;document.body.append(TM.screen);
-    const b=tmButton('🏆 토너먼트',tmOpen,true);b.id='openTournament';$('openHall').before(b);
+    const b=tmButton('토너먼트',tmOpen);b.className='control tm-menu-tab';b.id='openTournament';document.querySelector('.menu-pages').append(b);
   }

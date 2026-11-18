@@ -31,6 +31,7 @@ async function startNormal(n){await until(()=>click('일반 토너먼트'),'norm
  await until(async()=>{const r=await api('/status');return r.ready;},'chromedriver');
  const s=await api('/session','POST',{capabilities:{alwaysMatch:{browserName:'chrome','goog:chromeOptions':{args:['--headless=new','--no-sandbox','--disable-dev-shm-usage','--window-size=1600,1000','--host-resolver-rules=MAP aolfbqfchzipyevtdhdy.supabase.co ~NOTFOUND']}}}});session=s.sessionId;
  await cmd('/url','POST',{url:'http://127.0.0.1:17439/'});await frame();
+ assert(await exec('const b=document.getElementById("openTournament"),p=document.querySelector(".menu-pages");return b.parentElement===p&&p.lastElementChild===b&&getComputedStyle(b).backgroundImage.includes("98, 185, 255")&&b.getBoundingClientRect().right<=innerWidth+1'));
  await open();await startNormal(8);
  assert.equal(await exec('return document.querySelectorAll(".tm-tree .tm-match").length'),7);
  await confirmClick('환불하고 토너먼트 취소');await text('일반 토너먼트');
@@ -69,7 +70,8 @@ async function startNormal(n){await until(()=>click('일반 토너먼트'),'norm
  assert.equal(await exec('return document.querySelectorAll(".tm-tree .tm-match").length'),20);
  assert.equal(await exec('return [...document.querySelectorAll(".tm-tree .tm-match-label")].filter(e=>e.textContent.includes("24강")).length'),5);
  assert(await exec('const a=[...document.querySelectorAll(".tm-tree .tm-match")];return a[0].getBoundingClientRect().top>a.at(-1).getBoundingClientRect().top'));
- const loadSaved=()=>exec('return JSON.parse(localStorage.getItem("hoja-tournament-v1:class-test"))');
+ const loadAll=()=>exec('const raw=JSON.parse(localStorage.getItem("hoja-tournament-v1:class-test"));return raw?.tournaments||[raw].filter(Boolean);');
+ const loadSaved=async()=> (await loadAll())[0];
  assert(await click('경기 시작'));await until(()=>exec('return window.__hoja?.st?.ST.on'),'stairs running before interruption');
  const active=(await loadSaved()).active;assert(active.faces.length===2);
  await parent();await exec('document.getElementById("mini").src="http://127.0.0.1:17440/?mode=board&embed=dashboard&fresh=crash#debug";');
@@ -108,6 +110,29 @@ async function startNormal(n){await until(()=>click('일반 토너먼트'),'norm
  assert(await exec('return document.querySelector(".tm-group-active .tm-member small").textContent.includes("승")'));
  assert.equal(await exec('return document.querySelectorAll(".tm-fighter").length'),0);
  assert(await click('저장하고 나가기'));await text('이어하기');
- await parent();assert.deepEqual(await exec('return mock.spends.map(s=>s.ids.length)'),[8,4]);
- console.log('PASS browser: payment/refund, upward bracket, compact 21-player 24 seeds, defeat shading, crash reload and same random character, PIN rollback, 21-player dual group save, centered names and VS, two-stage intro, skip/cancel/automatic start, tie, champion, no additional spend');
+ // Simulate an actual V2/V3 legacy single save, then create a second event.
+ const legacy=await loadSaved();assert.equal(legacy.completed,1);
+ await exec('const t=arguments[0];delete t.id;localStorage.setItem("hoja-tournament-v1:class-test",JSON.stringify(t));',legacy);
+ assert(await click('← 게임 모음집'));await openResume();
+ await startNormal(4);
+ let all=await loadAll();assert.equal(all.length,2);const world=all.find(x=>x.mode==="world"),paid=all.find(x=>x.mode==="normal");
+ assert.equal(world.completed,1);assert.deepEqual(world.groups,legacy.groups);assert.equal(paid.completed,0);assert(paid.charge);
+ await play(10,1);await text('1/3경기 완료');
+ assert(await click('저장하고 나가기'));await text('진행 중인 토너먼트 · 2개');
+ await parent();await exec('mock.allow=false;');const authCount=await exec('return mock.auth.length');await frame();
+ // Fixture for already completed World Cup history, separate from ongoing saves.
+ await exec('const k="hoja-tournament-history-v1:class-test",h=JSON.parse(localStorage.getItem(k)||"[]");h.unshift({id:"history-world",mode:"world",game:"에어하키",winner:"시험 우승자",count:21,created:1,ended:Date.now()});localStorage.setItem(k,JSON.stringify(h));');
+ assert(await click('토너먼트 우승 기록'));await text('시험 우승자');
+ assert(await click('교실 월드컵'));await text('시험 우승자');assert(!String(await shown()).includes('무한의 계단'));
+ await parent();assert.equal(await exec('return mock.auth.length'),authCount);await frame();
+ assert(await click('← 토너먼트'));await text('진행 중인 토너먼트 · 2개');
+ const resumeMode=mode=>exec('const card=[...document.querySelectorAll(".tm-save-card")].find(e=>e.querySelector("strong").textContent.startsWith(arguments[0]));if(!card)return false;card.querySelector("button").click();return true;',mode);
+ assert(await resumeMode('교실 월드컵'));await parent();await until(()=>exec('return mock.auth.length>arguments[0]',authCount),'world auth still required');await exec('mock.allow=true;');await wait(300);await frame();
+ assert(await resumeMode('일반 토너먼트'));await text('1/3경기 완료');
+ // Ending one event must not delete or charge/refund any other event.
+ await play(10,1);await text('2/3경기 완료');await play(10,1);await text('우승!');assert(await click('우승 기록 저장'));await text('진행 중인 토너먼트 · 1개');
+ all=await loadAll();assert.equal(all.length,1);assert.equal(all[0].id,world.id);assert.deepEqual(all[0].groups,world.groups);
+ await parent();assert.deepEqual(await exec('return mock.spends.map(s=>s.ids.length)'),[8,4,4]);assert.equal(await exec('return mock.refunds.length'),1);await frame();
+ assert(await resumeMode('교실 월드컵'));await text('1/35경기 완료');
+ console.log('PASS browser: payment/refund, upward bracket, compact 21-player 24 seeds, defeat shading, crash reload and same random character, PIN rollback, 21-player dual group save, centered names and VS, two-stage intro, skip/cancel/automatic start, tie, champion, no additional spend, legacy migration, parallel tournaments, public World Cup history, isolated completion, blue rightmost tab');
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{if(session)try{await api('/session/'+session,'DELETE')}catch{}if(driver)driver.kill();host.close();game.close();});

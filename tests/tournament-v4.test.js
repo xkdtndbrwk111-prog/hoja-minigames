@@ -1,0 +1,6 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
+const src=fs.readFileSync('src/js/tournament.js','utf8').split('/* UI / host adapters')[0];
+const {tmCollection,tmUpsert,tmRemove}=new Function(src+';return {tmCollection,tmUpsert,tmRemove}')();
+test('legacy migration preserves pending game, paid charge, bracket and checkpoints',()=>{const legacy={version:2,classId:'a',created:123,game:'hockey',charge:'tx',active:{faces:['HOJA','HOJA']},journal:[{completed:1}],rounds:[[{a:'x',b:'y'}]]};const [t]=tmCollection(legacy,'a');assert.deepEqual({...t,id:undefined},{...legacy,id:undefined});assert.equal(tmCollection(legacy,'a')[0].id,t.id);});
+test('multiple records are independently updated and deleted',()=>{let a=[{id:'a',charge:'tx1'},{id:'b',charge:'tx2'}];let b=tmUpsert(a,{id:'b',completed:1});assert.equal(b.length,2);assert.deepEqual(b[0],a[0]);assert.deepEqual(tmRemove(b,'b'),[a[0]]);assert.equal(tmUpsert(b,{id:'c'}).length,3);});
+test('invalid and cross-class stores are not silently overwritten',()=>{assert.throws(()=>tmCollection({schema:3,tournaments:[{version:2,classId:'b'}]},'a'));assert.throws(()=>tmCollection({unknown:true},'a'));assert.deepEqual(tmCollection(null,'a'),[]);});

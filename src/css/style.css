@@ -1313,3 +1313,22 @@ html[data-device=tablet] .sx-stage{transform-origin:50% 50%}
 /* The dance needs the entire bottom edge for reliable touch timing.
    Put the pause/menu button at the top-right, away from both pads. */
 #partyScreen #paStage.pa-game-dance~#paMenu{left:auto!important;right:clamp(8px,1.4vw,24px)!important;top:8px!important;bottom:auto!important;margin:0!important;transform:none!important;min-height:44px!important}
+
+/* Tournament entry belongs to the game category strip, not the footer. */
+.menu-pages{flex:1;align-items:center}
+#openTournament.control{margin-left:auto;flex:none;min-width:clamp(72px,8.4vw,160px);background:linear-gradient(#62b9ff,#3286dc 60%,#2168b7);border:2px solid #1b589a;border-bottom-width:5px;color:#fff;box-shadow:0 2px 0 #1b4c8055;filter:none;text-shadow:0 1px 0 #174e8a}
+#openTournament.control:active{background:linear-gradient(#3989d5,#2466ac)}
+@media(max-width:900px){.menu-title{gap:5px}.menu-pages{margin-left:4px;gap:4px}.menu-pages .control{min-width:0;padding:0 5px;font-size:clamp(10px,1.4vw,16px)}#openTournament.control{min-width:0;padding:0 8px}}
+#tmScreen .tm-new-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;width:min(100%,1000px);margin:0 auto}
+#tmScreen .tm-new-actions .control,#tmScreen .tm-save-card .control,#tmScreen .tm-history-tabs .control{min-height:clamp(44px,6.5vh,76px);font-size:clamp(15px,1.35vw,25px);min-width:0}
+#tmScreen .tm-saved-heading{text-align:center;margin-top:8px}
+#tmScreen .tm-saved-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:8px;width:min(100%,1250px);margin:0 auto}
+#tmScreen .tm-save-card{display:flex;align-items:center;gap:12px;border:1px solid #baa98c;background:#fff9ec;padding:10px;border-radius:12px;min-width:0}
+#tmScreen .tm-save-info{flex:1;min-width:0;display:grid;gap:3px}
+#tmScreen .tm-save-info strong{font-size:clamp(16px,1.5vw,26px);overflow-wrap:anywhere}
+#tmScreen .tm-save-info p{font-size:clamp(13px,1.1vw,20px)}
+#tmScreen .tm-save-info small{color:#78674e;font-size:clamp(11px,.85vw,16px)}
+#tmScreen .tm-history-tabs{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+#tmScreen .tm-history-row{display:grid;grid-template-columns:1fr 1fr auto;align-items:center;gap:8px;background:#fff9ec;border:1px solid #baa98c;border-radius:8px;padding:10px;text-align:center}
+#tmScreen .tm-history-row strong{font-size:clamp(16px,1.6vw,28px)}
+@media(max-width:600px){#tmScreen .tm-new-actions{grid-template-columns:1fr}#tmScreen .tm-history-row{grid-template-columns:1fr}}
