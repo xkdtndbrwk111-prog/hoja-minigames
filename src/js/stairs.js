@@ -174,6 +174,36 @@
     g.fillStyle=color;g.beginPath();
     g.moveTo(cx+dir*s,cy);g.lineTo(cx-dir*s*.1,cy-s*.72);g.lineTo(cx-dir*s*.1,cy-s*.28);g.lineTo(cx-dir*s*.9,cy-s*.28);g.lineTo(cx-dir*s*.9,cy+s*.28);g.lineTo(cx-dir*s*.1,cy+s*.28);g.lineTo(cx-dir*s*.1,cy+s*.72);g.closePath();g.fill();
   }
+  // These are portrait WebPs, not the 64px in-game sprite atlas. Measure
+  // the opaque silhouette of each actual expression once rather than guessing
+  // its foot coordinate from the full transparent image rectangle.
+  const stPortraitAnchors=new WeakMap();
+  function stAlphaAnchor(data,w,h){
+    let left=w,right=-1,bottom=-1;
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      if(data[(y*w+x)*4+3]<128)continue;
+      left=Math.min(left,x);right=Math.max(right,x);bottom=y;
+    }
+    return bottom<0?{x:.5,y:1}:{x:(left+right+1)/(2*w),y:(bottom+1)/h};
+  }
+  function stPortraitAnchor(im){
+    if(stPortraitAnchors.has(im))return stPortraitAnchors.get(im);
+    const w=im.naturalWidth,h=im.naturalHeight;
+    const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+    const g=canvas.getContext('2d',{willReadFrequently:true});g.drawImage(im,0,0);
+    const a=stAlphaAnchor(g.getImageData(0,0,w,h).data,w,h);
+    stPortraitAnchors.set(im,a);return a;
+  }
+  function stDrawRecord(g,mark,index,sx,sy,sw,sh,x,w){
+    const fs=Math.min(24,w*.05,sh*.46),label=mark.text+' '+index+'층';
+    const right=sx<x+w/2,limit=Math.max(1,Math.min(w*.46,right?x+w-6-(sx+sw/2+8):(sx-sw/2-8)-(x+6)));
+    if(limit<fs)return;
+    g.save();g.font=`${fs}px "HojaBody",sans-serif`;
+    g.textAlign=right?'left':'right';g.textBaseline='middle';g.lineJoin='round';
+    g.lineWidth=Math.max(2,fs*.16);g.strokeStyle='rgba(30,20,14,.9)';
+    const lx=right?sx+sw/2+8:sx-sw/2-8,ly=sy+sh*.31;
+    g.strokeText(label,lx,ly,limit);g.fillStyle=mark.year?'#ffe27a':'#e8f8ff';g.fillText(label,lx,ly,limit);g.restore();
+  }
   function stDrawColumn(g,p,x,w,now,dt){
     const {H}=ST,btnH=Math.min(250,H*.23),btnY=H-btnH-14,top=0;
     g.save();g.beginPath();g.rect(x,0,w,H);g.clip();
@@ -201,25 +231,20 @@
       g.fillStyle=mile?'#ffd25a':i%2?'#d9a868':'#c08f55';g.fill();g.lineWidth=4;g.strokeStyle=mile?'#7a5206':'#2e1a0c';g.stroke();
       if(mile)stLabel(g,String(i),sx,sy+sh*.31,sh*.42,'#5a3a10');
       const mark=marks&&marks.get(i);
-      if(mark){
-        const fs=Math.min(24,w*.05,sh*.46),label=mark.text+' '+i+'층';
-        g.font=`${fs}px "HojaBody",sans-serif`;
-        const tw=Math.min(g.measureText(label).width+18,w*.46),right=sx<x+w/2,lx=right?sx+sw/2+8:sx-sw/2-8-tw;
-        g.fillStyle='rgba(30,20,14,.85)';g.beginPath();g.roundRect(lx,sy-2,tw,sh*.66,8);g.fill();
-        if(mark.year){g.lineWidth=3;g.strokeStyle='#ffd24a';g.stroke();}
-        g.textAlign='center';g.textBaseline='middle';g.fillStyle=mark.year?'#ffe27a':'#e8f8ff';g.fillText(label,lx+tw/2,sy-2+sh*.33,tw-10);
-      }
+      if(mark)stDrawRecord(g,mark,i,sx,sy,sw,sh,x,w);
     }
     // Player
     const mood=p.over||p.stun>0?'sad':p.combo>=30?'happy':'neutral',im=shFace(p.id,mood);
     const shakeX=p.shake>0?Math.sin(now/22)*10:0;p.shake=Math.max(0,p.shake-dt);
     p.pop=Math.max(0,p.pop-dt*9);
     if(p.over){p.fallV+=2400*dt;p.fallY+=p.fallV*dt;}
-    const size=Math.min(sw*1.25,w*.36),hop=p.pop*p.pop*sh*.8,cx=px+shakeX+(tx-p.camX)*stepX,cy=py+(p.camY-ty)*sh-size*.46-hop+p.fallY;
+    const size=Math.min(sw*1.25,w*.36),hop=p.pop*p.pop*sh*.8,cx=px+shakeX+(tx-p.camX)*stepX;
+    const feet=py+(p.camY-ty)*sh-hop+p.fallY,cy=feet-size*.5;
     if(im.complete&&im.naturalWidth){
-      g.save();g.translate(cx,cy);if(p.dir>0)g.scale(-1,1);
+      const a=stPortraitAnchor(im);
+      g.save();g.translate(cx,feet);if(p.dir>0)g.scale(-1,1);
       if(p.stun>0)g.rotate(Math.sin(now/70)*.2);
-      g.drawImage(im,-size/2,-size/2,size,size);g.restore();
+      g.drawImage(im,-size*a.x,-size*a.y,size,size);g.restore();
     }
     // Where the next step goes is shown on the character's foot, for reading the stairs at speed.
     const hud=Math.min(44,w*.1);

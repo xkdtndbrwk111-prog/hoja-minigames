@@ -1423,6 +1423,12 @@ html[data-device=tablet] .sx-stage{transform-origin:50% 50%}
 @media(prefers-reduced-motion:reduce){.hof-award-confetti{display:none}.hof-place-1{animation:none}}
 @media(max-width:750px){.hof-award-stage{grid-template-columns:1fr;align-content:start}}
 .hof-mode .hof-line em{white-space:normal;text-align:right;min-width:0}
+
+/* Paid ready state only: reserve actual layout space, never cover a game control. */
+body.hoja-refund-ready{--hoja-refund-height:clamp(48px,7vh,72px)}
+body.hoja-refund-ready #app{height:calc(100dvh - var(--hoja-refund-height));min-height:0}
+#hojaRefundBar{height:var(--hoja-refund-height);width:100%;display:flex;align-items:center;justify-content:center;padding:4px 12px 6px;background:var(--paper);border-top:2px solid var(--line);touch-action:manipulation}
+#hojaRefundButton{box-sizing:border-box;min-height:0;height:100%;max-width:100%;padding:0 18px;font-size:clamp(13px,1.35vw,22px);white-space:nowrap}
 </style>
 </head>
 <!--
@@ -7940,6 +7946,8 @@ var qrcode = function() {
     Object.assign(puck,{x:W/2+(side===0?-300:300),y:H/2,vx:0,vy:0,stall:0});
     possession.side=side;possession.time=0;possession.warned=false;
     puckHidden=false;serve={side,time:4.5};
+    // A new serve must not inherit a previous rally's collision grace or overlap.
+    freeze=0;mallets.forEach((m,i)=>{m.noHit=0;m.pinned=0;hockeySolidPuck(i,m.x,m.y);m.svx=0;m.svy=0;});
     phase='playing';neutralMoods();hideOverlay();syncStrip();
     floatText(puck.x,puck.y-70,aiLevel&&side===1?'컴퓨터 서브':gamePlayerName(side)+' 서브!',SIDE_COLOR[side],28,1.3);
     rings.push({x:puck.x,y:puck.y,r:28,grow:150,ttl:.5,life:.5,color:SIDE_COLOR[side],w:6});
@@ -8030,7 +8038,7 @@ var qrcode = function() {
   let tabletTurn=0;
   function layoutTablet(){
     if(!TABLET)return;
-    const vw=innerWidth,vh=innerHeight,portrait=vh>vw,raw=screen.orientation&&typeof screen.orientation.angle==='number'?screen.orientation.angle:(window.orientation||0);
+    const vw=innerWidth,vh=document.body.classList.contains('hoja-refund-ready')?$('app').clientHeight:innerHeight,portrait=innerHeight>vw,raw=screen.orientation&&typeof screen.orientation.angle==='number'?screen.orientation.angle:(window.orientation||0);
     let a=((raw%360)+360)%360;
     // Some tablets count from landscape; line their angle up with the portrait-first ones.
     if(portrait!==(a%180===0))a=(a+270)%360;
@@ -8392,12 +8400,53 @@ var qrcode = function() {
   }
 
   /* ---------- Simulation ---------- */
-  function stepMallet(i,dt){
+  // A stationary puck is solid during cut-ins and hit-stop. Sweep the whole
+  // mallet movement segment, not just its endpoint, so a fast touch cannot tunnel.
+  function hockeySweepSolid(ox,oy,x,y,bx,by,r,side){
+    const ax=ox-bx,ay=oy-by,dx=x-ox,dy=y-oy,d=Math.hypot(ax,ay);
+    if(d<r){
+      const nx=d>1e-6?ax/d:(side===0?-1:1),ny=d>1e-6?ay/d:0;
+      return {x:bx+nx*r,y:by+ny*r,blocked:true};
+    }
+    const a=dx*dx+dy*dy,b=ax*dx+ay*dy,c=ax*ax+ay*ay-r*r;
+    if(a<1e-10||b>=0||b*b-a*c<0)return {x,y,blocked:false};
+    const t=(-b-Math.sqrt(Math.max(0,b*b-a*c)))/a;
+    if(t<0||t>1)return {x,y,blocked:false};
+    // Stop at first contact. A sideways drag can slide around on subsequent ticks.
+    return {x:ox+dx*Math.max(0,t-1e-4),y:oy+dy*Math.max(0,t-1e-4),blocked:true};
+  }
+  function hockeySolidPuck(i,ox,oy){
+    const m=mallets[i],r=R+m.r+1;
+    const p=hockeySweepSolid(ox,oy,m.x,m.y,puck.x,puck.y,r,i);
+    if(!p.blocked)return false;
+    const pad=m.r+4,minX=i===0?pad:midX+m.r+2,maxX=i===0?midX-m.r-2:W-pad;
+    const legal=(x,y)=>{
+      const q={x:clamp(x,minX,maxX),y:clamp(y,pad,H-pad)};
+      keepOffLanding(i,q,'x','y');
+      return q.x>=minX-1e-6&&q.x<=maxX+1e-6&&q.y>=pad-1e-6&&q.y<=H-pad+1e-6&&Math.hypot(q.x-puck.x,q.y-puck.y)>=r-1e-5?q:null;
+    };
+    let q=legal(p.x,p.y)||legal(ox,oy);
+    // A respawn may place the puck inside a mallet next to a boundary.
+    // Pick the nearest legal exit; never push the stationary puck itself.
+    if(!q){
+      let best=Infinity;
+      for(let k=0;k<64;k++){
+        const a=k*Math.PI/32,v=legal(puck.x+Math.cos(a)*(r+.1),puck.y+Math.sin(a)*(r+.1));
+        if(v){const d=Math.hypot(v.x-ox,v.y-oy);if(d<best){best=d;q=v;}}
+      }
+    }
+    if(q){m.x=q.x;m.y=q.y;}else{m.x=ox;m.y=oy;}
+    return true;
+  }
+  function hockeyLiveBall(){return phase==='playing'&&!serve&&freeze<=0;}
+  function stepMallet(i,dt,live=hockeyLiveBall()){
+
     const m=mallets[i],human=!(aiLevel&&i===1);
-    m.grab=Math.max(0,m.grab-dt);m.hitT=Math.max(0,m.hitT-dt);m.pinned=Math.max(0,(m.pinned||0)-dt);m.noHit=Math.max(0,(m.noHit||0)-dt);
-    if(m.big>0){m.big-=dt;}
-    if(m.small>0)m.small-=dt;if(m.frozen>0)m.frozen-=dt;if(m.sticky>0)m.sticky-=dt;
-    const targetR=MALLET_R*(m.big>0?1.4:1)*(m.small>0?.65:1);m.r+=(targetR-m.r)*Math.min(1,dt*10);
+    m.grab=Math.max(0,m.grab-dt);
+    const effectDt=live?dt:0;
+    m.hitT=Math.max(0,m.hitT-effectDt);m.pinned=Math.max(0,(m.pinned||0)-effectDt);m.noHit=Math.max(0,(m.noHit||0)-effectDt);
+    for(const key of ['big','small','frozen','sticky'])if(m[key]>0)m[key]=Math.max(0,m[key]-effectDt);
+    const targetR=MALLET_R*(m.big>0?1.4:1)*(m.small>0?.65:1);m.r+=(targetR-m.r)*Math.min(1,effectDt*10);
     if(m.id===null)m.idle+=dt;
     clampTarget(i);
     // Touchdown glides instead of teleporting, so tapping cannot replace actually moving.
@@ -8405,12 +8454,17 @@ var qrcode = function() {
     const ox=m.x,oy=m.y,dx=m.tx-ox,dy=m.ty-oy,dist=Math.hypot(dx,dy);
     if(dist>.0001&&!(m.frozen>0)){const s=Math.min(dist,speed*dt);m.x+=dx/dist*s;m.y+=dy/dist*s;}
     keepOffLanding(i,m,'x','y');
+    const solid=phase==='special'||(phase==='playing'&&(freeze>0||(serve&&serve.side!==i)));
+    if(solid&&hockeySolidPuck(i,ox,oy)){
+      // Discard accumulated inward swing at a blocked contact.
+      m.vx=0;m.vy=0;m.svx=0;m.svy=0;return;
+    }
     m.vx=(m.x-ox)/dt;m.vy=(m.y-oy)/dt;
     // Board touch samples arrive unevenly, so swing power reads a smoothed velocity.
     const a=1-Math.exp(-dt/.04);m.svx+=(m.vx-m.svx)*a;m.svy+=(m.vy-m.svy)*a;
   }
   function collideMallet(i){
-    if(phase!=='playing'||mallets[i].noHit>0)return;
+    if(phase!=='playing'||mallets[i].noHit>0||(serve&&serve.side!==i))return;
     const m=mallets[i],dx=puck.x-m.x,dy=puck.y-m.y,dist=Math.hypot(dx,dy),min=R+m.r;
     if(dist>=min)return;
     cancelZoneBoost();
@@ -8507,9 +8561,15 @@ var qrcode = function() {
     return false;
   }
   function stepPlaying(dt){
-    if(freeze>0){freeze-=dt;return;}
-    if(serve){serve.time-=dt;if(serve.time<=0)launchServe();}
-    else{
+    if(freeze>0){freeze=Math.max(0,freeze-dt);return;}
+    if(serve){
+      // Dead ball: only the server's strike and anti-stalling serve clock run.
+      // Release on this tick; all gameplay timers resume on the next live tick.
+      collideMallet(serve.side);
+      if(serve){serve.time-=dt;if(serve.time<=0)launchServe();}
+      return;
+    }
+    {
       if(!golden){
         const before=clock;clock-=dt;
         if(before>15&&clock<=15){floatText(W/2,H/2-40,'마지막 15초!','#c0532f',46,1.3);sfx('item',1,.8);setBgmTempo(1.05);}
@@ -8627,7 +8687,7 @@ var qrcode = function() {
   }
   function step(dt){
     updateAI(dt);
-    stepMallet(0,dt);stepMallet(1,dt);
+    const live=hockeyLiveBall();stepMallet(0,dt,live);stepMallet(1,dt,live);
     if(phase==='ready'){
       const ok0=mallets[0].id!==null,ok1=aiLevel?true:mallets[1].id!==null;
       if(ok0&&ok1)startCountdown();
@@ -8652,7 +8712,7 @@ var qrcode = function() {
       return;
     }
     if(phase==='playing'){
-      if(!serve)updateGoalCamp(dt);else resetGoalCamp();
+      if(live)updateGoalCamp(dt);else if(serve)resetGoalCamp();else updateGoalCamp(0);
       stepPlaying(dt);
     }
   }
@@ -8992,6 +9052,7 @@ var qrcode = function() {
       ctx.beginPath();ctx.arc(puck.x,puck.y,R+14+a*10,0,Math.PI*2);ctx.stroke();
       ctx.globalAlpha=.9;ctx.lineWidth=7;ctx.lineCap='round';
       ctx.beginPath();ctx.arc(puck.x,puck.y,R+38,-Math.PI/2,-Math.PI/2+Math.PI*2*clamp(serve.time/4.5,0,1));ctx.stroke();ctx.restore();
+      text('볼 데드 · 효과 시간 정지',puck.x,puck.y+R+65,22,SIDE_COLOR[serve.side]);
     }
     mallets.forEach(drawMallet);
     for(const g of ghosts)drawPuck(g.x,g.y,g.attacker);
@@ -11562,9 +11623,9 @@ var qrcode = function() {
       shRound(g,mx,H-64,110,56,12,'#f1c46e','#6e4726',3);shText(g,'메뉴',mx+55,H-36,26,'#3b2918');
       shHitAdd(key,mx,H-64,110,56,()=>{sfx('menu',.7);shOpenMenu();});
     }
-    // Sign above the customers
-    if(SH.mode!=='versus'&&!shFaced()){
-      const sign=SH.co?'팀원 '+Array.from({length:SH.people},(_,i)=>gamePlayerName(i)).join(' · '):'호자네 붕어빵';
+    // Keep the solo shop sign; cooperative players already have role-local names.
+    if(SH.mode==='solo'&&!shFaced()){
+      const sign='호자네 붕어빵';
       const sw=Math.min(W*.8,Math.max(236,sign.length*27));
       shRound(g,W/2-sw/2,8,sw,48,12,'#d9573f','#7a2a1b',4);
       shText(g,sign,W/2,33,Math.min(28,Math.max(19,900/Math.max(20,sign.length))),'#fff6e3');
@@ -11872,6 +11933,36 @@ var qrcode = function() {
     g.fillStyle=color;g.beginPath();
     g.moveTo(cx+dir*s,cy);g.lineTo(cx-dir*s*.1,cy-s*.72);g.lineTo(cx-dir*s*.1,cy-s*.28);g.lineTo(cx-dir*s*.9,cy-s*.28);g.lineTo(cx-dir*s*.9,cy+s*.28);g.lineTo(cx-dir*s*.1,cy+s*.28);g.lineTo(cx-dir*s*.1,cy+s*.72);g.closePath();g.fill();
   }
+  // These are portrait WebPs, not the 64px in-game sprite atlas. Measure
+  // the opaque silhouette of each actual expression once rather than guessing
+  // its foot coordinate from the full transparent image rectangle.
+  const stPortraitAnchors=new WeakMap();
+  function stAlphaAnchor(data,w,h){
+    let left=w,right=-1,bottom=-1;
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      if(data[(y*w+x)*4+3]<128)continue;
+      left=Math.min(left,x);right=Math.max(right,x);bottom=y;
+    }
+    return bottom<0?{x:.5,y:1}:{x:(left+right+1)/(2*w),y:(bottom+1)/h};
+  }
+  function stPortraitAnchor(im){
+    if(stPortraitAnchors.has(im))return stPortraitAnchors.get(im);
+    const w=im.naturalWidth,h=im.naturalHeight;
+    const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+    const g=canvas.getContext('2d',{willReadFrequently:true});g.drawImage(im,0,0);
+    const a=stAlphaAnchor(g.getImageData(0,0,w,h).data,w,h);
+    stPortraitAnchors.set(im,a);return a;
+  }
+  function stDrawRecord(g,mark,index,sx,sy,sw,sh,x,w){
+    const fs=Math.min(24,w*.05,sh*.46),label=mark.text+' '+index+'층';
+    const right=sx<x+w/2,limit=Math.max(1,Math.min(w*.46,right?x+w-6-(sx+sw/2+8):(sx-sw/2-8)-(x+6)));
+    if(limit<fs)return;
+    g.save();g.font=`${fs}px "HojaBody",sans-serif`;
+    g.textAlign=right?'left':'right';g.textBaseline='middle';g.lineJoin='round';
+    g.lineWidth=Math.max(2,fs*.16);g.strokeStyle='rgba(30,20,14,.9)';
+    const lx=right?sx+sw/2+8:sx-sw/2-8,ly=sy+sh*.31;
+    g.strokeText(label,lx,ly,limit);g.fillStyle=mark.year?'#ffe27a':'#e8f8ff';g.fillText(label,lx,ly,limit);g.restore();
+  }
   function stDrawColumn(g,p,x,w,now,dt){
     const {H}=ST,btnH=Math.min(250,H*.23),btnY=H-btnH-14,top=0;
     g.save();g.beginPath();g.rect(x,0,w,H);g.clip();
@@ -11899,25 +11990,20 @@ var qrcode = function() {
       g.fillStyle=mile?'#ffd25a':i%2?'#d9a868':'#c08f55';g.fill();g.lineWidth=4;g.strokeStyle=mile?'#7a5206':'#2e1a0c';g.stroke();
       if(mile)stLabel(g,String(i),sx,sy+sh*.31,sh*.42,'#5a3a10');
       const mark=marks&&marks.get(i);
-      if(mark){
-        const fs=Math.min(24,w*.05,sh*.46),label=mark.text+' '+i+'층';
-        g.font=`${fs}px "HojaBody",sans-serif`;
-        const tw=Math.min(g.measureText(label).width+18,w*.46),right=sx<x+w/2,lx=right?sx+sw/2+8:sx-sw/2-8-tw;
-        g.fillStyle='rgba(30,20,14,.85)';g.beginPath();g.roundRect(lx,sy-2,tw,sh*.66,8);g.fill();
-        if(mark.year){g.lineWidth=3;g.strokeStyle='#ffd24a';g.stroke();}
-        g.textAlign='center';g.textBaseline='middle';g.fillStyle=mark.year?'#ffe27a':'#e8f8ff';g.fillText(label,lx+tw/2,sy-2+sh*.33,tw-10);
-      }
+      if(mark)stDrawRecord(g,mark,i,sx,sy,sw,sh,x,w);
     }
     // Player
     const mood=p.over||p.stun>0?'sad':p.combo>=30?'happy':'neutral',im=shFace(p.id,mood);
     const shakeX=p.shake>0?Math.sin(now/22)*10:0;p.shake=Math.max(0,p.shake-dt);
     p.pop=Math.max(0,p.pop-dt*9);
     if(p.over){p.fallV+=2400*dt;p.fallY+=p.fallV*dt;}
-    const size=Math.min(sw*1.25,w*.36),hop=p.pop*p.pop*sh*.8,cx=px+shakeX+(tx-p.camX)*stepX,cy=py+(p.camY-ty)*sh-size*.46-hop+p.fallY;
+    const size=Math.min(sw*1.25,w*.36),hop=p.pop*p.pop*sh*.8,cx=px+shakeX+(tx-p.camX)*stepX;
+    const feet=py+(p.camY-ty)*sh-hop+p.fallY,cy=feet-size*.5;
     if(im.complete&&im.naturalWidth){
-      g.save();g.translate(cx,cy);if(p.dir>0)g.scale(-1,1);
+      const a=stPortraitAnchor(im);
+      g.save();g.translate(cx,feet);if(p.dir>0)g.scale(-1,1);
       if(p.stun>0)g.rotate(Math.sin(now/70)*.2);
-      g.drawImage(im,-size/2,-size/2,size,size);g.restore();
+      g.drawImage(im,-size*a.x,-size*a.y,size,size);g.restore();
     }
     // Where the next step goes is shown on the character's foot, for reading the stairs at speed.
     const hud=Math.min(44,w*.1);
@@ -14058,8 +14144,10 @@ return {enter,scene,key,openMenu,home,get on(){return on;},debug:{G,step,render,
   const limited=()=>!EMBED&&isStudentDevice();
   // The game explicitly marks its real start and final result. Ready-screen taps
   // and time spent reading the result do not consume the refund window.
-  function roundBegin(){if(typeof tournamentBegin==='function')tournamentBegin();if(round&&round.t0===null&&round.endAt==null)round.t0=Date.now();}
-  function roundFinish(){if(typeof tournamentFinishClock==='function')tournamentFinishClock();if(round&&round.endAt==null)round.endAt=Date.now();}
+  function roundBegin(){if(typeof tournamentBegin==='function')tournamentBegin();if(round&&round.t0===null&&round.endAt==null)round.t0=Date.now();if(typeof syncRefundControl==='function')syncRefundControl();}
+  function roundFinish(){if(typeof tournamentFinishClock==='function')tournamentFinishClock();if(round&&round.endAt==null)round.endAt=Date.now();if(typeof syncRefundControl==='function')syncRefundControl();}
+  // Only the pre-start UI is gated here. The separate 10-second refund policy remains unchanged.
+  function roundRefundControlVisible(r=round){return Boolean(EMBED&&r?.charge&&!r.freeRetry&&r.t0===null&&r.endAt==null);}
   function roundRefundable(r=round,now=Date.now()){
     return Boolean(r&&!r.freeRetry&&(r.charge||r.day)&&
       (r.t0===null||(r.endAt??now)-r.t0<REFUND_MS));
@@ -14067,7 +14155,7 @@ return {enter,scene,key,openMenu,home,get on(){return on;},debug:{G,step,render,
   // Return true if this exit refunded a charge or daily play. Never carry
   // unused attempts from a refunded purchase into another round.
   function roundClose(keepRetries=false){
-    const r=round;round=null;
+    const r=round;round=null;if(typeof syncRefundControl==='function')syncRefundControl();
     const eligible=roundRefundable(r);
     if(eligible||!keepRetries)tryReset();
     if(!eligible)return false;
@@ -14130,6 +14218,7 @@ return {enter,scene,key,openMenu,home,get on(){return on;},debug:{G,step,render,
       COIN.lastIds=[...ids];
       tryStart();round={charge:msg.charge,classId:p.classId,price:msg.price,t0:null,freeRetry:false};
       if(tournament){try{done(msg);}finally{COIN.uncertain=null;saveCoinRecovery();}}else done(msg);
+      if(typeof syncRefundControl==='function')syncRefundControl();
     });
     send();
   }
@@ -15418,19 +15507,26 @@ return {enter,scene,key,openMenu,home,get on(){return on;},debug:{G,step,render,
     else if(inGame)leaveGame();
     $('menuScreen').hidden=false;playBgm('menu',{gain:.8});
   }
-  // A single conditional refund-and-exit control. The top display area is
-  // outside the usual board touch zone; no new images or game overlays.
+  // Dedicated bottom strip outside #app: no overlay over any game or canvas controls.
+  let refundBar=null,refundButton=null;
+  function syncRefundControl(){
+    if(!refundBar)return;
+    const visible=roundRefundControlVisible();
+    if(refundBar.hidden===!visible)return;
+    refundBar.hidden=!visible;
+    document.body.classList.toggle('hoja-refund-ready',visible);
+    if(TABLET&&inGame)resizeRink();
+  }
   if(EMBED){
-    const refundButton=document.createElement('button');refundButton.type='button';refundButton.className='control primary';
-    refundButton.textContent='코인 환불하고 나가기';refundButton.hidden=true;
-    refundButton.style.cssText='position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:9999;max-width:90vw;font-size:clamp(14px,1.25vw,22px);padding:.35em .8em;';
-    document.body.append(refundButton);
-    const syncRefund=()=>{refundButton.hidden=!(round?.charge&&roundRefundable());};
+    refundBar=document.createElement('div');refundBar.id='hojaRefundBar';refundBar.hidden=true;
+    refundButton=document.createElement('button');refundButton.id='hojaRefundButton';refundButton.type='button';refundButton.className='control primary';
+    refundButton.textContent='코인 환불하고 나가기';
+    refundBar.append(refundButton);document.body.append(refundBar);
     refundButton.addEventListener('click',()=>{
-      if(!round?.charge||!roundRefundable()){syncRefund();return;}
-      roundClose();refundExitToMenu();syncRefund();
+      if(!roundRefundControlVisible()||!roundRefundable()){syncRefundControl();return;}
+      roundClose();refundExitToMenu();syncRefundControl();
     });
-    setInterval(syncRefund,100);
+    syncRefundControl();
   }
   if(!EMBED)window.addEventListener('pagehide',()=>roundClose());
   $('deviceButton').addEventListener('click',()=>{remember('device',TABLET?'board':'tablet');location.reload();});

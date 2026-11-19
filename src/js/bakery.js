@@ -786,9 +786,9 @@
       shRound(g,mx,H-64,110,56,12,'#f1c46e','#6e4726',3);shText(g,'메뉴',mx+55,H-36,26,'#3b2918');
       shHitAdd(key,mx,H-64,110,56,()=>{sfx('menu',.7);shOpenMenu();});
     }
-    // Sign above the customers
-    if(SH.mode!=='versus'&&!shFaced()){
-      const sign=SH.co?'팀원 '+Array.from({length:SH.people},(_,i)=>gamePlayerName(i)).join(' · '):'호자네 붕어빵';
+    // Keep the solo shop sign; cooperative players already have role-local names.
+    if(SH.mode==='solo'&&!shFaced()){
+      const sign='호자네 붕어빵';
       const sw=Math.min(W*.8,Math.max(236,sign.length*27));
       shRound(g,W/2-sw/2,8,sw,48,12,'#d9573f','#7a2a1b',4);
       shText(g,sign,W/2,33,Math.min(28,Math.max(19,900/Math.max(20,sign.length))),'#fff6e3');
