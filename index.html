@@ -1423,6 +1423,12 @@ html[data-device=tablet] .sx-stage{transform-origin:50% 50%}
 @media(prefers-reduced-motion:reduce){.hof-award-confetti{display:none}.hof-place-1{animation:none}}
 @media(max-width:750px){.hof-award-stage{grid-template-columns:1fr;align-content:start}}
 .hof-mode .hof-line em{white-space:normal;text-align:right;min-width:0}
+
+/* Paid ready state only: reserve actual layout space, never cover a game control. */
+body.hoja-refund-ready{--hoja-refund-height:clamp(48px,7vh,72px)}
+body.hoja-refund-ready #app{height:calc(100dvh - var(--hoja-refund-height));min-height:0}
+#hojaRefundBar{height:var(--hoja-refund-height);width:100%;display:flex;align-items:center;justify-content:center;padding:4px 12px 6px;background:var(--paper);border-top:2px solid var(--line);touch-action:manipulation}
+#hojaRefundButton{box-sizing:border-box;min-height:0;height:100%;max-width:100%;padding:0 18px;font-size:clamp(13px,1.35vw,22px);white-space:nowrap}
 </style>
 </head>
 <!--
@@ -8030,7 +8036,7 @@ var qrcode = function() {
   let tabletTurn=0;
   function layoutTablet(){
     if(!TABLET)return;
-    const vw=innerWidth,vh=innerHeight,portrait=vh>vw,raw=screen.orientation&&typeof screen.orientation.angle==='number'?screen.orientation.angle:(window.orientation||0);
+    const vw=innerWidth,vh=document.body.classList.contains('hoja-refund-ready')?$('app').clientHeight:innerHeight,portrait=innerHeight>vw,raw=screen.orientation&&typeof screen.orientation.angle==='number'?screen.orientation.angle:(window.orientation||0);
     let a=((raw%360)+360)%360;
     // Some tablets count from landscape; line their angle up with the portrait-first ones.
     if(portrait!==(a%180===0))a=(a+270)%360;
@@ -11562,9 +11568,9 @@ var qrcode = function() {
       shRound(g,mx,H-64,110,56,12,'#f1c46e','#6e4726',3);shText(g,'메뉴',mx+55,H-36,26,'#3b2918');
       shHitAdd(key,mx,H-64,110,56,()=>{sfx('menu',.7);shOpenMenu();});
     }
-    // Sign above the customers
-    if(SH.mode!=='versus'&&!shFaced()){
-      const sign=SH.co?'팀원 '+Array.from({length:SH.people},(_,i)=>gamePlayerName(i)).join(' · '):'호자네 붕어빵';
+    // Keep the solo shop sign; cooperative players already have role-local names.
+    if(SH.mode==='solo'&&!shFaced()){
+      const sign='호자네 붕어빵';
       const sw=Math.min(W*.8,Math.max(236,sign.length*27));
       shRound(g,W/2-sw/2,8,sw,48,12,'#d9573f','#7a2a1b',4);
       shText(g,sign,W/2,33,Math.min(28,Math.max(19,900/Math.max(20,sign.length))),'#fff6e3');
@@ -14058,8 +14064,10 @@ return {enter,scene,key,openMenu,home,get on(){return on;},debug:{G,step,render,
   const limited=()=>!EMBED&&isStudentDevice();
   // The game explicitly marks its real start and final result. Ready-screen taps
   // and time spent reading the result do not consume the refund window.
-  function roundBegin(){if(typeof tournamentBegin==='function')tournamentBegin();if(round&&round.t0===null&&round.endAt==null)round.t0=Date.now();}
-  function roundFinish(){if(typeof tournamentFinishClock==='function')tournamentFinishClock();if(round&&round.endAt==null)round.endAt=Date.now();}
+  function roundBegin(){if(typeof tournamentBegin==='function')tournamentBegin();if(round&&round.t0===null&&round.endAt==null)round.t0=Date.now();if(typeof syncRefundControl==='function')syncRefundControl();}
+  function roundFinish(){if(typeof tournamentFinishClock==='function')tournamentFinishClock();if(round&&round.endAt==null)round.endAt=Date.now();if(typeof syncRefundControl==='function')syncRefundControl();}
+  // Only the pre-start UI is gated here. The separate 10-second refund policy remains unchanged.
+  function roundRefundControlVisible(r=round){return Boolean(EMBED&&r?.charge&&!r.freeRetry&&r.t0===null&&r.endAt==null);}
   function roundRefundable(r=round,now=Date.now()){
     return Boolean(r&&!r.freeRetry&&(r.charge||r.day)&&
       (r.t0===null||(r.endAt??now)-r.t0<REFUND_MS));
@@ -14067,7 +14075,7 @@ return {enter,scene,key,openMenu,home,get on(){return on;},debug:{G,step,render,
   // Return true if this exit refunded a charge or daily play. Never carry
   // unused attempts from a refunded purchase into another round.
   function roundClose(keepRetries=false){
-    const r=round;round=null;
+    const r=round;round=null;if(typeof syncRefundControl==='function')syncRefundControl();
     const eligible=roundRefundable(r);
     if(eligible||!keepRetries)tryReset();
     if(!eligible)return false;
@@ -14130,6 +14138,7 @@ return {enter,scene,key,openMenu,home,get on(){return on;},debug:{G,step,render,
       COIN.lastIds=[...ids];
       tryStart();round={charge:msg.charge,classId:p.classId,price:msg.price,t0:null,freeRetry:false};
       if(tournament){try{done(msg);}finally{COIN.uncertain=null;saveCoinRecovery();}}else done(msg);
+      if(typeof syncRefundControl==='function')syncRefundControl();
     });
     send();
   }
@@ -15418,19 +15427,26 @@ return {enter,scene,key,openMenu,home,get on(){return on;},debug:{G,step,render,
     else if(inGame)leaveGame();
     $('menuScreen').hidden=false;playBgm('menu',{gain:.8});
   }
-  // A single conditional refund-and-exit control. The top display area is
-  // outside the usual board touch zone; no new images or game overlays.
+  // Dedicated bottom strip outside #app: no overlay over any game or canvas controls.
+  let refundBar=null,refundButton=null;
+  function syncRefundControl(){
+    if(!refundBar)return;
+    const visible=roundRefundControlVisible();
+    if(refundBar.hidden===!visible)return;
+    refundBar.hidden=!visible;
+    document.body.classList.toggle('hoja-refund-ready',visible);
+    if(TABLET&&inGame)resizeRink();
+  }
   if(EMBED){
-    const refundButton=document.createElement('button');refundButton.type='button';refundButton.className='control primary';
-    refundButton.textContent='코인 환불하고 나가기';refundButton.hidden=true;
-    refundButton.style.cssText='position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:9999;max-width:90vw;font-size:clamp(14px,1.25vw,22px);padding:.35em .8em;';
-    document.body.append(refundButton);
-    const syncRefund=()=>{refundButton.hidden=!(round?.charge&&roundRefundable());};
+    refundBar=document.createElement('div');refundBar.id='hojaRefundBar';refundBar.hidden=true;
+    refundButton=document.createElement('button');refundButton.id='hojaRefundButton';refundButton.type='button';refundButton.className='control primary';
+    refundButton.textContent='코인 환불하고 나가기';
+    refundBar.append(refundButton);document.body.append(refundBar);
     refundButton.addEventListener('click',()=>{
-      if(!round?.charge||!roundRefundable()){syncRefund();return;}
-      roundClose();refundExitToMenu();syncRefund();
+      if(!roundRefundControlVisible()||!roundRefundable()){syncRefundControl();return;}
+      roundClose();refundExitToMenu();syncRefundControl();
     });
-    setInterval(syncRefund,100);
+    syncRefundControl();
   }
   if(!EMBED)window.addEventListener('pagehide',()=>roundClose());
   $('deviceButton').addEventListener('click',()=>{remember('device',TABLET?'board':'tablet');location.reload();});
