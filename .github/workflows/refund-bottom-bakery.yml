@@ -1,4 +1,4 @@
-name: Refund bottom strip and bakery team UI review
+name: Refund, bakery and stair contact UI review
 on:
   push:
     branches: [codex/refund-bottom-bakery]
@@ -31,7 +31,7 @@ jobs:
           sha256sum index.html
       - name: Browser integration with recovery and dual selection
         run: node tests/tournament-browser.cjs
-      - name: Refund button browser geometry and start regression
+      - name: Refund button browser geometry, start and stair portrait anchors
         run: |
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install --prefix /tmp/hoja-refund-ui --no-audit --no-fund --no-package-lock playwright@1.55.0
           NODE_PATH=/tmp/hoja-refund-ui/node_modules node tests/refund-ui-browser.cjs

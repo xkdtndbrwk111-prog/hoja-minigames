@@ -5,7 +5,7 @@ const host=http.createServer((q,r)=>{r.setHeader('Content-Type','text/html; char
 let html=fs.readFileSync('index.html','utf8');
 // Instrument the local test copy only; production debug/API are unchanged.
 const anchor='  syncMode();\n  tournamentInit();';assert.ok(html.includes(anchor));
-html=html.replace(anchor,anchor+'\n window.__refundTest={ready(){round={charge:"fixture",t0:null,freeRetry:false};syncRefundControl()},begin:roundBegin,eligible:roundRefundable,clear(){round=null;syncRefundControl()},open(id){currentGame=id;launchSelected()},leave:refundExitToMenu};');
+html=html.replace(anchor,anchor+'\n window.__refundTest={ready(){round={charge:"fixture",t0:null,freeRetry:false};syncRefundControl()},begin:roundBegin,eligible:roundRefundable,clear(){round=null;syncRefundControl()},open(id){currentGame=id;launchSelected()},leave:refundExitToMenu,stairsAnchor:stPortraitAnchor,face:shFace};');
 const game=http.createServer((q,r)=>{if(q.url.startsWith('/sw.js')){r.statusCode=404;return r.end()}r.setHeader('Content-Type','text/html; charset=utf-8');r.end(html)});
 const listen=(s,p)=>new Promise(resolve=>s.listen(p,'127.0.0.1',resolve));
 (async()=>{let browser;await listen(host,17439);await listen(game,17440);try{
@@ -27,7 +27,12 @@ const listen=(s,p)=>new Promise(resolve=>s.listen(p,'127.0.0.1',resolve));
    assert.equal(after.hidden,true,id);assert.ok(Math.abs(after.app-after.height)<2,id);assert.equal(after.eligible,true,id);
   }
  }
- await frame.evaluate(()=>{window.__refundTest.clear();window.__refundTest.leave();window.__hoja.bakery.setStage('coop4');window.__refundTest.ready();window.__refundTest.open('shop')});
+ await frame.evaluate(()=>{window.__refundTest.clear();window.__refundTest.leave();window.__hoja.bakery.setStage('co4');window.__refundTest.ready();window.__refundTest.open('shop')});
  assert.equal(await frame.locator('#shopScreen').isVisible(),true);
+ for(const id of ['HOJA','NAHANSANG','SUMAKSAE','CHILJIDO_ELDER','MURYEONG_KING','BANGASAYUSANG','GWANGGAETO_KING'])for(const mood of ['neutral','sad','happy']){
+  const a=await frame.evaluate(async ([id,mood])=>{const im=window.__refundTest.face(id,mood);await im.decode();const a=window.__refundTest.stairsAnchor(im),same=a===window.__refundTest.stairsAnchor(im);return {...a,same}},[id,mood]);
+  assert.ok(a.x>0&&a.x<1&&a.y>.25&&a.y<=1&&a.same,JSON.stringify({id,mood,a}));
+ }
+ console.log('PASS all 21 actual portrait alpha anchors and cache');
  console.log('PASS bottom reserved refund strip, no overlap, synchronous hide and preserved refund eligibility across games and screen sizes');
 }finally{await browser?.close();host.close();game.close()}})().catch(e=>{console.error(e);process.exit(1)});
