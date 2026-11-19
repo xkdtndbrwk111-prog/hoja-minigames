@@ -17,8 +17,10 @@
   const limited=()=>!EMBED&&isStudentDevice();
   // The game explicitly marks its real start and final result. Ready-screen taps
   // and time spent reading the result do not consume the refund window.
-  function roundBegin(){if(typeof tournamentBegin==='function')tournamentBegin();if(round&&round.t0===null&&round.endAt==null)round.t0=Date.now();}
-  function roundFinish(){if(typeof tournamentFinishClock==='function')tournamentFinishClock();if(round&&round.endAt==null)round.endAt=Date.now();}
+  function roundBegin(){if(typeof tournamentBegin==='function')tournamentBegin();if(round&&round.t0===null&&round.endAt==null)round.t0=Date.now();if(typeof syncRefundControl==='function')syncRefundControl();}
+  function roundFinish(){if(typeof tournamentFinishClock==='function')tournamentFinishClock();if(round&&round.endAt==null)round.endAt=Date.now();if(typeof syncRefundControl==='function')syncRefundControl();}
+  // Only the pre-start UI is gated here. The separate 10-second refund policy remains unchanged.
+  function roundRefundControlVisible(r=round){return Boolean(EMBED&&r?.charge&&!r.freeRetry&&r.t0===null&&r.endAt==null);}
   function roundRefundable(r=round,now=Date.now()){
     return Boolean(r&&!r.freeRetry&&(r.charge||r.day)&&
       (r.t0===null||(r.endAt??now)-r.t0<REFUND_MS));
@@ -26,7 +28,7 @@
   // Return true if this exit refunded a charge or daily play. Never carry
   // unused attempts from a refunded purchase into another round.
   function roundClose(keepRetries=false){
-    const r=round;round=null;
+    const r=round;round=null;if(typeof syncRefundControl==='function')syncRefundControl();
     const eligible=roundRefundable(r);
     if(eligible||!keepRetries)tryReset();
     if(!eligible)return false;
@@ -89,6 +91,7 @@
       COIN.lastIds=[...ids];
       tryStart();round={charge:msg.charge,classId:p.classId,price:msg.price,t0:null,freeRetry:false};
       if(tournament){try{done(msg);}finally{COIN.uncertain=null;saveCoinRecovery();}}else done(msg);
+      if(typeof syncRefundControl==='function')syncRefundControl();
     });
     send();
   }

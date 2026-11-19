@@ -251,7 +251,7 @@
   let tabletTurn=0;
   function layoutTablet(){
     if(!TABLET)return;
-    const vw=innerWidth,vh=innerHeight,portrait=vh>vw,raw=screen.orientation&&typeof screen.orientation.angle==='number'?screen.orientation.angle:(window.orientation||0);
+    const vw=innerWidth,vh=document.body.classList.contains('hoja-refund-ready')?$('app').clientHeight:innerHeight,portrait=innerHeight>vw,raw=screen.orientation&&typeof screen.orientation.angle==='number'?screen.orientation.angle:(window.orientation||0);
     let a=((raw%360)+360)%360;
     // Some tablets count from landscape; line their angle up with the portrait-first ones.
     if(portrait!==(a%180===0))a=(a+270)%360;

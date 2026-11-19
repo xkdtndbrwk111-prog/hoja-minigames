@@ -9,6 +9,7 @@ localStorage={getItem:()=>null,setItem:()=>{}},crypto={randomUUID:()=>String(++s
 document={addEventListener:()=>{}},listeners={},sent=[],timers=new Map();
 let seed=0,idx=0,currentGame='stairs',now=100000,played=0,exits=0;
 const refundExitToMenu=()=>{exits++;};
+const paints=[];const syncRefundControl=()=>paints.push(roundRefundControlVisible());
 const Date={now:()=>now};
 const window={parent:{postMessage:m=>sent.push(m)},addEventListener:(k,f)=>listeners[k]=f};
 const setTimeout=f=>{timers.set(++idx,f);return idx},clearTimeout=id=>timers.delete(id),setInterval=()=>0;
@@ -52,4 +53,14 @@ test('all game families have explicit start and terminal hooks, no generic captu
  }
  for(const f of ['rhythm','dance'])assert(source(f+'.js').includes('roundBegin()'),f);
  assert(source('hockey.js').includes('다시 오르기|다시 경주|처음부터'));
+});
+
+test('paid ready control hides synchronously on start, yet the existing 10-second refund remains',()=>run(
+ 'pay(); assert.equal(paints.at(-1),true); assert(roundRefundControlVisible()); roundBegin(); assert.equal(paints.at(-1),false); assert(!roundRefundControlVisible()); now+=9999; assert(roundRefundable()); roundFinish(); assert.equal(paints.at(-1),false); assert(roundClose()); assert.equal(refunds().length,1);'
+));
+test('no button for free rounds, finished rounds or tournament purchase transferred to bracket',()=>run(
+ 'assert(!roundRefundControlVisible()); round={freeRetry:true,t0:null}; assert(!roundRefundControlVisible()); round={day:true,t0:null}; assert(!roundRefundControlVisible()); round={charge:"x",t0:null,endAt:now}; assert(!roundRefundControlVisible()); round=null; assert(!roundRefundControlVisible());'
+));
+test('bakery cooperative banner is removed, role name rendering and solo sign retained',()=>{
+ const s=source('bakery.js');assert.match(s,/if\(SH.mode==='solo'&&!shFaced\(\)\)\{\s*const sign='호자네 붕어빵'/);assert.ok(!s.includes("const sign=SH.co"));assert.ok(s.includes("label+' · '+gamePlayerName(i)"));
 });

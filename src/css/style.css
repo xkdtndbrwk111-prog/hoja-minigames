@@ -1411,3 +1411,9 @@ html[data-device=tablet] .sx-stage{transform-origin:50% 50%}
 @media(prefers-reduced-motion:reduce){.hof-award-confetti{display:none}.hof-place-1{animation:none}}
 @media(max-width:750px){.hof-award-stage{grid-template-columns:1fr;align-content:start}}
 .hof-mode .hof-line em{white-space:normal;text-align:right;min-width:0}
+
+/* Paid ready state only: reserve actual layout space, never cover a game control. */
+body.hoja-refund-ready{--hoja-refund-height:clamp(48px,7vh,72px)}
+body.hoja-refund-ready #app{height:calc(100dvh - var(--hoja-refund-height));min-height:0}
+#hojaRefundBar{height:var(--hoja-refund-height);width:100%;display:flex;align-items:center;justify-content:center;padding:4px 12px 6px;background:var(--paper);border-top:2px solid var(--line);touch-action:manipulation}
+#hojaRefundButton{box-sizing:border-box;min-height:0;height:100%;max-width:100%;padding:0 18px;font-size:clamp(13px,1.35vw,22px);white-space:nowrap}

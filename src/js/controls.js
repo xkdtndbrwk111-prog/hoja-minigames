@@ -45,19 +45,26 @@
     else if(inGame)leaveGame();
     $('menuScreen').hidden=false;playBgm('menu',{gain:.8});
   }
-  // A single conditional refund-and-exit control. The top display area is
-  // outside the usual board touch zone; no new images or game overlays.
+  // Dedicated bottom strip outside #app: no overlay over any game or canvas controls.
+  let refundBar=null,refundButton=null;
+  function syncRefundControl(){
+    if(!refundBar)return;
+    const visible=roundRefundControlVisible();
+    if(refundBar.hidden===!visible)return;
+    refundBar.hidden=!visible;
+    document.body.classList.toggle('hoja-refund-ready',visible);
+    if(TABLET&&inGame)resizeRink();
+  }
   if(EMBED){
-    const refundButton=document.createElement('button');refundButton.type='button';refundButton.className='control primary';
-    refundButton.textContent='코인 환불하고 나가기';refundButton.hidden=true;
-    refundButton.style.cssText='position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:9999;max-width:90vw;font-size:clamp(14px,1.25vw,22px);padding:.35em .8em;';
-    document.body.append(refundButton);
-    const syncRefund=()=>{refundButton.hidden=!(round?.charge&&roundRefundable());};
+    refundBar=document.createElement('div');refundBar.id='hojaRefundBar';refundBar.hidden=true;
+    refundButton=document.createElement('button');refundButton.id='hojaRefundButton';refundButton.type='button';refundButton.className='control primary';
+    refundButton.textContent='코인 환불하고 나가기';
+    refundBar.append(refundButton);document.body.append(refundBar);
     refundButton.addEventListener('click',()=>{
-      if(!round?.charge||!roundRefundable()){syncRefund();return;}
-      roundClose();refundExitToMenu();syncRefund();
+      if(!roundRefundControlVisible()||!roundRefundable()){syncRefundControl();return;}
+      roundClose();refundExitToMenu();syncRefundControl();
     });
-    setInterval(syncRefund,100);
+    syncRefundControl();
   }
   if(!EMBED)window.addEventListener('pagehide',()=>roundClose());
   $('deviceButton').addEventListener('click',()=>{remember('device',TABLET?'board':'tablet');location.reload();});
