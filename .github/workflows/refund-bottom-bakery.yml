@@ -1,4 +1,4 @@
-name: Refund, bakery and stair contact UI review
+name: Refund, bakery, stairs and hockey dead-ball review
 on:
   push:
     branches: [codex/refund-bottom-bakery]

@@ -161,6 +161,8 @@
     Object.assign(puck,{x:W/2+(side===0?-300:300),y:H/2,vx:0,vy:0,stall:0});
     possession.side=side;possession.time=0;possession.warned=false;
     puckHidden=false;serve={side,time:4.5};
+    // A new serve must not inherit a previous rally's collision grace or overlap.
+    freeze=0;mallets.forEach((m,i)=>{m.noHit=0;m.pinned=0;hockeySolidPuck(i,m.x,m.y);m.svx=0;m.svy=0;});
     phase='playing';neutralMoods();hideOverlay();syncStrip();
     floatText(puck.x,puck.y-70,aiLevel&&side===1?'컴퓨터 서브':gamePlayerName(side)+' 서브!',SIDE_COLOR[side],28,1.3);
     rings.push({x:puck.x,y:puck.y,r:28,grow:150,ttl:.5,life:.5,color:SIDE_COLOR[side],w:6});
@@ -613,12 +615,53 @@
   }
 
   /* ---------- Simulation ---------- */
-  function stepMallet(i,dt){
+  // A stationary puck is solid during cut-ins and hit-stop. Sweep the whole
+  // mallet movement segment, not just its endpoint, so a fast touch cannot tunnel.
+  function hockeySweepSolid(ox,oy,x,y,bx,by,r,side){
+    const ax=ox-bx,ay=oy-by,dx=x-ox,dy=y-oy,d=Math.hypot(ax,ay);
+    if(d<r){
+      const nx=d>1e-6?ax/d:(side===0?-1:1),ny=d>1e-6?ay/d:0;
+      return {x:bx+nx*r,y:by+ny*r,blocked:true};
+    }
+    const a=dx*dx+dy*dy,b=ax*dx+ay*dy,c=ax*ax+ay*ay-r*r;
+    if(a<1e-10||b>=0||b*b-a*c<0)return {x,y,blocked:false};
+    const t=(-b-Math.sqrt(Math.max(0,b*b-a*c)))/a;
+    if(t<0||t>1)return {x,y,blocked:false};
+    // Stop at first contact. A sideways drag can slide around on subsequent ticks.
+    return {x:ox+dx*Math.max(0,t-1e-4),y:oy+dy*Math.max(0,t-1e-4),blocked:true};
+  }
+  function hockeySolidPuck(i,ox,oy){
+    const m=mallets[i],r=R+m.r+1;
+    const p=hockeySweepSolid(ox,oy,m.x,m.y,puck.x,puck.y,r,i);
+    if(!p.blocked)return false;
+    const pad=m.r+4,minX=i===0?pad:midX+m.r+2,maxX=i===0?midX-m.r-2:W-pad;
+    const legal=(x,y)=>{
+      const q={x:clamp(x,minX,maxX),y:clamp(y,pad,H-pad)};
+      keepOffLanding(i,q,'x','y');
+      return q.x>=minX-1e-6&&q.x<=maxX+1e-6&&q.y>=pad-1e-6&&q.y<=H-pad+1e-6&&Math.hypot(q.x-puck.x,q.y-puck.y)>=r-1e-5?q:null;
+    };
+    let q=legal(p.x,p.y)||legal(ox,oy);
+    // A respawn may place the puck inside a mallet next to a boundary.
+    // Pick the nearest legal exit; never push the stationary puck itself.
+    if(!q){
+      let best=Infinity;
+      for(let k=0;k<64;k++){
+        const a=k*Math.PI/32,v=legal(puck.x+Math.cos(a)*(r+.1),puck.y+Math.sin(a)*(r+.1));
+        if(v){const d=Math.hypot(v.x-ox,v.y-oy);if(d<best){best=d;q=v;}}
+      }
+    }
+    if(q){m.x=q.x;m.y=q.y;}else{m.x=ox;m.y=oy;}
+    return true;
+  }
+  function hockeyLiveBall(){return phase==='playing'&&!serve&&freeze<=0;}
+  function stepMallet(i,dt,live=hockeyLiveBall()){
+
     const m=mallets[i],human=!(aiLevel&&i===1);
-    m.grab=Math.max(0,m.grab-dt);m.hitT=Math.max(0,m.hitT-dt);m.pinned=Math.max(0,(m.pinned||0)-dt);m.noHit=Math.max(0,(m.noHit||0)-dt);
-    if(m.big>0){m.big-=dt;}
-    if(m.small>0)m.small-=dt;if(m.frozen>0)m.frozen-=dt;if(m.sticky>0)m.sticky-=dt;
-    const targetR=MALLET_R*(m.big>0?1.4:1)*(m.small>0?.65:1);m.r+=(targetR-m.r)*Math.min(1,dt*10);
+    m.grab=Math.max(0,m.grab-dt);
+    const effectDt=live?dt:0;
+    m.hitT=Math.max(0,m.hitT-effectDt);m.pinned=Math.max(0,(m.pinned||0)-effectDt);m.noHit=Math.max(0,(m.noHit||0)-effectDt);
+    for(const key of ['big','small','frozen','sticky'])if(m[key]>0)m[key]=Math.max(0,m[key]-effectDt);
+    const targetR=MALLET_R*(m.big>0?1.4:1)*(m.small>0?.65:1);m.r+=(targetR-m.r)*Math.min(1,effectDt*10);
     if(m.id===null)m.idle+=dt;
     clampTarget(i);
     // Touchdown glides instead of teleporting, so tapping cannot replace actually moving.
@@ -626,12 +669,17 @@
     const ox=m.x,oy=m.y,dx=m.tx-ox,dy=m.ty-oy,dist=Math.hypot(dx,dy);
     if(dist>.0001&&!(m.frozen>0)){const s=Math.min(dist,speed*dt);m.x+=dx/dist*s;m.y+=dy/dist*s;}
     keepOffLanding(i,m,'x','y');
+    const solid=phase==='special'||(phase==='playing'&&(freeze>0||(serve&&serve.side!==i)));
+    if(solid&&hockeySolidPuck(i,ox,oy)){
+      // Discard accumulated inward swing at a blocked contact.
+      m.vx=0;m.vy=0;m.svx=0;m.svy=0;return;
+    }
     m.vx=(m.x-ox)/dt;m.vy=(m.y-oy)/dt;
     // Board touch samples arrive unevenly, so swing power reads a smoothed velocity.
     const a=1-Math.exp(-dt/.04);m.svx+=(m.vx-m.svx)*a;m.svy+=(m.vy-m.svy)*a;
   }
   function collideMallet(i){
-    if(phase!=='playing'||mallets[i].noHit>0)return;
+    if(phase!=='playing'||mallets[i].noHit>0||(serve&&serve.side!==i))return;
     const m=mallets[i],dx=puck.x-m.x,dy=puck.y-m.y,dist=Math.hypot(dx,dy),min=R+m.r;
     if(dist>=min)return;
     cancelZoneBoost();
@@ -728,9 +776,15 @@
     return false;
   }
   function stepPlaying(dt){
-    if(freeze>0){freeze-=dt;return;}
-    if(serve){serve.time-=dt;if(serve.time<=0)launchServe();}
-    else{
+    if(freeze>0){freeze=Math.max(0,freeze-dt);return;}
+    if(serve){
+      // Dead ball: only the server's strike and anti-stalling serve clock run.
+      // Release on this tick; all gameplay timers resume on the next live tick.
+      collideMallet(serve.side);
+      if(serve){serve.time-=dt;if(serve.time<=0)launchServe();}
+      return;
+    }
+    {
       if(!golden){
         const before=clock;clock-=dt;
         if(before>15&&clock<=15){floatText(W/2,H/2-40,'마지막 15초!','#c0532f',46,1.3);sfx('item',1,.8);setBgmTempo(1.05);}
@@ -848,7 +902,7 @@
   }
   function step(dt){
     updateAI(dt);
-    stepMallet(0,dt);stepMallet(1,dt);
+    const live=hockeyLiveBall();stepMallet(0,dt,live);stepMallet(1,dt,live);
     if(phase==='ready'){
       const ok0=mallets[0].id!==null,ok1=aiLevel?true:mallets[1].id!==null;
       if(ok0&&ok1)startCountdown();
@@ -873,7 +927,7 @@
       return;
     }
     if(phase==='playing'){
-      if(!serve)updateGoalCamp(dt);else resetGoalCamp();
+      if(live)updateGoalCamp(dt);else if(serve)resetGoalCamp();else updateGoalCamp(0);
       stepPlaying(dt);
     }
   }
@@ -1213,6 +1267,7 @@
       ctx.beginPath();ctx.arc(puck.x,puck.y,R+14+a*10,0,Math.PI*2);ctx.stroke();
       ctx.globalAlpha=.9;ctx.lineWidth=7;ctx.lineCap='round';
       ctx.beginPath();ctx.arc(puck.x,puck.y,R+38,-Math.PI/2,-Math.PI/2+Math.PI*2*clamp(serve.time/4.5,0,1));ctx.stroke();ctx.restore();
+      text('볼 데드 · 효과 시간 정지',puck.x,puck.y+R+65,22,SIDE_COLOR[serve.side]);
     }
     mallets.forEach(drawMallet);
     for(const g of ghosts)drawPuck(g.x,g.y,g.attacker);
