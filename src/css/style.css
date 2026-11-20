@@ -360,6 +360,9 @@ button{touch-action:manipulation}
 .overlay-detail{font-weight:400}
 
 .goal-banner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:clamp(8px,1.2vw,26px);pointer-events:none;padding:clamp(6px,1vh,14px) clamp(22px,3vw,60px);background:#fff8e6f2;border:clamp(4px,.4vw,8px) solid #2d2622;border-radius:clamp(16px,1.6vw,30px);box-shadow:8px 10px 0 #2d262288;z-index:3}
+.goal-banner{width:max-content;max-width:92%;box-sizing:border-box;gap:clamp(4px,1.2vw,26px);padding-inline:clamp(8px,2vw,48px)}
+.goal-banner img{flex:0 1 auto;min-width:0;max-width:32%}
+.goal-banner>div{flex:0 1 auto;min-width:0;text-align:center}
 .goal-banner.side0{border-color:#2f9c8c}.goal-banner.side1{border-color:#e0694f}
 .goal-banner img{height:clamp(70px,14vh,170px);width:auto;object-fit:contain}
 .goal-banner.in{animation:goalIn .34s cubic-bezier(.16,1.6,.35,1) both}
@@ -1417,3 +1420,8 @@ body.hoja-refund-ready{--hoja-refund-height:clamp(48px,7vh,72px)}
 body.hoja-refund-ready #app{height:calc(100dvh - var(--hoja-refund-height));min-height:0}
 #hojaRefundBar{height:var(--hoja-refund-height);width:100%;display:flex;align-items:center;justify-content:center;padding:4px 12px 6px;background:var(--paper);border-top:2px solid var(--line);touch-action:manipulation}
 #hojaRefundButton{box-sizing:border-box;min-height:0;height:100%;max-width:100%;padding:0 18px;font-size:clamp(13px,1.35vw,22px);white-space:nowrap}
+
+/* Short game-state headlines only. Keep explanatory sentences on their normal wrapping path. */
+.overlay-title,.goal-text,.goal-score{min-width:0;max-width:100%;white-space:nowrap;word-break:keep-all;overflow-wrap:normal}
+.overlay-title{width:100%;box-sizing:border-box;text-align:center}
+.overlay-title.fit-title-wrap,.goal-text.fit-title-wrap,.goal-score.fit-title-wrap{white-space:normal;overflow-wrap:anywhere}
