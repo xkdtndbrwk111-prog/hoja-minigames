@@ -80,4 +80,52 @@
   function remember(key,v){try{localStorage.setItem('hoja-airhockey-'+key,v);}catch{}}
   const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
   const reducedMotion=matchMedia('(prefers-reduced-motion:reduce)').matches;
+  // Measure actual DOM glyph width after the CSS base size is applied. Only
+  // short state titles opt in; never shrink long descriptions or all text.
+  function fitGameHeadline(el){
+    if(!el||!el.getClientRects().length)return;
+    el.style.removeProperty('font-size');el.classList.remove('fit-title-wrap');
+    if(!el.clientWidth||!el.textContent.trim())return;
+    const base=parseFloat(getComputedStyle(el).fontSize);
+    if(!Number.isFinite(base)||el.scrollWidth<=el.clientWidth)return;
+    let min=Math.min(12,base),lo=min,hi=base;
+    el.style.fontSize=min+'px';
+    if(el.scrollWidth>el.clientWidth){el.classList.add('fit-title-wrap');return;}
+    for(let i=0;i<12&&hi-lo>.25;i++){
+      const mid=(lo+hi)/2;el.style.fontSize=mid+'px';
+      if(el.scrollWidth<=el.clientWidth)lo=mid;else hi=mid;
+    }
+    el.style.fontSize=Math.floor(lo*4)/4+'px';
+  }
+  function installGameHeadlineFit(){
+    const pending=new Set();let frame=0;
+    function schedule(el){
+      pending.add(el);
+      if(!frame)frame=requestAnimationFrame(()=>{
+        frame=0;const batch=[...pending];pending.clear();batch.forEach(fitGameHeadline);
+      });
+    }
+    const titles=[...document.querySelectorAll('.overlay-title,.goal-text,.goal-score')];
+    const groups=new Map();
+    const resize=new ResizeObserver(entries=>{
+      for(const entry of entries)for(const el of groups.get(entry.target)||[])schedule(el);
+    });
+    const mutations=new MutationObserver(entries=>{
+      for(const entry of entries){
+        const el=(entry.target.nodeType===1?entry.target:entry.target.parentElement)?.closest('.overlay-title,.goal-text,.goal-score');
+        if(el)schedule(el);
+      }
+    });
+    for(const el of titles){
+      mutations.observe(el,{childList:true,characterData:true,subtree:true});
+      let parent=el.classList.contains('goal-text')||el.classList.contains('goal-score')?el.closest('.rink-frame'):el.parentElement;
+      // The desktop hockey wrapper uses display:contents, so observe the board.
+      if(parent?.classList.contains('tab-ov'))parent=parent.closest('.board-overlay');
+      if(parent){if(!groups.has(parent)){groups.set(parent,[]);resize.observe(parent)}groups.get(parent).push(el);}
+      schedule(el);
+    }
+    window.addEventListener('resize',()=>titles.forEach(schedule),{passive:true});
+    document.fonts?.ready.then(()=>titles.forEach(schedule));
+  }
+
 
