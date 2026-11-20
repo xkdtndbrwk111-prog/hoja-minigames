@@ -1,0 +1,36 @@
+name: Responsive game headline review
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/css/style.css'
+      - 'src/js/core.js'
+      - 'src/js/controls.js'
+      - 'src/js/hockey.js'
+      - 'tests/responsive-headlines-browser.cjs'
+      - '.github/workflows/responsive-headlines.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Build from candidate source and run game regressions
+        run: |
+          node --test tests/*.test.js
+          python3 build.py
+          python3 build.py --check
+      - name: Browser headline geometry and existing refund layout regression
+        run: |
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install --prefix /tmp/hoja-headline --no-audit --no-fund --no-package-lock playwright@1.55.0
+          NODE_PATH=/tmp/hoja-headline/node_modules node tests/responsive-headlines-browser.cjs
+          NODE_PATH=/tmp/hoja-headline/node_modules node tests/refund-ui-browser.cjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: responsive-headline-candidate
+          path: index.html
+          if-no-files-found: error
