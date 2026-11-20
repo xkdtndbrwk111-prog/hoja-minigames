@@ -372,6 +372,9 @@ button{touch-action:manipulation}
 .overlay-detail{font-weight:400}
 
 .goal-banner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:clamp(8px,1.2vw,26px);pointer-events:none;padding:clamp(6px,1vh,14px) clamp(22px,3vw,60px);background:#fff8e6f2;border:clamp(4px,.4vw,8px) solid #2d2622;border-radius:clamp(16px,1.6vw,30px);box-shadow:8px 10px 0 #2d262288;z-index:3}
+.goal-banner{width:max-content;max-width:92%;box-sizing:border-box;gap:clamp(4px,1.2vw,26px);padding-inline:clamp(8px,2vw,48px)}
+.goal-banner img{flex:0 1 auto;min-width:0;max-width:32%}
+.goal-banner>div{flex:0 1 auto;min-width:0;text-align:center}
 .goal-banner.side0{border-color:#2f9c8c}.goal-banner.side1{border-color:#e0694f}
 .goal-banner img{height:clamp(70px,14vh,170px);width:auto;object-fit:contain}
 .goal-banner.in{animation:goalIn .34s cubic-bezier(.16,1.6,.35,1) both}
@@ -1429,6 +1432,11 @@ body.hoja-refund-ready{--hoja-refund-height:clamp(48px,7vh,72px)}
 body.hoja-refund-ready #app{height:calc(100dvh - var(--hoja-refund-height));min-height:0}
 #hojaRefundBar{height:var(--hoja-refund-height);width:100%;display:flex;align-items:center;justify-content:center;padding:4px 12px 6px;background:var(--paper);border-top:2px solid var(--line);touch-action:manipulation}
 #hojaRefundButton{box-sizing:border-box;min-height:0;height:100%;max-width:100%;padding:0 18px;font-size:clamp(13px,1.35vw,22px);white-space:nowrap}
+
+/* Short game-state headlines only. Keep explanatory sentences on their normal wrapping path. */
+.overlay-title,.goal-text,.goal-score{min-width:0;max-width:100%;white-space:nowrap;word-break:keep-all;overflow-wrap:normal}
+.overlay-title{width:100%;box-sizing:border-box;text-align:center}
+.overlay-title.fit-title-wrap,.goal-text.fit-title-wrap,.goal-score.fit-title-wrap{white-space:normal;overflow-wrap:anywhere}
 </style>
 </head>
 <!--
@@ -4217,6 +4225,55 @@ var qrcode = function() {
   function remember(key,v){try{localStorage.setItem('hoja-airhockey-'+key,v);}catch{}}
   const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
   const reducedMotion=matchMedia('(prefers-reduced-motion:reduce)').matches;
+  // Measure actual DOM glyph width after the CSS base size is applied. Only
+  // short state titles opt in; never shrink long descriptions or all text.
+  function fitGameHeadline(el){
+    if(!el||!el.getClientRects().length)return;
+    el.style.removeProperty('font-size');el.classList.remove('fit-title-wrap');
+    if(!el.clientWidth||!el.textContent.trim())return;
+    const base=parseFloat(getComputedStyle(el).fontSize);
+    if(!Number.isFinite(base)||el.scrollWidth<=el.clientWidth)return;
+    let min=Math.min(12,base),lo=min,hi=base;
+    el.style.fontSize=min+'px';
+    if(el.scrollWidth>el.clientWidth){el.classList.add('fit-title-wrap');return;}
+    for(let i=0;i<12&&hi-lo>.25;i++){
+      const mid=(lo+hi)/2;el.style.fontSize=mid+'px';
+      if(el.scrollWidth<=el.clientWidth)lo=mid;else hi=mid;
+    }
+    el.style.fontSize=Math.floor(lo*4)/4+'px';
+  }
+  function installGameHeadlineFit(){
+    const pending=new Set();let frame=0;
+    function schedule(el){
+      pending.add(el);
+      if(!frame)frame=requestAnimationFrame(()=>{
+        frame=0;const batch=[...pending];pending.clear();batch.forEach(fitGameHeadline);
+      });
+    }
+    const titles=[...document.querySelectorAll('.overlay-title,.goal-text,.goal-score')];
+    const groups=new Map();
+    const resize=new ResizeObserver(entries=>{
+      for(const entry of entries)for(const el of groups.get(entry.target)||[])schedule(el);
+    });
+    const mutations=new MutationObserver(entries=>{
+      for(const entry of entries){
+        const el=(entry.target.nodeType===1?entry.target:entry.target.parentElement)?.closest('.overlay-title,.goal-text,.goal-score');
+        if(el)schedule(el);
+      }
+    });
+    for(const el of titles){
+      mutations.observe(el,{childList:true,characterData:true,subtree:true});
+      let parent=el.classList.contains('goal-text')||el.classList.contains('goal-score')?el.closest('.rink-frame'):el.parentElement;
+      // The desktop hockey wrapper uses display:contents, so observe the board.
+      if(parent?.classList.contains('tab-ov'))parent=parent.closest('.board-overlay');
+      if(parent){if(!groups.has(parent)){groups.set(parent,[]);resize.observe(parent)}groups.get(parent).push(el);}
+      schedule(el);
+    }
+    window.addEventListener('resize',()=>titles.forEach(schedule),{passive:true});
+    $('goalPortrait')?.addEventListener('load',()=>{schedule($('goalText'));schedule($('goalScore'))});
+    document.fonts?.ready.then(()=>titles.forEach(schedule));
+  }
+
 
   /* ---------- Audio: everything embedded, decoded once, played through Web Audio for low latency. ---------- */
   const SFX_FILES={
@@ -8024,6 +8081,7 @@ var qrcode = function() {
     $('goalPortrait').src=portraitFor(scorer,'happy');
     $('goalText').textContent=Math.max(...scores)===4?'매치 포인트!':'득점!';
     $('goalScore').textContent=scores[0]+' : '+scores[1];
+    fitGameHeadline($('goalText'));fitGameHeadline($('goalScore'));
     void b.offsetWidth;b.classList.add('in');
   }
   function hideGoalBanner(){$('goalBanner').hidden=true;}
@@ -15565,6 +15623,7 @@ return {enter,scene,key,openMenu,home,get on(){return on;},debug:{G,step,render,
   document.querySelectorAll('.emotion-note').forEach(el=>{noteSeen.set(el,el.textContent);noteObs.observe(el,{childList:true,characterData:true,subtree:true});});
   syncMode();
   tournamentInit();
+  installGameHeadlineFit();
   if(location.hash==='#debug'){
     window.__hoja={
       bakery:{SH,SH_DAYS,SH_UP,SH_SP,shStep,shTapMold,shServe,shBuy,shNextDay,shCovers,shCookTime,shTarget,shNewGame,shSpecial,shTrayCap,shGold,shBurn,setStage(v){shopStage=v;},setChoice(i,id){choices[i]=id;}},
