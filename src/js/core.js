@@ -125,6 +125,7 @@
       schedule(el);
     }
     window.addEventListener('resize',()=>titles.forEach(schedule),{passive:true});
+    $('goalPortrait')?.addEventListener('load',()=>{schedule($('goalText'));schedule($('goalScore'))});
     document.fonts?.ready.then(()=>titles.forEach(schedule));
   }
 
