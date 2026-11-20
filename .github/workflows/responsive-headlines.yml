@@ -1,5 +1,8 @@
 name: Responsive game headline review
 on:
+  push:
+    branches: [codex/responsive-game-labels]
+    paths: ['.github/workflows/responsive-headlines.yml']
   pull_request:
     branches: [main]
     paths:
@@ -34,3 +37,29 @@ jobs:
           name: responsive-headline-candidate
           path: index.html
           if-no-files-found: error
+
+  publish-candidate:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/codex/responsive-game-labels'
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+      - name: Rebuild and commit generated page to review branch only
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = 0ebe0bfd47abee30df07868bc5555d672d930fcf
+          test "$(git diff --name-only HEAD^ HEAD)" = .github/workflows/responsive-headlines.yml
+          python3 build.py
+          python3 build.py --check
+          sha256sum index.html
+          git add -- index.html
+          test "$(git diff --cached --name-only)" = index.html
+          git config user.name "hoja-build"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Rebuild minigame HTML for approved responsive headline release"
+          git push origin HEAD:refs/heads/codex/responsive-game-labels
