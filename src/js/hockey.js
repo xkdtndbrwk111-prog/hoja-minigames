@@ -239,6 +239,7 @@
     $('goalPortrait').src=portraitFor(scorer,'happy');
     $('goalText').textContent=Math.max(...scores)===4?'매치 포인트!':'득점!';
     $('goalScore').textContent=scores[0]+' : '+scores[1];
+    fitGameHeadline($('goalText'));fitGameHeadline($('goalScore'));
     void b.offsetWidth;b.classList.add('in');
   }
   function hideGoalBanner(){$('goalBanner').hidden=true;}
