@@ -1186,6 +1186,20 @@ html[data-device] #partyScreen.rh-full .display-zone{position:absolute!important
 #partyScreen.rh-full #paStage.pa-rhythm~.pa-menu{top:36%;bottom:auto}
 #partyScreen.rh-full.solo #paStage.pa-rhythm~.pa-menu{left:clamp(8px,1.5vw,24px);right:auto;margin:0}
 
+/* Larger rhythm portraits, but speech never intercepts a touch or covers the beat controls. */
+#partyScreen.rh-stage .avatar-wrap{width:clamp(94px,11vw,198px);height:clamp(94px,17vh,198px);max-height:none;flex:none;align-self:center;overflow:visible}
+#partyScreen.rh-stage .avatar-wrap img{display:block;width:100%;height:100%;object-fit:contain}
+#partyScreen.rh-full .avatar-wrap{width:clamp(100px,11.2vw,205px);height:clamp(100px,11.2vw,205px);max-height:24vh}
+#partyScreen.rh-stage .rh-speech{position:absolute;z-index:6;top:8%;left:calc(100% + 8px);width:max-content;max-width:min(20vw,285px);box-sizing:border-box;padding:clamp(6px,.65vw,12px) clamp(10px,.85vw,17px);border:2px solid #75dfff;border-radius:17px;background:rgba(16,21,54,.96);box-shadow:0 3px 12px #05091599;color:#fff6be;font:900 clamp(15px,1.45vw,26px)/1.18 "HojaBody",sans-serif;white-space:normal;word-break:keep-all;pointer-events:none;text-align:center}
+#partyScreen.rh-stage .team.right .rh-speech{left:auto;right:calc(100% + 8px)}
+#partyScreen.rh-stage .rh-speech[hidden]{display:none!important}
+/* Compact/tablet: faces still emote; no floating words over the players' hands. */
+html[data-device=tablet] #partyScreen.rh-stage .avatar-wrap{width:clamp(74px,12vh,112px);height:clamp(74px,12vh,112px);max-height:none}
+html[data-device=tablet] #partyScreen.rh-full .avatar-wrap{width:clamp(80px,12vmin,132px);height:clamp(80px,12vmin,132px);max-height:20vh}
+html[data-device=tablet] #partyScreen.rh-stage .rh-speech{display:none!important}
+@media(max-width:700px){#partyScreen.rh-stage .rh-speech{display:none!important}}
+@media(prefers-reduced-motion:reduce){#partyScreen.rh-stage .team.react .avatar-wrap img,#partyScreen.rh-stage .team.sad .avatar-wrap img{animation:none!important}}
+
 /* Hands over the edge */
 #menuScreen{position:relative}
 #menuScreen .menu-mascot.left{top:10.03%}
@@ -1721,14 +1735,14 @@ body.hoja-refund-ready #app{height:calc(100dvh - var(--hoja-refund-height));min-
   </section>
   <section id="partyScreen" class="screen screen-game" hidden aria-label="터치 파티">
     <header class="display-zone game-header o-header">
-      <div class="team left" id="paTeam0"><div class="avatar-wrap"><img id="paPortrait0" alt=""></div><div class="team-text"><span class="team-label" id="paLabel0"></span><span class="team-name" id="paName0"></span></div></div>
+      <div class="team left" id="paTeam0"><div class="avatar-wrap"><img id="paPortrait0" alt=""><span class="rh-speech" id="paRhSpeech0" aria-hidden="true" hidden></span></div><div class="team-text"><span class="team-label" id="paLabel0"></span><span class="team-name" id="paName0"></span></div></div>
       <div class="score-center">
         <div class="score-caption" id="paCaption"></div>
         <div class="score-box"><div class="score-digit" id="paScore0">0</div><div class="score-divider">:</div><div class="score-digit" id="paScore1">0</div></div>
         <div class="game-time o-turn" id="paTime"></div>
         <div id="paHint"></div>
       </div>
-      <div class="team right" id="paTeam1"><div class="avatar-wrap"><img id="paPortrait1" alt=""></div><div class="team-text"><span class="team-label" id="paLabel1"></span><span class="team-name" id="paName1"></span></div></div>
+      <div class="team right" id="paTeam1"><div class="avatar-wrap"><img id="paPortrait1" alt=""><span class="rh-speech" id="paRhSpeech1" aria-hidden="true" hidden></span></div><div class="team-text"><span class="team-label" id="paLabel1"></span><span class="team-name" id="paName1"></span></div></div>
     </header>
     <div class="touch-zone pa-touch">
       <div class="pa-stage" id="paStage"></div>
@@ -4430,6 +4444,53 @@ var qrcode = function() {
   function paSetScore(side,value){PS.scores[side]=value;$('paScore'+side).textContent=value;}
   function paHint(text){$('paHint').textContent=text;}
   function paTime(text){$('paTime').textContent=text;}
+  // Short original lines keyed by the character chosen for each side.
+  const PA_RHYTHM_LINES={
+    HOJA:{combo:['꼬리도 춤춘다!','박자 타는 호자!'],fever:['왈! 피버다!'],miss:['앗, 발이 꼬였어!','다시 가자!']},
+    NAHANSANG:{combo:['두둠칫, 둠칫!','급식보다 신나!'],fever:['나한상 댄스 폭발!'],miss:['어이쿠, 잠깐!','다시 리듬을 찾아!']},
+    SUMAKSAE:{combo:['방긋방긋 리듬!','웃으면서 한 박자!'],fever:['웃음꽃 피버!'],miss:['앗, 실수했네!','웃으며 다시!']},
+    CHILJIDO_ELDER:{combo:['일곱 박자도 문제없지!','허허, 흥이 나는군!'],fever:['일곱 번 신난다!'],miss:['어허, 엇박자!','다시 맞춰보게!']},
+    MURYEONG_KING:{combo:['왕의 춤을 보아라!','박자를 다스리리라!'],fever:['왕실 피버 타임!'],miss:['이런, 왕의 실수!','다시 시작하노라!']},
+    BANGASAYUSANG:{combo:['생각보다 신나는걸!','음… 완벽한 박자!'],fever:['깨달음의 피버!'],miss:['음, 다시 생각해 보자!','앗, 박자를 놓쳤어!']},
+    GWANGGAETO_KING:{combo:['리듬을 정복한다!','전진! 다음 박자!'],fever:['피버 영토 확장!'],miss:['잠깐 후퇴!','다시 진격이다!']}
+  };
+  const paRhythmLineIndex=[0,0];
+  function paRhythmLine(side,kind){
+    const lines=(PA_RHYTHM_LINES[choices[side]]||PA_RHYTHM_LINES.HOJA)[kind]||PA_RHYTHM_LINES.HOJA.combo;
+    return lines[paRhythmLineIndex[side]++%lines.length];
+  }
+  // One short, non-interactive reaction per rhythm player. The notes never enter the touch lanes.
+  const paRhythmEmotes=[{seq:0,timer:null},{seq:0,timer:null}];
+  function paRhythmReset(){
+    for(let i=0;i<2;i++){
+      const state=paRhythmEmotes[i];
+      state.seq++;clearTimeout(state.timer);state.timer=null;
+      $('paPortrait'+i).src=portraitFor(i);
+      $('paTeam'+i).classList.remove('react','sad');
+      const speech=$('paRhSpeech'+i);
+      speech.textContent='';speech.hidden=true;
+    }
+  }
+  function paRhythmReact(side,mood,line,duration=1450){
+    if(side!==0&&side!==1)return;
+    const state=paRhythmEmotes[side],team=$('paTeam'+side),speech=$('paRhSpeech'+side);
+    const safeMood=['neutral','happy','surprised','sad','angry'].includes(mood)?mood:'neutral';
+    const seq=++state.seq;
+    clearTimeout(state.timer);
+    $('paPortrait'+side).src=portraitFor(side,safeMood);
+    team.classList.remove('react','sad');
+    void team.offsetWidth;
+    if(safeMood==='happy'||safeMood==='surprised')team.classList.add('react');
+    if(safeMood==='sad'||safeMood==='angry')team.classList.add('sad');
+    speech.textContent=String(line||'').slice(0,32);speech.hidden=!speech.textContent;
+    state.timer=setTimeout(()=>{
+      if(state.seq!==seq)return;
+      $('paPortrait'+side).src=portraitFor(side);
+      team.classList.remove('react','sad');
+      speech.textContent='';speech.hidden=true;
+      state.timer=null;
+    },Math.max(700,Math.min(2400,duration)));
+  }
   // Two equal play areas, one for each side of the board.
   function paSides(host){
     const a=paEl('div','pa-side one'),b=paEl('div','pa-side two');
@@ -4531,6 +4592,7 @@ var qrcode = function() {
     if(PS.game==='rally'){RALLY.on=true;RALLY.idx=0;RALLY.wins=[0,0];RALLY.list=paShuffled(RALLY_POOL);PS.game=RALLY.list[0];}
     const def=PARTY_GAMES[PS.game],stage=RALLY.on?rallyStage(def):(def.stages.find(s=>s.id===def.sel)||def.stages[0]),host=$('paStage');
     PS.ended=false;PS.live=false;PS.paused=false;PS.timers=[];PS.scores=[0,0];PS.elapsed=0;PS.limit=0;PS.stage=stage;
+    paRhythmReset();
     host.replaceChildren();host.className='pa-stage pa-game-'+PS.game;
     $('paOverlay').hidden=true;
     const solo=stage.people===1;
@@ -6718,6 +6780,8 @@ var qrcode = function() {
     const abs=Math.abs(err),kind=abs<=RH_PERFECT?'perfect':abs<=RH_GOOD?'good':'miss';
     if(kind==='miss'){rhMiss(sess,p,x,y);return kind;}
     p[kind]++;p.combo++;p.maxCombo=Math.max(p.maxCombo,p.combo);p.bump=1;
+    if(p.combo===1&&p.maxCombo===1)paRhythmReact(p.side,'happy','좋아, 출발!',1200);
+    else if(p.combo===3||p.combo%10===0)paRhythmReact(p.side,'happy',paRhythmLine(p.side,p.combo>=30?'fever':'combo'),1750);
     const add=(kind==='perfect'?3:1)+(p.combo>=20?1:0);
     p.score+=add;paSetScore(p.side,p.score);
     const big=kind==='perfect';
@@ -6731,7 +6795,8 @@ var qrcode = function() {
     return kind;
   }
   function rhMiss(sess,p,x,y){
-    p.miss++;p.combo=0;p.shake=.16;
+    const prior=p.combo;p.miss++;p.combo=0;p.shake=.16;
+    if(prior>=3||p.miss===1||p.miss%4===0)paRhythmReact(p.side,prior>=3?'sad':'surprised',paRhythmLine(p.side,'miss'),1450);
     sess.pops.push({x,y,text:'놓침',color:'#a7a9c4',size:.9,age:0});
   }
   function rhDrawPops(sess,g,dt){
@@ -7102,7 +7167,7 @@ var qrcode = function() {
         if(!n)return;
         const cx=p.f.x+(lane+.5)*p.f.lw;
         if(n.lane===lane&&n.t-t<=sess.lead*RH_LEAD*.5){n.done=true;n.finished=true;p.flash[lane]=.26;rhJudge(sess,p,n.t>t?Math.min(n.t-t,.07):t-n.t,cx,p.hitY,RH_NEON[lane%8]);sess.hitSound(n);}
-        else{p.combo=0;p.shake=.16;sess.pops.push({x:cx,y:p.hitY-20,text:'삐끗',color:'#ff6b6b',age:0});}
+        else{const prior=p.combo;p.combo=0;p.shake=.16;sess.pops.push({x:cx,y:p.hitY-20,text:'삐끗',color:'#ff6b6b',age:0});if(prior>=3)paRhythmReact(p.side,'surprised',paRhythmLine(p.side,'miss'),1250);}
       }
     });
   }
@@ -7357,6 +7422,7 @@ var qrcode = function() {
       const im=new Image();im.src=characterPortrait(id,'neutral');return im;
     });
     const colors=['#31b69e','#e69a58'];
+    const moodPortraits=portraits.map(im=>({neutral:im}));
     let active=null,cam={x:0,y:0},lastWidth=0,lastHeight=0,stopped=false;
     const left=paEl('button','da-key da-key-a');
     const right=paEl('button','da-key da-key-b');
@@ -7412,6 +7478,11 @@ var qrcode = function() {
       active.hits[ev.owner]+=earned;
       active.score=Math.round(active.rawPoints*300/totalPossible);
       active.combo++;active.best=Math.max(active.best,active.combo);
+      const smileUntil=clockNow()+.95;
+      active.emotes[ev.owner]={mood:'happy',until:smileUntil};
+      if(solo)active.emotes[1-ev.owner]={mood:'happy',until:smileUntil};
+      if(active.combo===1&&active.best===1)paRhythmReact(solo?0:ev.owner,'happy','춤이 시작됐어!',1200);
+      else if(active.combo===3||active.combo%8===0)paRhythmReact(solo?0:ev.owner,'happy',paRhythmLine(ev.owner,active.combo>=24?'fever':'combo'),1750);
       if(perfect)active.perfect++;else active.good++;
       active.fx.push({j:ev.j,age:0,perfect});
       if(active.fx.length>8)active.fx.shift();
@@ -7457,11 +7528,14 @@ var qrcode = function() {
       paEnd(null,detail);
       $('paOverlayTitle').textContent=solo?'혼자 완주!':'둘이서 완주!';
     }
-    function drawOrb(x,y,id,r,g){
+    function drawOrb(x,y,id,r,g,t){
       const color=colors[id];g.save();g.translate(x,y);
       g.fillStyle=color;g.strokeStyle='#32251f';g.lineWidth=.065;
       g.beginPath();g.arc(0,0,r,0,DA_TAU);g.fill();g.stroke();
-      const im=portraits[id];
+      const emotion=active&&active.emotes[id];
+      const mood=emotion&&emotion.until>t?emotion.mood:'neutral';
+      let im=moodPortraits[id][mood];
+      if(!im){im=new Image();im.src=characterPortrait(choices[id],mood);moodPortraits[id][mood]=im;}
       if(im.complete&&im.naturalWidth)g.drawImage(im,-r*.84,-r*.84,r*1.68,r*1.68);
       else{g.fillStyle='#fff';g.font='bold '+r+'px sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(nameFor(id).slice(0,1),0,0);}
       g.restore();
@@ -7496,8 +7570,8 @@ var qrcode = function() {
       }
       g.strokeStyle='rgba(255,234,174,.42)';g.lineWidth=.065;
       g.beginPath();g.arc(center.x,center.y,1,ev.from,angle);g.stroke();
-      drawOrb(center.x,center.y,ev.j%2?1:0,.35,g);
-      drawOrb(moving.x,moving.y,ev.j%2?0:1,.35,g);
+      drawOrb(center.x,center.y,ev.j%2?1:0,.44,g,t);
+      drawOrb(moving.x,moving.y,ev.j%2?0:1,.44,g,t);
       for(const f of d.fx){
         f.age+=dt;const k=clamp(f.age/.42,0,1),p=chart.path[f.j+1];
         g.strokeStyle=f.perfect?'#ffeb83':'#7cecd9';g.globalAlpha=1-k;g.lineWidth=.08;
@@ -7544,7 +7618,7 @@ var qrcode = function() {
       cues.sort((a,b)=>a.time-b.time);
       const audio=rhAudioOk();
       active={song,chart,cues,cue:0,score:0,rawPoints:0,hits:[0,0],next:0,combo:0,best:0,perfect:0,good:0,miss:0,
-        fx:[],message:'',messageUntil:0,done:false,audio,startAudio:ac?ac.currentTime:0,startPerf:performance.now(),
+        fx:[],emotes:[{mood:'neutral',until:0},{mood:'neutral',until:0}],message:'',messageUntil:0,done:false,audio,startAudio:ac?ac.currentTime:0,startPerf:performance.now(),
         lastTick:performance.now(),lastCtx:ac?ac.currentTime:0};
       cam={x:0,y:0};
       paHint(solo?nameFor(0)+'와 '+nameFor(1)+' · 하나의 버튼으로 교대 회전':
@@ -7591,7 +7665,11 @@ var qrcode = function() {
         schedule();
         while(active.next<active.chart.events.length&&t>active.chart.events[active.next].at+DA_GOOD){
           const missed=active.chart.events[active.next];
+          const prior=active.combo;
           active.miss++;active.combo=0;active.next++;
+          active.emotes[missed.owner]={mood:'sad',until:t+1.2};
+          if(solo)active.emotes[1-missed.owner]={mood:'surprised',until:t+1.2};
+          if(prior>=3||active.miss===1||active.miss%3===0)paRhythmReact(solo?0:missed.owner,'sad',paRhythmLine(missed.owner,'miss'),1350);
           feedback('MISS',missed.owner);
           paHint(solo?'다음 발판을 노려요':gamePlayerName((missed.owner+1)%2)+' 차례!');
         }

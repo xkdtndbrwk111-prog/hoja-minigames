@@ -40,6 +40,53 @@
   function paSetScore(side,value){PS.scores[side]=value;$('paScore'+side).textContent=value;}
   function paHint(text){$('paHint').textContent=text;}
   function paTime(text){$('paTime').textContent=text;}
+  // Short original lines keyed by the character chosen for each side.
+  const PA_RHYTHM_LINES={
+    HOJA:{combo:['꼬리도 춤춘다!','박자 타는 호자!'],fever:['왈! 피버다!'],miss:['앗, 발이 꼬였어!','다시 가자!']},
+    NAHANSANG:{combo:['두둠칫, 둠칫!','급식보다 신나!'],fever:['나한상 댄스 폭발!'],miss:['어이쿠, 잠깐!','다시 리듬을 찾아!']},
+    SUMAKSAE:{combo:['방긋방긋 리듬!','웃으면서 한 박자!'],fever:['웃음꽃 피버!'],miss:['앗, 실수했네!','웃으며 다시!']},
+    CHILJIDO_ELDER:{combo:['일곱 박자도 문제없지!','허허, 흥이 나는군!'],fever:['일곱 번 신난다!'],miss:['어허, 엇박자!','다시 맞춰보게!']},
+    MURYEONG_KING:{combo:['왕의 춤을 보아라!','박자를 다스리리라!'],fever:['왕실 피버 타임!'],miss:['이런, 왕의 실수!','다시 시작하노라!']},
+    BANGASAYUSANG:{combo:['생각보다 신나는걸!','음… 완벽한 박자!'],fever:['깨달음의 피버!'],miss:['음, 다시 생각해 보자!','앗, 박자를 놓쳤어!']},
+    GWANGGAETO_KING:{combo:['리듬을 정복한다!','전진! 다음 박자!'],fever:['피버 영토 확장!'],miss:['잠깐 후퇴!','다시 진격이다!']}
+  };
+  const paRhythmLineIndex=[0,0];
+  function paRhythmLine(side,kind){
+    const lines=(PA_RHYTHM_LINES[choices[side]]||PA_RHYTHM_LINES.HOJA)[kind]||PA_RHYTHM_LINES.HOJA.combo;
+    return lines[paRhythmLineIndex[side]++%lines.length];
+  }
+  // One short, non-interactive reaction per rhythm player. The notes never enter the touch lanes.
+  const paRhythmEmotes=[{seq:0,timer:null},{seq:0,timer:null}];
+  function paRhythmReset(){
+    for(let i=0;i<2;i++){
+      const state=paRhythmEmotes[i];
+      state.seq++;clearTimeout(state.timer);state.timer=null;
+      $('paPortrait'+i).src=portraitFor(i);
+      $('paTeam'+i).classList.remove('react','sad');
+      const speech=$('paRhSpeech'+i);
+      speech.textContent='';speech.hidden=true;
+    }
+  }
+  function paRhythmReact(side,mood,line,duration=1450){
+    if(side!==0&&side!==1)return;
+    const state=paRhythmEmotes[side],team=$('paTeam'+side),speech=$('paRhSpeech'+side);
+    const safeMood=['neutral','happy','surprised','sad','angry'].includes(mood)?mood:'neutral';
+    const seq=++state.seq;
+    clearTimeout(state.timer);
+    $('paPortrait'+side).src=portraitFor(side,safeMood);
+    team.classList.remove('react','sad');
+    void team.offsetWidth;
+    if(safeMood==='happy'||safeMood==='surprised')team.classList.add('react');
+    if(safeMood==='sad'||safeMood==='angry')team.classList.add('sad');
+    speech.textContent=String(line||'').slice(0,32);speech.hidden=!speech.textContent;
+    state.timer=setTimeout(()=>{
+      if(state.seq!==seq)return;
+      $('paPortrait'+side).src=portraitFor(side);
+      team.classList.remove('react','sad');
+      speech.textContent='';speech.hidden=true;
+      state.timer=null;
+    },Math.max(700,Math.min(2400,duration)));
+  }
   // Two equal play areas, one for each side of the board.
   function paSides(host){
     const a=paEl('div','pa-side one'),b=paEl('div','pa-side two');
@@ -141,6 +188,7 @@
     if(PS.game==='rally'){RALLY.on=true;RALLY.idx=0;RALLY.wins=[0,0];RALLY.list=paShuffled(RALLY_POOL);PS.game=RALLY.list[0];}
     const def=PARTY_GAMES[PS.game],stage=RALLY.on?rallyStage(def):(def.stages.find(s=>s.id===def.sel)||def.stages[0]),host=$('paStage');
     PS.ended=false;PS.live=false;PS.paused=false;PS.timers=[];PS.scores=[0,0];PS.elapsed=0;PS.limit=0;PS.stage=stage;
+    paRhythmReset();
     host.replaceChildren();host.className='pa-stage pa-game-'+PS.game;
     $('paOverlay').hidden=true;
     const solo=stage.people===1;

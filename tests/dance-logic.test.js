@@ -7,7 +7,7 @@ const noop=()=>{};
 function harness(lag=0,cast=['HOJA','NAHANSANG']){
   let now=1000;
   const nodeList={};
-  const scores=[0,0],stored=[],ended=[],images=[];let begun=0;
+  const scores=[0,0],stored=[],ended=[],images=[],reactions=[];let begun=0;
   const canvasContext=new Proxy({},{
     get(target,key){
       if(key==='createLinearGradient')return ()=>({addColorStop:noop});
@@ -47,6 +47,8 @@ function harness(lag=0,cast=['HOJA','NAHANSANG']){
     document:{addEventListener:noop,removeEventListener:noop},
     PS:{live:true,on:true,ended:false,paused:false},HOF:{cfg:{},players:[10,11]},
     paSetScore:(i,n)=>{scores[i]=n;},paHint:noop,paTime:noop,
+    paRhythmReact:(side,mood,line)=>{reactions.push({side,mood,line});},
+    paRhythmLine:(side,kind)=>({combo:'멋진 콤보!',fever:'피버!',miss:'다시 도전!'})[kind],
     paEnd:(winner,detail)=>{ended.push({winner,detail});env.PS.ended=true;},
     hofRecord:(...args)=>stored.push({kind:'solo',args}),
     hofRecordTeam:(...args)=>stored.push({kind:'duo',args}),
@@ -70,7 +72,7 @@ function harness(lag=0,cast=['HOJA','NAHANSANG']){
     return {run,buttons:host.children[1].children};
   };
   const tap=(button,when)=>button.listeners.pointerdown[0]({timeStamp:when,preventDefault:noop,stopPropagation:noop});
-  return {api,env,scores,stored,ended,images,start,tap,advance,get now(){return now;}};
+  return {api,env,scores,stored,ended,images,reactions,start,tap,advance,get now(){return now;}};
 }
 function validateCharts(){
   const t=harness();
@@ -111,8 +113,10 @@ function validateMode(mode,lag){
     }
     t.tap(buttons[side],now);
     assert.equal(s.next,i+1,'each beat increments exactly once');
+    if(i===0){assert.equal(s.emotes[e.owner].mood,'happy','the dancer smiles on a correct beat');assert.ok(t.reactions.some(x=>x.mood==='happy'),'character speaks at the first beat');}
   }
   assert.equal(s.score,300,'every PERFECT run must score 300 regardless of mode or BPM');
+  assert.ok(t.reactions.some(x=>x.line==='멋진 콤보!'),'long combo must trigger a character line');
   assert.equal(s.perfect,s.chart.events.length);
   t.advance(s.startPerf+(s.chart.end+.7)*1000);
   s.lastTick=t.now-16;
@@ -137,6 +141,8 @@ function validateMiss(){
   run.frame(.016);
   assert.equal(s.next,1);
   assert.equal(s.miss,1);
+  assert.equal(s.emotes[first.owner].mood,'sad','missed beat changes the dancer face');
+  assert.ok(t.reactions.some(x=>x.mood==='sad'&&x.line==='다시 도전!'),'miss must trigger a sympathetic line');
   assert.equal(s.score,0);
   run.stop();
   console.log('PASS: unplayed beat counts as MISS; play continues');
