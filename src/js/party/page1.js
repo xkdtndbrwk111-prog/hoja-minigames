@@ -40,6 +40,38 @@
   function paSetScore(side,value){PS.scores[side]=value;$('paScore'+side).textContent=value;}
   function paHint(text){$('paHint').textContent=text;}
   function paTime(text){$('paTime').textContent=text;}
+  // One short, non-interactive reaction per rhythm player. The notes never enter the touch lanes.
+  const paRhythmEmotes=[{seq:0,timer:null},{seq:0,timer:null}];
+  function paRhythmReset(){
+    for(let i=0;i<2;i++){
+      const state=paRhythmEmotes[i];
+      state.seq++;clearTimeout(state.timer);state.timer=null;
+      $('paPortrait'+i).src=portraitFor(i);
+      $('paTeam'+i).classList.remove('react','sad');
+      const speech=$('paRhSpeech'+i);
+      speech.textContent='';speech.hidden=true;
+    }
+  }
+  function paRhythmReact(side,mood,line,duration=1450){
+    if(side!==0&&side!==1)return;
+    const state=paRhythmEmotes[side],team=$('paTeam'+side),speech=$('paRhSpeech'+side);
+    const safeMood=['neutral','happy','surprised','sad','angry'].includes(mood)?mood:'neutral';
+    const seq=++state.seq;
+    clearTimeout(state.timer);
+    $('paPortrait'+side).src=portraitFor(side,safeMood);
+    team.classList.remove('react','sad');
+    void team.offsetWidth;
+    if(safeMood==='happy'||safeMood==='surprised')team.classList.add('react');
+    if(safeMood==='sad'||safeMood==='angry')team.classList.add('sad');
+    speech.textContent=String(line||'').slice(0,32);speech.hidden=!speech.textContent;
+    state.timer=setTimeout(()=>{
+      if(state.seq!==seq)return;
+      $('paPortrait'+side).src=portraitFor(side);
+      team.classList.remove('react','sad');
+      speech.textContent='';speech.hidden=true;
+      state.timer=null;
+    },Math.max(700,Math.min(2400,duration)));
+  }
   // Two equal play areas, one for each side of the board.
   function paSides(host){
     const a=paEl('div','pa-side one'),b=paEl('div','pa-side two');
@@ -141,6 +173,7 @@
     if(PS.game==='rally'){RALLY.on=true;RALLY.idx=0;RALLY.wins=[0,0];RALLY.list=paShuffled(RALLY_POOL);PS.game=RALLY.list[0];}
     const def=PARTY_GAMES[PS.game],stage=RALLY.on?rallyStage(def):(def.stages.find(s=>s.id===def.sel)||def.stages[0]),host=$('paStage');
     PS.ended=false;PS.live=false;PS.paused=false;PS.timers=[];PS.scores=[0,0];PS.elapsed=0;PS.limit=0;PS.stage=stage;
+    paRhythmReset();
     host.replaceChildren();host.className='pa-stage pa-game-'+PS.game;
     $('paOverlay').hidden=true;
     const solo=stage.people===1;
