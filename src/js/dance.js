@@ -68,6 +68,7 @@
       const im=new Image();im.src=characterPortrait(id,'neutral');return im;
     });
     const colors=['#31b69e','#e69a58'];
+    const moodPortraits=portraits.map(im=>({neutral:im}));
     let active=null,cam={x:0,y:0},lastWidth=0,lastHeight=0,stopped=false;
     const left=paEl('button','da-key da-key-a');
     const right=paEl('button','da-key da-key-b');
@@ -123,6 +124,11 @@
       active.hits[ev.owner]+=earned;
       active.score=Math.round(active.rawPoints*300/totalPossible);
       active.combo++;active.best=Math.max(active.best,active.combo);
+      const smileUntil=clockNow()+.95;
+      active.emotes[ev.owner]={mood:'happy',until:smileUntil};
+      if(solo)active.emotes[1-ev.owner]={mood:'happy',until:smileUntil};
+      if(active.combo===1&&active.best===1)paRhythmReact(solo?0:ev.owner,'happy','춤이 시작됐어!',1200);
+      else if(active.combo===3||active.combo%8===0)paRhythmReact(solo?0:ev.owner,'happy',paRhythmLine(ev.owner,active.combo>=24?'fever':'combo'),1750);
       if(perfect)active.perfect++;else active.good++;
       active.fx.push({j:ev.j,age:0,perfect});
       if(active.fx.length>8)active.fx.shift();
@@ -168,11 +174,14 @@
       paEnd(null,detail);
       $('paOverlayTitle').textContent=solo?'혼자 완주!':'둘이서 완주!';
     }
-    function drawOrb(x,y,id,r,g){
+    function drawOrb(x,y,id,r,g,t){
       const color=colors[id];g.save();g.translate(x,y);
       g.fillStyle=color;g.strokeStyle='#32251f';g.lineWidth=.065;
       g.beginPath();g.arc(0,0,r,0,DA_TAU);g.fill();g.stroke();
-      const im=portraits[id];
+      const emotion=active&&active.emotes[id];
+      const mood=emotion&&emotion.until>t?emotion.mood:'neutral';
+      let im=moodPortraits[id][mood];
+      if(!im){im=new Image();im.src=characterPortrait(choices[id],mood);moodPortraits[id][mood]=im;}
       if(im.complete&&im.naturalWidth)g.drawImage(im,-r*.84,-r*.84,r*1.68,r*1.68);
       else{g.fillStyle='#fff';g.font='bold '+r+'px sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(nameFor(id).slice(0,1),0,0);}
       g.restore();
@@ -207,8 +216,8 @@
       }
       g.strokeStyle='rgba(255,234,174,.42)';g.lineWidth=.065;
       g.beginPath();g.arc(center.x,center.y,1,ev.from,angle);g.stroke();
-      drawOrb(center.x,center.y,ev.j%2?1:0,.35,g);
-      drawOrb(moving.x,moving.y,ev.j%2?0:1,.35,g);
+      drawOrb(center.x,center.y,ev.j%2?1:0,.44,g,t);
+      drawOrb(moving.x,moving.y,ev.j%2?0:1,.44,g,t);
       for(const f of d.fx){
         f.age+=dt;const k=clamp(f.age/.42,0,1),p=chart.path[f.j+1];
         g.strokeStyle=f.perfect?'#ffeb83':'#7cecd9';g.globalAlpha=1-k;g.lineWidth=.08;
@@ -255,7 +264,7 @@
       cues.sort((a,b)=>a.time-b.time);
       const audio=rhAudioOk();
       active={song,chart,cues,cue:0,score:0,rawPoints:0,hits:[0,0],next:0,combo:0,best:0,perfect:0,good:0,miss:0,
-        fx:[],message:'',messageUntil:0,done:false,audio,startAudio:ac?ac.currentTime:0,startPerf:performance.now(),
+        fx:[],emotes:[{mood:'neutral',until:0},{mood:'neutral',until:0}],message:'',messageUntil:0,done:false,audio,startAudio:ac?ac.currentTime:0,startPerf:performance.now(),
         lastTick:performance.now(),lastCtx:ac?ac.currentTime:0};
       cam={x:0,y:0};
       paHint(solo?nameFor(0)+'와 '+nameFor(1)+' · 하나의 버튼으로 교대 회전':
@@ -302,7 +311,11 @@
         schedule();
         while(active.next<active.chart.events.length&&t>active.chart.events[active.next].at+DA_GOOD){
           const missed=active.chart.events[active.next];
+          const prior=active.combo;
           active.miss++;active.combo=0;active.next++;
+          active.emotes[missed.owner]={mood:'sad',until:t+1.2};
+          if(solo)active.emotes[1-missed.owner]={mood:'surprised',until:t+1.2};
+          if(prior>=3||active.miss===1||active.miss%3===0)paRhythmReact(solo?0:missed.owner,'sad',paRhythmLine(missed.owner,'miss'),1350);
           feedback('MISS',missed.owner);
           paHint(solo?'다음 발판을 노려요':gamePlayerName((missed.owner+1)%2)+' 차례!');
         }
