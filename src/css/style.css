@@ -1174,6 +1174,20 @@ html[data-device] #partyScreen.rh-full .display-zone{position:absolute!important
 #partyScreen.rh-full #paStage.pa-rhythm~.pa-menu{top:36%;bottom:auto}
 #partyScreen.rh-full.solo #paStage.pa-rhythm~.pa-menu{left:clamp(8px,1.5vw,24px);right:auto;margin:0}
 
+/* Larger rhythm portraits, but speech never intercepts a touch or covers the beat controls. */
+#partyScreen.rh-stage .avatar-wrap{width:clamp(94px,11vw,198px);height:clamp(94px,17vh,198px);max-height:none;flex:none;align-self:center;overflow:visible}
+#partyScreen.rh-stage .avatar-wrap img{display:block;width:100%;height:100%;object-fit:contain}
+#partyScreen.rh-full .avatar-wrap{width:clamp(100px,11.2vw,205px);height:clamp(100px,11.2vw,205px);max-height:24vh}
+#partyScreen.rh-stage .rh-speech{position:absolute;z-index:6;top:8%;left:calc(100% + 8px);width:max-content;max-width:min(20vw,285px);box-sizing:border-box;padding:clamp(6px,.65vw,12px) clamp(10px,.85vw,17px);border:2px solid #75dfff;border-radius:17px;background:rgba(16,21,54,.96);box-shadow:0 3px 12px #05091599;color:#fff6be;font:900 clamp(15px,1.45vw,26px)/1.18 "HojaBody",sans-serif;white-space:normal;word-break:keep-all;pointer-events:none;text-align:center}
+#partyScreen.rh-stage .team.right .rh-speech{left:auto;right:calc(100% + 8px)}
+#partyScreen.rh-stage .rh-speech[hidden]{display:none!important}
+/* Compact/tablet: faces still emote; no floating words over the players' hands. */
+html[data-device=tablet] #partyScreen.rh-stage .avatar-wrap{width:clamp(74px,12vh,112px);height:clamp(74px,12vh,112px);max-height:none}
+html[data-device=tablet] #partyScreen.rh-full .avatar-wrap{width:clamp(80px,12vmin,132px);height:clamp(80px,12vmin,132px);max-height:20vh}
+html[data-device=tablet] #partyScreen.rh-stage .rh-speech{display:none!important}
+@media(max-width:700px){#partyScreen.rh-stage .rh-speech{display:none!important}}
+@media(prefers-reduced-motion:reduce){#partyScreen.rh-stage .team.react .avatar-wrap img,#partyScreen.rh-stage .team.sad .avatar-wrap img{animation:none!important}}
+
 /* Hands over the edge */
 #menuScreen{position:relative}
 #menuScreen .menu-mascot.left{top:10.03%}
