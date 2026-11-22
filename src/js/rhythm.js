@@ -203,6 +203,8 @@
     const abs=Math.abs(err),kind=abs<=RH_PERFECT?'perfect':abs<=RH_GOOD?'good':'miss';
     if(kind==='miss'){rhMiss(sess,p,x,y);return kind;}
     p[kind]++;p.combo++;p.maxCombo=Math.max(p.maxCombo,p.combo);p.bump=1;
+    if(p.combo===1&&p.maxCombo===1)paRhythmReact(p.side,'happy','좋아, 출발!',1200);
+    else if(p.combo===3||p.combo%10===0)paRhythmReact(p.side,'happy',paRhythmLine(p.side,p.combo>=30?'fever':'combo'),1750);
     const add=(kind==='perfect'?3:1)+(p.combo>=20?1:0);
     p.score+=add;paSetScore(p.side,p.score);
     const big=kind==='perfect';
@@ -216,7 +218,8 @@
     return kind;
   }
   function rhMiss(sess,p,x,y){
-    p.miss++;p.combo=0;p.shake=.16;
+    const prior=p.combo;p.miss++;p.combo=0;p.shake=.16;
+    if(prior>=3||p.miss===1||p.miss%4===0)paRhythmReact(p.side,prior>=3?'sad':'surprised',paRhythmLine(p.side,'miss'),1450);
     sess.pops.push({x,y,text:'놓침',color:'#a7a9c4',size:.9,age:0});
   }
   function rhDrawPops(sess,g,dt){
@@ -587,7 +590,7 @@
         if(!n)return;
         const cx=p.f.x+(lane+.5)*p.f.lw;
         if(n.lane===lane&&n.t-t<=sess.lead*RH_LEAD*.5){n.done=true;n.finished=true;p.flash[lane]=.26;rhJudge(sess,p,n.t>t?Math.min(n.t-t,.07):t-n.t,cx,p.hitY,RH_NEON[lane%8]);sess.hitSound(n);}
-        else{p.combo=0;p.shake=.16;sess.pops.push({x:cx,y:p.hitY-20,text:'삐끗',color:'#ff6b6b',age:0});}
+        else{const prior=p.combo;p.combo=0;p.shake=.16;sess.pops.push({x:cx,y:p.hitY-20,text:'삐끗',color:'#ff6b6b',age:0});if(prior>=3)paRhythmReact(p.side,'surprised',paRhythmLine(p.side,'miss'),1250);}
       }
     });
   }
