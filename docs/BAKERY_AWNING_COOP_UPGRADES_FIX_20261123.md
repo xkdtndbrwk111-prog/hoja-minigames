@@ -24,13 +24,20 @@
 - [x] 싱글 5일 상점/2인 대결/기존 환불 기능은 변경하지 않음.
 
 ## 테스트·배포 체크리스트
-- [ ] `python3 build.py` 및 `--check` PASS
-- [ ] 전체 Node 단위 시험 PASS
-- [ ] 7종×5표정의 실제 WebP 줄무늬 상단 앵커 브라우저 시험 PASS
-- [ ] 협동 2·4인 3개 계산 카드×3개 선택지 보존 및 4해상도 브라우저 시험 PASS
-- [ ] 10초 교체, 구매 실패·확인·중복 구매, 누적 매출 미차감 시험 PASS
-- [ ] 환불 UI·게임 헤드라인 브라우저 회귀 PASS
-- [ ] GitHub PR 병합 및 Pages 배포 PASS
+- [x] `python3 build.py` 및 `--check` PASS
+- [x] 전체 Node 단위 시험 PASS
+- [x] 7종×5표정의 실제 WebP 줄무늬 상단 앵커 브라우저 시험 PASS
+- [x] 협동 2·4인 3개 계산 카드×3개 선택지 보존 및 4해상도 브라우저 시험 PASS
+- [x] 10초 교체, 구매 실패·확인·중복 구매, 누적 매출 미차감 시험 PASS
+- [x] 환불 UI·게임 헤드라인 브라우저 회귀 PASS
+- [x] GitHub PR 병합 및 Pages 배포 PASS
 - [ ] 실제 85인치 전자칠판: 손이 줄무늬 상단을 잡는지, 거스름돈 9버튼·업그레이드 터치, 가독성 실기기 확인
 
 실기기 육안 검수는 자동 시험으로 대신하지 않는다.
+
+## 완료 기록
+- 전체 테스트/브라우저 회귀 PASS: https://github.com/xkdtndbrwk111-prog/hoja-minigames/actions/runs/45169615030
+- 코드 병합 PR #27: https://github.com/xkdtndbrwk111-prog/hoja-minigames/pull/27
+- 병합 커밋: `364ff2a3c324ebda4bf52031dc44d723dc97946d`
+- GitHub Pages 배포 PASS: https://github.com/xkdtndbrwk111-prog/hoja-minigames/actions/runs/45169843754
+- 학교 전자칠판 손 접촉점 및 구매 버튼 실제 터치 검증은 남겨 둔다.
