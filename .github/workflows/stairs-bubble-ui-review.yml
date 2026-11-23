@@ -48,5 +48,7 @@ jobs:
             git config user.name "hoja-build"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git commit -m "build: refresh published game with stairs and bubble UI"
+            git fetch origin fix/stairs-menu-below-timer-20261123
+            git rebase origin/fix/stairs-menu-below-timer-20261123
             git push origin HEAD:fix/stairs-menu-below-timer-20261123
           fi
