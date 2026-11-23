@@ -23,12 +23,12 @@ test('all moods share a fixed horizontal character anchor and seat visible hand 
       context.sz=size;context.cx=cx;context.tz=tz;context.neutral=neutral;context.surprised=surprised;
       const normal=vm.runInNewContext('shCustomerPortraitBox(neutral,neutral,cx,tz,sz)',context);
       const changed=vm.runInNewContext('shCustomerPortraitBox(surprised,neutral,cx,tz,sz)',context);
-      const contact=tz+Math.min(9,tz*.025);
+      const contact=tz-34+Math.min(8,tz*.022);
       assert.ok(Math.abs(normal.x-changed.x)<1e-9,'mood changes must not move character sideways');
       assert.ok(Math.abs(normal.y+size*.86-contact)<1e-8);
       assert.ok(Math.abs(changed.y+size*.94-contact)<1e-8);
       assert.ok(normal.y>0&&changed.y>0,'heads remain on screen');
-      assert.ok(contact>=tz&&contact<tz+10,'hands overlap the counter edge but stay outside the control panels');
+      assert.ok(contact>=tz-34&&contact<tz-25,'hands overlap the TOP of the striped awning rather than the lower wood counter');
     }
   }
 });
