@@ -1,0 +1,47 @@
+name: Bakery striped awning and cooperative upgrades regression
+on:
+  push:
+    branches: [fix/bakery-awning-and-coop-upgrades-20261123]
+    paths:
+      - src/js/bakery.js
+      - tests/bakery-counter-anchor.test.js
+      - tests/bakery-counter-browser.cjs
+      - tests/bakery-coop-upgrades.test.js
+      - tests/bakery-coop-upgrades-browser.cjs
+      - .github/workflows/bakery-awning-coop-upgrades.yml
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Regenerate published HTML exactly
+        run: |
+          python3 build.py
+          python3 build.py --check
+      - name: All Node tests for all games
+        run: node --test tests/*.test.js
+      - name: Install headless Chrome driver
+        run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install --prefix /tmp/hoja-bakery-co-upgrade --no-audit --no-fund --no-package-lock playwright@1.55.0
+      - name: Real alpha portraits on striped awning at four viewports
+        run: NODE_PATH=/tmp/hoja-bakery-co-upgrade/node_modules node tests/bakery-counter-browser.cjs
+      - name: Three cashier cards and 9 choices unchanged with purchased upgrades
+        run: NODE_PATH=/tmp/hoja-bakery-co-upgrade/node_modules node tests/bakery-coop-upgrades-browser.cjs
+      - name: Refund and game overlay browser regressions
+        run: |
+          NODE_PATH=/tmp/hoja-bakery-co-upgrade/node_modules node tests/refund-ui-browser.cjs
+          NODE_PATH=/tmp/hoja-bakery-co-upgrade/node_modules node tests/responsive-headlines-browser.cjs
+      - name: Commit generated distribution file
+        run: |
+          set -euo pipefail
+          git add -- index.html
+          if ! git diff --cached --quiet; then
+            git config user.name "hoja-build"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "build(bakery): striped awning and 10-second cooperative upgrades"
+            git fetch origin fix/bakery-awning-and-coop-upgrades-20261123
+            git rebase origin/fix/bakery-awning-and-coop-upgrades-20261123
+            git push origin HEAD:refs/heads/fix/bakery-awning-and-coop-upgrades-20261123
+          fi

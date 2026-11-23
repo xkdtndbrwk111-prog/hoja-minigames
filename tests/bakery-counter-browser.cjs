@@ -33,7 +33,7 @@ const server=http.createServer((q,r)=>{
       const fixture=window.__customerAnchorFixture;
       const faces=['HOJA','NAHANSANG','SUMAKSAE','CHILJIDO_ELDER','MURYEONG_KING','BANGASAYUSANG','GWANGGAETO_KING'];
       const moods=['neutral','surprised','angry','sad','happy'];
-      const tz=fixture.getTop(),size=tz*.66,expected=tz+Math.min(9,tz*.025);
+      const tz=fixture.getTop(),size=tz*.66,expected=tz-34+Math.min(8,tz*.022);
       const data=[];
       for(const face of faces){
         const neutral=fixture.face(face,'neutral');
