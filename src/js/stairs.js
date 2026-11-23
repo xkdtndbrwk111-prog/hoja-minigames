@@ -313,8 +313,10 @@
     ST.W=1920;ST.H=Math.round(1920*r.height/r.width);
     stCanvas.style.width=r.width+'px';stCanvas.style.height=r.height+'px';
     // Whole-number scaling keeps the pixel tiles even, so this canvas may go up to the full 1920.
-    const dpr=Math.min(window.devicePixelRatio||1,1.5,1920/Math.max(1,r.width)),px=Math.round(r.width*dpr);
-    if(stCanvas.width!==px){stCanvas.width=px;stCanvas.height=Math.round(r.height*dpr);}
+    // The refund strip changes the game height without changing its width.
+    const dpr=Math.min(window.devicePixelRatio||1,1.5,1920/Math.max(1,r.width));
+    const px=Math.round(r.width*dpr),py=Math.round(r.height*dpr);
+    if(stCanvas.width!==px||stCanvas.height!==py){stCanvas.width=px;stCanvas.height=py;}
     stDraw(performance.now(),0);
   }
   let stObserver=null;
