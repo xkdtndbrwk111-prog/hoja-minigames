@@ -22,11 +22,17 @@
 - [x] 실제 7종×5개 표정 = 35개 이미지의 투명도 앵커를 검사하는 브라우저 시험 추가.
 
 ## 검증/배포 체크리스트
-- [ ] `python3 build.py && python3 build.py --check` PASS
-- [ ] 전체 Node 단위 시험 PASS
-- [ ] 1920×1080 / 1366×768 / 1024×768 / 1280×720 실제 캐릭터 35종 앵커 브라우저 PASS
-- [ ] 환불 UI·게임 헤드라인 브라우저 회귀 PASS
-- [ ] GitHub PR 병합 및 GitHub Pages 배포 PASS
+- [x] `python3 build.py && python3 build.py --check` PASS
+- [x] 전체 Node 단위 시험 PASS
+- [x] 1920×1080 / 1366×768 / 1024×768 / 1280×720 실제 캐릭터 35종 앵커 브라우저 PASS
+- [x] 환불 UI·게임 헤드라인 브라우저 회귀 PASS
+- [x] GitHub PR 병합 및 GitHub Pages 배포 PASS
 - [ ] 학교 85인치 전자칠판에서 손·앞발 실물 겹침, 칠지도 장로 등 독특한 실루엣 실화면 확인
 
 **자동 시험 통과만으로 특정 원화의 손가락이 정확히 가판대를 잡은 것처럼 보이는지 판단하지 않는다.** 최종 시각 미세 보정은 화면 검토 후 반영.
+
+## 최종 CI·배포 기록
+- PR #26: https://github.com/xkdtndbrwk111-prog/hoja-minigames/pull/26 (merged `25d8fbfd5394a2dd4fd859aab0b1fc31f47332cf`)
+- Windows/브라우저 실제 35종 WebP 앵커/전체 Node·환불 UI 테스트: `45167196323`, `45167251565` PASS
+- GitHub Pages 배포: `45167463084` PASS.
+- 학교 85인치 전자칠판에서 시각적 손의 밀착 정도 최종 검수 항목은 **미완료**로 유지.
