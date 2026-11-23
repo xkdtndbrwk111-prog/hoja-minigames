@@ -16,11 +16,17 @@
 - [x] 퍼즐버블 대사 크기·오버플로·말풍선 경계 브라우저 시험 추가
 
 ## 검증·배포
-- [ ] `build.py`로 `index.html` 재생성 및 일치 시험
-- [ ] 전체 Node 단위 시험 통과
-- [ ] 1920×1080 / 1366×768 / 1024×768 / 1280×720 퍼즐버블 말풍선 브라우저 검사
-- [ ] 환불 UI·헤드라인 브라우저 회귀 시험 통과
-- [ ] GitHub PR 병합 및 Pages 빌드 완료
+- [x] `build.py`로 `index.html` 재생성 및 일치 시험
+- [x] 전체 Node 단위 시험 통과
+- [x] 1920×1080 / 1366×768 / 1024×768 / 1280×720 퍼즐버블 말풍선 브라우저 검사
+- [x] 환불 UI·헤드라인 브라우저 회귀 시험 통과
+- [x] GitHub PR 병합 및 Pages 빌드 완료
 - [ ] Windows 전자칠판에서 실제 터치 오조작·긴 대사 검증
 
 실기기 사용 전에는 터치 검증을 완료로 표시하지 않는다.
+
+## 검증·배포 기록
+- PR #24 병합 `251c74d550d641f35e842798c55e954ca22b39d3`
+- 전체 UI 검증: https://github.com/xkdtndbrwk111-prog/hoja-minigames/actions/runs/45157967127 (PASS)
+- 병합 후 GitHub Pages 배포: https://github.com/xkdtndbrwk111-prog/hoja-minigames/actions/runs/45158522171 (PASS)
+- 실기기 화면 터치와 조작 실험만 현장 미확인으로 유지.
