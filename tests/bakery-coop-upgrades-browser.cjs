@@ -6,6 +6,8 @@ html=html.replace(anchor,anchor+`
   window.__bakeryUpgradeTest={
     start(mode){if(SH.on)leaveShop();shopStage=mode;enterShop();SH.phase='day';SH.time=0;},
     three(){
+      // The offer is always rendered, but its purchase hitbox is disabled until funded.
+      SH.money=20000;
       SH.co.bags=Array.from({length:3},(_,i)=>({t:{id:1000+i,face:'HOJA'},due:1000+500*i,paid:2000+500*i,change:1000,opts:[500,1000,1500],shake:0}));
       shDraw(performance.now(),0);
       const answers=SH.hits.filter(h=>/^o100[0-2]_/.test(h.key));
