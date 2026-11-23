@@ -482,7 +482,25 @@ button{touch-action:manipulation}
 .b-name{font-family:"HojaTitle","HojaBody",sans-serif;font-size:clamp(16px,1.7vw,33px);line-height:1.1;white-space:nowrap}
 .b-team.one .b-name{color:#2f8c7d}.b-team.two .b-name{color:#c8583f}
 .b-score{font-family:"HojaTitle","HojaBody",sans-serif;font-size:clamp(20px,2.3vw,44px);line-height:1.05;font-variant-numeric:tabular-nums}
-.b-note{font-size:clamp(11px,1vw,20px);min-height:1.2em;line-height:1.2;color:#6d5f4d}
+/* Bubble dialogue: legible comic speech inside each team panel, never a touch target. */
+.b-team .b-note{
+  --bubble-border:#2f9c8c;
+  position:relative;z-index:2;flex:0 0 auto;align-self:center;
+  box-sizing:border-box;width:max-content;max-width:calc(100% - 8px);
+  margin:10px 2px 4px;padding:clamp(6px,.48vw,10px) clamp(8px,.72vw,16px);
+  background:#fffaf0;color:#312820;border:3px solid var(--bubble-border);border-radius:clamp(12px,1.1vw,20px);
+  box-shadow:0 4px 0 #362b2452;
+  font-family:"HojaTitle","HojaBody",sans-serif;font-size:clamp(21px,1.8vw,38px);
+  font-weight:950;line-height:1.16;text-align:center;white-space:normal;word-break:keep-all;overflow-wrap:anywhere;
+  pointer-events:none;
+}
+.b-team.two .b-note{--bubble-border:#e0694f}
+.b-team .b-note:not(:empty)::before{
+  content:"";position:absolute;top:-10px;left:calc(50% - 9px);
+  width:15px;height:15px;background:#fffaf0;transform:rotate(45deg);
+  border-top:3px solid var(--bubble-border);border-left:3px solid var(--bubble-border);
+}
+.b-team .b-note:empty{display:none}
 .b-pending{font-size:clamp(12px,1.05vw,21px);min-height:1.2em;line-height:1.2;color:#c0392b}
 .b-streak{font-size:clamp(11px,1vw,20px);min-height:1em;line-height:1;color:#b4661f}
 .b-menu.control{flex:none;width:92%;min-width:0;min-height:clamp(52px,7.6vh,84px);font-size:clamp(16px,1.35vw,26px)}
