@@ -276,6 +276,14 @@
     g.restore();
     g.fillStyle='#3a2a1a';g.fillRect(x+w-2,0,4,H);
   }
+  // Race timer: centered at H*.30 with a 62px-high plate (bottom H*.30+32).
+  // Keep the pause/menu control directly beneath it, never over the turn/climb touch zone.
+  // Solo has no race clock, but shares this safe upper-screen menu position.
+  function stMenuBounds(){
+    const w=130,h=42,clockBottom=ST.H*.3+32;
+    const controlsTop=ST.H-Math.min(250,ST.H*.23)-14;
+    return {x:ST.W/2-w/2,y:Math.max(8,Math.min(clockBottom+18,controlsTop-h-20)),w,h};
+  }
   function stDraw(now,dt){
     const g=stctx,k=stCanvas.width/ST.W;g.setTransform(k,0,0,k,0,0);
     ST.hits=[];
@@ -291,10 +299,10 @@
       g.fillStyle=warn?'#ffd9cd':'#fff8e8';g.strokeStyle='#3b3229';g.lineWidth=4;g.beginPath();g.roundRect(ST.W/2-74,ST.H*.3-30,148,62,14);g.fill();g.stroke();
       stLabel(g,String(Math.ceil(left)),ST.W/2,ST.H*.3+2,42,warn?'#d4432a':'#3b3229');
     }
-    const mx=ST.W/2-65,my=ST.H-48;
-    g.beginPath();g.roundRect(mx,my,130,42,10);g.fillStyle='#fff8e8';g.fill();g.lineWidth=3;g.strokeStyle='#3b3229';g.stroke();
-    stLabel(g,'메뉴',ST.W/2,my+22,24,'#3b2918');
-    if(ST.phase==='run')ST.hits.push({key:'menu',x:mx-6,y:my-6,w:142,h:54,fn:()=>{sfx('menu',.7);stOpenMenu();}});
+    const {x:mx,y:my,w:mw,h:mh}=stMenuBounds();
+    g.beginPath();g.roundRect(mx,my,mw,mh,10);g.fillStyle='#fff8e8';g.fill();g.lineWidth=3;g.strokeStyle='#3b3229';g.stroke();
+    stLabel(g,'메뉴',ST.W/2,my+mh/2,24,'#3b2918');
+    if(ST.phase==='run')ST.hits.push({key:'menu',x:mx-6,y:my-6,w:mw+12,h:mh+12,fn:()=>{sfx('menu',.7);stOpenMenu();}});
     if(ST.phase==='countdown'){
       const n=Math.max(1,Math.ceil(ST.countdown/.8)),frac=(ST.countdown%.8)/.8;
       g.globalAlpha=.5+.5*frac;stLabel(g,String(n),ST.W/2,ST.H*.42,200+70*frac,'#c0532f','rgba(255,255,255,.95)');g.globalAlpha=1;

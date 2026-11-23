@@ -1,0 +1,54 @@
+name: Stairs menu and puzzle bubble speech regression
+on:
+  push:
+    branches: [fix/stairs-menu-below-timer-20261123]
+    paths:
+      - src/js/stairs.js
+      - src/css/style.css
+      - tests/stairs-menu-position.test.js
+      - tests/bubble-speech-browser.cjs
+      - .github/workflows/stairs-bubble-ui-review.yml
+  pull_request:
+    paths:
+      - src/js/stairs.js
+      - src/css/style.css
+      - tests/stairs-menu-position.test.js
+      - tests/bubble-speech-browser.cjs
+      - .github/workflows/stairs-bubble-ui-review.yml
+permissions:
+  contents: write
+jobs:
+  ui-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: true
+      - name: Rebuild exact published index
+        run: |
+          python3 build.py
+          python3 build.py --check
+      - name: Core unit and generated source tests
+        run: node --test tests/*.test.js
+      - name: Install browser test driver
+        run: |
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install --prefix /tmp/hoja-stairs-bubble --no-audit --no-fund --no-package-lock playwright@1.55.0
+      - name: Puzzle Bubble speech visual geometry regression
+        run: NODE_PATH=/tmp/hoja-stairs-bubble/node_modules node tests/bubble-speech-browser.cjs
+      - name: Refund and responsive UI regression
+        run: |
+          NODE_PATH=/tmp/hoja-stairs-bubble/node_modules node tests/refund-ui-browser.cjs
+          NODE_PATH=/tmp/hoja-stairs-bubble/node_modules node tests/responsive-headlines-browser.cjs
+      - name: Commit generated index on review branch
+        if: github.event_name == 'push' && github.ref == 'refs/heads/fix/stairs-menu-below-timer-20261123'
+        run: |
+          git add -- index.html
+          if ! git diff --cached --quiet; then
+            git config user.name "hoja-build"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "build: refresh published game with stairs and bubble UI"
+            git fetch origin fix/stairs-menu-below-timer-20261123
+            git rebase origin/fix/stairs-menu-below-timer-20261123
+            git push origin HEAD:fix/stairs-menu-below-timer-20261123
+          fi
