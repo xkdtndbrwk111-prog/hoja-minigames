@@ -572,12 +572,14 @@
   }
   // Reuse the transparent-pixel portrait anchors from Infinite Stairs.
   // Center every expression with its neutral portrait, while aligning the visible
-  // bottom of the current expression to the counter lip. This prevents character
+  // bottom of the current expression to the red/white awning's upper edge. This prevents character
   // jitter when a customer changes mood and puts its hands just in front of the stall.
   function shCustomerPortraitBox(im,neutral,cx,tz,size,motionY=0){
     const pose=stPortraitAnchor(im),base=stPortraitAnchor(neutral);
-    const overlap=Math.min(9,tz*.025);
-    return {x:cx-size*base.x,y:tz+overlap-size*pose.y+motionY,w:size,h:size};
+    // The striped red/white awning begins at tz-34, not at the solid wood counter (tz).
+    // The hands should overlap its TOP edge, not land near its lower lip.
+    const awningTop=tz-34,handOverlap=Math.min(8,tz*.022);
+    return {x:cx-size*base.x,y:awningTop+handOverlap-size*pose.y+motionY,w:size,h:size};
   }
   function shDrawCustomers(g,now){
     const {TZ}=SH;
@@ -593,7 +595,7 @@
         if(im.complete&&im.naturalWidth&&neutral.complete&&neutral.naturalWidth){
           const motionY=off*.2+(t.done?t.leave*30:0);
           const box=shCustomerPortraitBox(im,neutral,cx,TZ,size,motionY);
-          // Draw above the baked counter edge; the opaque hands overlap its lip.
+          // Draw above the striped red/white stall rail so the opaque hands grip its top.
           g.drawImage(im,box.x,box.y,box.w,box.h);
         }
         if(!t.done){
