@@ -4,7 +4,7 @@ const anchor='  syncMode();\n  tournamentInit();';
 assert.ok(html.includes(anchor),'bootstrap marker missing');
 html=html.replace(anchor,anchor+`
   window.__bakeryUpgradeTest={
-    start(mode){shopStage=mode;enterShop();SH.phase='day';SH.time=0;},
+    start(mode){if(SH.on)leaveShop();shopStage=mode;enterShop();SH.phase='day';SH.time=0;},
     three(){
       SH.co.bags=Array.from({length:3},(_,i)=>({t:{id:1000+i,face:'HOJA'},due:1000+500*i,paid:2000+500*i,change:1000,opts:[500,1000,1500],shake:0}));
       shDraw(performance.now(),0);
