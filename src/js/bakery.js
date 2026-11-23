@@ -18,6 +18,57 @@
     {id:'special',name:'필살기 강화',desc:'',costs:[10000,16000]},
   ];
   // Each character's special in the bakery. lv holds the strength at upgrade levels 0, 1 and 2; up says what the next level adds.
+  // Cooperative-only upgrades: one offer at a time, replaced every 10 seconds.
+  // Prices use *game-round earnings*, never student coins. Single-shop upgrades stay independent.
+  const SH_CO_UP=[
+    {id:'molds',name:'틀 +1',cost:3000},
+    {id:'fire',name:'센 불',cost:2500},
+    {id:'patience',name:'친절 교육',cost:2000},
+    {id:'tray',name:'완성대 +2',cost:1800},
+    {id:'gold',name:'황금 손맛',cost:2200},
+    {id:'burn',name:'약한 불',cost:1500},
+  ];
+  const shCoLevel=id=>SH.co&&SH.co.up&&SH.co.up[id]?1:0;
+  function shCoPrice(u){return SH.people===2?Math.round(u.cost*.8/100)*100:u.cost;}
+  function shCoOfferNext(){
+    const c=SH.co;
+    if(!c)return;
+    const pool=SH_CO_UP.filter(u=>!c.up[u.id]);
+    if(!pool.length){c.offer=null;c.confirm=null;return;}
+    if(!c.bag.length){
+      c.bag=pool.map(u=>u.id);
+      for(let i=c.bag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[c.bag[i],c.bag[j]]=[c.bag[j],c.bag[i]];}
+      // A new bag cannot repeat the last offer when another is available.
+      if(c.bag.length>1&&c.bag[c.bag.length-1]===c.lastOffer){
+        [c.bag[c.bag.length-1],c.bag[0]]=[c.bag[0],c.bag[c.bag.length-1]];
+      }
+    }
+    let id=c.bag.pop();
+    while(c.up[id]&&c.bag.length)id=c.bag.pop();
+    const offer=SH_CO_UP.find(u=>u.id===id&&!c.up[u.id])||pool[0];
+    c.offer=offer;c.lastOffer=offer.id;c.bought=false;c.confirm=null;
+  }
+  function shCoOfferTick(){
+    const c=SH.co;if(!c)return;
+    const slot=Math.min(11,Math.floor(SH.time/10));
+    if(slot===c.offerSlot)return;
+    c.offerSlot=slot;shCoOfferNext();
+  }
+  function shCoBuy(id,slot){
+    const c=SH.co;if(!c||SH.phase!=='day'||slot!==c.offerSlot||!c.offer||c.offer.id!==id||c.bought)return;
+    const price=shCoPrice(c.offer);
+    if(SH.money<price){sfx('soft',.7);return;}
+    // Two consecutive taps on the same offered item, within two game seconds.
+    // A new 10-second offer slot always clears this confirmation.
+    if(!c.confirm||c.confirm.id!==id||c.confirm.slot!==slot||c.confirm.until<SH.time){
+      c.confirm={id,slot,until:SH.time+2};sfx('menu',.6);return;
+    }
+    c.confirm=null;c.bought=true;c.up[id]=1;SH.money-=price;
+    if(id==='molds')SH.shops[0].molds.push({state:0,t:0,fill:0,q1:2,shake:0,flip:0});
+    if(id==='patience')for(const t of SH.shops[0].tickets)if(!t.done){t.patience*=1.2;t.maxP*=1.2;}
+    sfx('coin',.85);sfx('item',.65,1.2);
+    shFloat(SH.W*.87,SH.H-135,c.offer.name+' 적용!','#167a40',32,1.1);
+  }
   const SH_SP={
     HOJA:{kind:'welcome',name:'사랑의 손님맞이',tip:'모든 손님 기다림이 가득!',lv:[4,7,10],up:['가득 + 4초 멈춤','가득 + 7초 멈춤','가득 + 10초 멈춤']},
     NAHANSANG:{kind:'feast',name:'급식 세 판',tip:'굽던 붕어빵이 한 번에 완성!',lv:[0,1,2],up:['굽던 빵 바로 완성','하나는 황금으로','모두 황금으로']},
@@ -64,11 +115,11 @@
     return im;
   }
   const shWon=n=>n.toLocaleString('ko-KR')+'원';
-  function shCookTime(){return SH_COOK*Math.pow(.85,SH.mode==='solo'?SH.up.fire:0);}
+  function shCookTime(){return SH_COOK*Math.pow(.85,SH.mode==='solo'?SH.up.fire:shCoLevel('fire'));}
   function shPrice(){return 500+(SH.mode==='solo'?SH.up.price*100:0);}
-  function shPatienceMul(){return SH.mode==='solo'?1+SH.up.patience*.25:1;}
-  function shGold(){return SH_GOLD+(SH.mode==='solo'?SH.up.gold*.5:0);}
-  function shBurn(){return SH_BURN+(SH.mode==='solo'?SH.up.burn*.5:0);}
+  function shPatienceMul(){return SH.mode==='solo'?1+SH.up.patience*.25:1+shCoLevel('patience')*.2;}
+  function shGold(){return SH_GOLD+(SH.mode==='solo'?SH.up.gold*.5:shCoLevel('gold')*.5);}
+  function shBurn(){return SH_BURN+(SH.mode==='solo'?SH.up.burn*.5:shCoLevel('burn')*.5);}
   // Upgrades are for the five-day game; a race starts everyone level.
   function shSpLevel(){return SH.mode==='solo'?SH.up.special:0;}
   function shSpOf(s){return SH_SP[choices[s.who]]||SH_SP.HOJA;}
@@ -99,7 +150,9 @@
       SH.dayLen=120;
       const shop=shMakeShop(0,W,4,4,'#2f9c8c','');
       SH.shops=[shop];
-      SH.co={raw:[],cooked:[],bags:[],prep:[0,0,0],packing:null,targets:{2:[10000,20000,32000],4:[10000,22000,38000]}[SH.people]};
+      SH.co={raw:[],cooked:[],bags:[],prep:[0,0,0],packing:null,targets:{2:[10000,20000,32000],4:[10000,22000,38000]}[SH.people],
+        up:{},bag:[],offer:null,offerSlot:0,lastOffer:null,bought:false,confirm:null};
+      shCoOfferNext();
     }
     SH.phase='countdown';SH.countdown=2.4;SH.cShown=0;SH.bgKey='';
   }
@@ -219,7 +272,7 @@
     if(out>=2)shSpark(x,y,out===3?20:8,out===3?['#ffd21f','#fff3c2','#ffffff']:['#ffd25a','#ffffff'],out===3?320:220);
     if(out===3)sfx('coin',.7,1.4);
   }
-  function shTrayCap(){return SH.co?SH_CO_TRAY:SH_TRAY+(SH.mode==='solo'?SH.up.tray*2:0);}
+  function shTrayCap(){return SH.co?SH_CO_TRAY+shCoLevel('tray')*2:SH_TRAY+(SH.mode==='solo'?SH.up.tray*2:0);}
   function shRushTempo(){setBgmTempo(SH.shops.some(o=>o.rush>0)?1.12:1);}
   // A tray full of the wrong buns must not end the day, so one can be thrown away.
   function shThrow(pool,f,x,y){
@@ -428,6 +481,7 @@
     }
     if(SH.phase!=='day')return;
     SH.time+=dt;
+    if(SH.co)shCoOfferTick();
     for(const s of SH.shops)shStepShop(s,dt);
     if(SH.co)shStepCo(dt);
     if(SH.time>=SH.dayLen)shEndRound();
@@ -752,6 +806,24 @@
       if(!c.bags.length)shText(g,'포장이 오면 계산해요',x+w/2,body+bh/2,24,'#a59a85','"HojaBody",sans-serif');
     }
   }
+  function shDrawCoUpgradeFooter(g){
+    const {W,H}=SH,c=SH.co;
+    if(!c)return;
+    const pad=10,cw=(W-pad*5)/4,x=pad+3*(cw+pad)+8,w=cw-16,y=H-64,h=56;
+    shRound(g,x,y,w,h,11,'#fff8e8','#d6a01f',4);
+    if(!c.offer){shText(g,'업그레이드 모두 완료!',x+w/2,y+h/2,24,'#805722');return;}
+    const offer=c.offer,slot=c.offerSlot,price=shCoPrice(offer);
+    const seconds=Math.max(1,Math.ceil((slot+1)*10-SH.time));
+    const confirmed=c.confirm&&c.confirm.id===offer.id&&c.confirm.slot===slot&&c.confirm.until>=SH.time;
+    const affordable=SH.money>=price;
+    shText(g,'★ '+offer.name+' · '+shWon(price),x+155,y+16,22,'#49361e');
+    shText(g,'잔액 '+shWon(SH.money)+' · '+seconds+'초 뒤 교체',x+155,y+42,17,'#786442','"HojaBody",sans-serif');
+    const bx=x+w-116,by=y+6,bw=110,bh=44;
+    const disabled=c.bought||!affordable||SH.phase!=='day';
+    shRound(g,bx,by,bw,bh,10,disabled?'#c9c5b8':confirmed?'#d9573f':'#f1c46e',disabled?'#a29b8d':'#6e4726',3);
+    shText(g,c.bought?'완료':!affordable?'돈 부족':confirmed?'확인!':'구매',bx+bw/2,by+bh/2,22,disabled?'#6f685d':confirmed?'#fffbe9':'#3b2918');
+    if(!disabled)shHitAdd('coUpgrade-'+offer.id+'-'+slot,bx,by,bw,bh,()=>shCoBuy(offer.id,slot));
+  }
   const shFaced=()=>false;
   function shTurnRightHalf(g){
     const w=shCanvas.width,h=shCanvas.height,half=Math.round(w/2);
@@ -792,8 +864,15 @@
       panel(W*.8,430,'내 돈',shWon(SH.money),'#3b3229');
     }else{
       const tg=SH.co.targets,stars=tg.filter(v=>SH.earned>=v).length;
-      panel(W*.2,500,'매출',shWon(SH.earned),'#3b3229');
-      panel(W*.8,430,'목표','★'.repeat(stars)+'☆'.repeat(3-stars)+(stars<3?' '+shWon(tg[stars]):''),'#c98a12');
+      // Reserve the rightmost HUD strip for cashier upgrades WITHOUT shrinking
+      // any of the three calculation cards or their nine answer buttons.
+      panel(240,440,'매출',shWon(SH.earned),'#3b3229');
+      const gx=465,gw=330,gy=H-64;
+      shRound(g,gx,gy,gw,56,12,'#fff8e8','#3b3229',3);
+      shText(g,'목표',gx+50,gy+28,21,'#7a6a54','"HojaBody",sans-serif');
+      const goal='★'.repeat(stars)+'☆'.repeat(3-stars)+(stars<3?' '+shWon(tg[stars]):' 완료');
+      shText(g,goal,gx+208,gy+28,22,'#b48216');
+      shDrawCoUpgradeFooter(g);
     }
     if(!shFaced()){
       shRound(g,W/2-150,H-64,190,56,12,warn?'#ffd9cd':'#fff8e8','#3b3229',3);
