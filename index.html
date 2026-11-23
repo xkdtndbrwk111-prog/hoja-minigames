@@ -11561,6 +11561,15 @@ var qrcode = function() {
       cx+=size*1.5;
     }
   }
+  // Reuse the transparent-pixel portrait anchors from Infinite Stairs.
+  // Center every expression with its neutral portrait, while aligning the visible
+  // bottom of the current expression to the counter lip. This prevents character
+  // jitter when a customer changes mood and puts its hands just in front of the stall.
+  function shCustomerPortraitBox(im,neutral,cx,tz,size,motionY=0){
+    const pose=stPortraitAnchor(im),base=stPortraitAnchor(neutral);
+    const overlap=Math.min(9,tz*.025);
+    return {x:cx-size*base.x,y:tz+overlap-size*pose.y+motionY,w:size,h:size};
+  }
   function shDrawCustomers(g,now){
     const {TZ}=SH;
     for(const s of SH.shops){
@@ -11570,9 +11579,14 @@ var qrcode = function() {
         const rush=clamp(t.patience/t.maxP,0,1);
         const mad=!t.done&&t.angry>0,mood=t.done?(t.happy?'happy':'sad'):mad||rush<.3?'angry':rush<SH_FAST?'surprised':'neutral';
         const cx=s.x+slotW*(t.row+.5)+(mad?Math.sin(now/30)*9:0),off=(1-t.enter)*-120+(t.done?t.leave*-160:0);
-        const size=TZ*.66,im=shFace(t.face,mood);
+        const size=TZ*.66,im=shFace(t.face,mood),neutral=shFace(t.face,'neutral');
         g.save();g.globalAlpha=t.done?1-t.leave:t.enter;
-        if(im.complete&&im.naturalWidth)g.drawImage(im,cx-size/2,TZ-46-size+6-off*-.2+(t.done?t.leave*30:0),size,size);
+        if(im.complete&&im.naturalWidth&&neutral.complete&&neutral.naturalWidth){
+          const motionY=off*.2+(t.done?t.leave*30:0);
+          const box=shCustomerPortraitBox(im,neutral,cx,TZ,size,motionY);
+          // Draw above the baked counter edge; the opaque hands overlap its lip.
+          g.drawImage(im,box.x,box.y,box.w,box.h);
+        }
         if(!t.done){
           const bw=Math.min(slotW*.8,230),bh=62,by=10;
           const rank=shRank(s,t);
