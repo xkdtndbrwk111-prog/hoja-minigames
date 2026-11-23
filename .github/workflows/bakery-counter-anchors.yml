@@ -1,0 +1,44 @@
+name: Bakery customer counter anchors build and regression
+on:
+  push:
+    branches: [fix/bakery-customers-counter-anchor-20261123]
+    paths:
+      - src/js/bakery.js
+      - tests/bakery-counter-anchor.test.js
+      - tests/bakery-counter-browser.cjs
+      - .github/workflows/bakery-counter-anchors.yml
+      - docs/BAKERY_CUSTOMER_COUNTER_ANCHORS_20261123.md
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Rebuild exact published game
+        run: |
+          python3 build.py
+          python3 build.py --check
+      - name: All Node unit tests
+        run: node --test tests/*.test.js
+      - name: Browser regression for actual portrait anchors
+        run: |
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install --prefix /tmp/hoja-bakery-anchor --no-audit --no-fund --no-package-lock playwright@1.55.0
+          NODE_PATH=/tmp/hoja-bakery-anchor/node_modules node tests/bakery-counter-browser.cjs
+      - name: Existing refund/controls browser regression
+        run: |
+          NODE_PATH=/tmp/hoja-bakery-anchor/node_modules node tests/refund-ui-browser.cjs
+          NODE_PATH=/tmp/hoja-bakery-anchor/node_modules node tests/responsive-headlines-browser.cjs
+      - name: Commit regenerated published index to review branch
+        run: |
+          set -euo pipefail
+          git add -- index.html
+          if ! git diff --cached --quiet; then
+            git config user.name "hoja-build"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "build(bakery): regenerate counter-anchored characters"
+            git fetch origin fix/bakery-customers-counter-anchor-20261123
+            git rebase origin/fix/bakery-customers-counter-anchor-20261123
+            git push origin HEAD:refs/heads/fix/bakery-customers-counter-anchor-20261123
+          fi
