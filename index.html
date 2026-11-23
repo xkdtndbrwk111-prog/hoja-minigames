@@ -494,7 +494,25 @@ button{touch-action:manipulation}
 .b-name{font-family:"HojaTitle","HojaBody",sans-serif;font-size:clamp(16px,1.7vw,33px);line-height:1.1;white-space:nowrap}
 .b-team.one .b-name{color:#2f8c7d}.b-team.two .b-name{color:#c8583f}
 .b-score{font-family:"HojaTitle","HojaBody",sans-serif;font-size:clamp(20px,2.3vw,44px);line-height:1.05;font-variant-numeric:tabular-nums}
-.b-note{font-size:clamp(11px,1vw,20px);min-height:1.2em;line-height:1.2;color:#6d5f4d}
+/* Bubble dialogue: legible comic speech inside each team panel, never a touch target. */
+.b-team .b-note{
+  --bubble-border:#2f9c8c;
+  position:relative;z-index:2;flex:0 0 auto;align-self:center;
+  box-sizing:border-box;width:max-content;max-width:calc(100% - 8px);
+  margin:10px 2px 4px;padding:clamp(6px,.48vw,10px) clamp(8px,.72vw,16px);
+  background:#fffaf0;color:#312820;border:3px solid var(--bubble-border);border-radius:clamp(12px,1.1vw,20px);
+  box-shadow:0 4px 0 #362b2452;
+  font-family:"HojaTitle","HojaBody",sans-serif;font-size:clamp(21px,1.8vw,38px);
+  font-weight:950;line-height:1.16;text-align:center;white-space:normal;word-break:keep-all;overflow-wrap:anywhere;
+  pointer-events:none;
+}
+.b-team.two .b-note{--bubble-border:#e0694f}
+.b-team .b-note:not(:empty)::before{
+  content:"";position:absolute;top:-10px;left:calc(50% - 9px);
+  width:15px;height:15px;background:#fffaf0;transform:rotate(45deg);
+  border-top:3px solid var(--bubble-border);border-left:3px solid var(--bubble-border);
+}
+.b-team .b-note:empty{display:none}
 .b-pending{font-size:clamp(12px,1.05vw,21px);min-height:1.2em;line-height:1.2;color:#c0392b}
 .b-streak{font-size:clamp(11px,1vw,20px);min-height:1em;line-height:1;color:#b4661f}
 .b-menu.control{flex:none;width:92%;min-width:0;min-height:clamp(52px,7.6vh,84px);font-size:clamp(16px,1.35vw,26px)}
@@ -12171,6 +12189,14 @@ var qrcode = function() {
     g.restore();
     g.fillStyle='#3a2a1a';g.fillRect(x+w-2,0,4,H);
   }
+  // Race timer: centered at H*.30 with a 62px-high plate (bottom H*.30+32).
+  // Keep the pause/menu control directly beneath it, never over the turn/climb touch zone.
+  // Solo has no race clock, but shares this safe upper-screen menu position.
+  function stMenuBounds(){
+    const w=130,h=42,clockBottom=ST.H*.3+32;
+    const controlsTop=ST.H-Math.min(250,ST.H*.23)-14;
+    return {x:ST.W/2-w/2,y:Math.max(8,Math.min(clockBottom+18,controlsTop-h-20)),w,h};
+  }
   function stDraw(now,dt){
     const g=stctx,k=stCanvas.width/ST.W;g.setTransform(k,0,0,k,0,0);
     ST.hits=[];
@@ -12186,10 +12212,10 @@ var qrcode = function() {
       g.fillStyle=warn?'#ffd9cd':'#fff8e8';g.strokeStyle='#3b3229';g.lineWidth=4;g.beginPath();g.roundRect(ST.W/2-74,ST.H*.3-30,148,62,14);g.fill();g.stroke();
       stLabel(g,String(Math.ceil(left)),ST.W/2,ST.H*.3+2,42,warn?'#d4432a':'#3b3229');
     }
-    const mx=ST.W/2-65,my=ST.H-48;
-    g.beginPath();g.roundRect(mx,my,130,42,10);g.fillStyle='#fff8e8';g.fill();g.lineWidth=3;g.strokeStyle='#3b3229';g.stroke();
-    stLabel(g,'메뉴',ST.W/2,my+22,24,'#3b2918');
-    if(ST.phase==='run')ST.hits.push({key:'menu',x:mx-6,y:my-6,w:142,h:54,fn:()=>{sfx('menu',.7);stOpenMenu();}});
+    const {x:mx,y:my,w:mw,h:mh}=stMenuBounds();
+    g.beginPath();g.roundRect(mx,my,mw,mh,10);g.fillStyle='#fff8e8';g.fill();g.lineWidth=3;g.strokeStyle='#3b3229';g.stroke();
+    stLabel(g,'메뉴',ST.W/2,my+mh/2,24,'#3b2918');
+    if(ST.phase==='run')ST.hits.push({key:'menu',x:mx-6,y:my-6,w:mw+12,h:mh+12,fn:()=>{sfx('menu',.7);stOpenMenu();}});
     if(ST.phase==='countdown'){
       const n=Math.max(1,Math.ceil(ST.countdown/.8)),frac=(ST.countdown%.8)/.8;
       g.globalAlpha=.5+.5*frac;stLabel(g,String(n),ST.W/2,ST.H*.42,200+70*frac,'#c0532f','rgba(255,255,255,.95)');g.globalAlpha=1;
