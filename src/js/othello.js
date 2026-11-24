@@ -197,6 +197,7 @@
     }
   }
   function oNewMatch(){
+    wcStart();
     O.token++;clearTimeout(O.aiTimer);
     const st=O_STAGES.find(s=>s.id===othelloStage);
     O.stage=st;O.geo=oGeometry(st.n,st.holes?oRandomHoles(st.n):[]);
@@ -205,13 +206,10 @@
     O.floats=[];O.sparks=[];O.counted=null;O.banner=null;O.displayed=oCount(O.board);
     O.bgDirty=true;$('oOverlay').hidden=true;
     for(let i=0;i<2;i++){
-      $('oName'+i).textContent=gamePlayerName(i);
+      wcBind($('oName'+i),i,$('oTeam'+i));
       O.faces[i].src=portraitFor(i);
       $('oLabel'+i).textContent=aiLevel&&i===1?'COMPUTER · '+AI_LEVELS[aiLevel].label:i?'PLAYER 2 · 오른쪽':'PLAYER 1 · 왼쪽';
       oMood(i+1,'neutral',aiLevel&&i===1?'컴퓨터 상대':'한 판 해볼까?');
-      const champ=streak.side===i&&streak.id===choices[i]&&streak.count>0;
-      $('oStreak'+i).textContent=champ?(streak.count>=2?streak.count+'연승 중':'챔피언'):'';
-      $('oTeam'+i).classList.toggle('champion',champ);
     }
     oBuildSprites();
     const first=Math.random()<.5?1:2;
@@ -303,10 +301,8 @@
     if(winner<0){
       hofWin('othello',-1);title='무승부!';oMood(1,'surprised','똑같네!');oMood(2,'surprised','다시 붙자!');sfx('goal',.7);
     }else{
-      const repeat=streak.side===winner&&streak.id===choices[winner];
-      streak={side:winner,id:choices[winner],count:repeat?streak.count+1:1};
       hofWin('othello',winner);
-      title=streak.count>=2?`${gamePlayerName(winner)} ${streak.count}연승!`:`${gamePlayerName(winner)} 승리!`;
+      title=`${gamePlayerName(winner)} 승리!`;
       oMood(winner+1,'happy','이겼다!');oMood(2-winner,'sad','아쉬워…');
       sfx('goal',1.1);cheer(1.1);
       oConfetti([SIDE_COLOR[winner],SIDE_GLOW[winner],'#ffe08a','#ffffff']);
