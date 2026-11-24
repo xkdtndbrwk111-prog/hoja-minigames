@@ -103,6 +103,7 @@
   document.querySelectorAll('.emotion-note').forEach(el=>{noteSeen.set(el,el.textContent);noteObs.observe(el,{childList:true,characterData:true,subtree:true});});
   syncMode();
   tournamentInit();
+  installBreakDeadline();
   installGameHeadlineFit();
   if(location.hash==='#debug'){
     window.__hoja={
