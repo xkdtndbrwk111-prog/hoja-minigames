@@ -47,6 +47,7 @@
   function hofSyncViewScope(){
     const key=hofViewKey();if(key===HOF.viewKey)return;
     HOF.viewKey=key;HOF.viewEpoch++;HOF.board=null;HOF.last=null;HOF.lastAt=0;HOF.online=true;
+    if(typeof wcInvalidate==='function')wcInvalidate();
     remember('hof-board','null');
   }
   function hofViewScope(){hofSyncViewScope();return HOF.viewEpoch;}
@@ -99,10 +100,14 @@
   function wcBind(el,i,panel=null,tail=''){
     const binding={el,i,panel,tail};WC.bindings.push(binding);wcPaint(binding);
   }
+  function wcInvalidate(){
+    WC.serial++;WC.winners=new Set();
+    for(const b of WC.bindings)wcPaint(b);
+    WC.bindings=[];
+  }
   async function wcStart(){
-    for(const b of WC.bindings){b.el.classList.remove('wc-name');if(b.panel)b.panel.classList.remove('wc-panel');}
-    WC.bindings=[];WC.winners=new Set();
-    const serial=++WC.serial,epoch=hofViewScope(),code=HOF.cfg?.code,game=currentGame;
+    const epoch=hofViewScope();wcInvalidate();
+    const serial=WC.serial,code=HOF.cfg?.code,game=currentGame;
     WC.scope=HOF.viewKey;WC.game=game;WC.expires=wcWeekEnd();WC.seats=HOF.players.slice();WC.names=Array.from({length:6},(_,i)=>gamePlayerName(i));
     const seats=WC.seats.slice(),roster=JSON.stringify(HOF.cfg?.names);
     if(!WC_GAMES.has(game)||!code||hofQrStale()||!seats.some(s=>Number.isInteger(s)&&s>0&&s<=HOF_MAX))return;
