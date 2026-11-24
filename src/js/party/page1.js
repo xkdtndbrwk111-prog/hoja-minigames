@@ -185,6 +185,7 @@
     $('paPortrait'+w).src=portraitFor(w,'happy');
   }
   function paStart(){
+    wcStart();
     if(PS.game==='rally'){RALLY.on=true;RALLY.idx=0;RALLY.wins=[0,0];RALLY.list=paShuffled(RALLY_POOL);PS.game=RALLY.list[0];}
     const def=PARTY_GAMES[PS.game],stage=RALLY.on?rallyStage(def):(def.stages.find(s=>s.id===def.sel)||def.stages[0]),host=$('paStage');
     PS.ended=false;PS.live=false;PS.paused=false;PS.timers=[];PS.scores=[0,0];PS.elapsed=0;PS.limit=0;PS.stage=stage;
@@ -195,7 +196,7 @@
     $('partyScreen').classList.toggle('solo',solo);
     $('partyScreen').classList.toggle('rh-stage',Boolean(def.rhythm));$('partyScreen').classList.remove('rh-full');
     for(let i=0;i<2;i++){
-      $('paPortrait'+i).src=portraitFor(i);$('paName'+i).textContent=gamePlayerName(i);$('paLabel'+i).textContent=i?'오른쪽':solo?'':'왼쪽';
+      $('paPortrait'+i).src=portraitFor(i);wcBind($('paName'+i),i);$('paLabel'+i).textContent=i?'오른쪽':solo?'':'왼쪽';
       $('paScore'+i).textContent='0';
     }
     $('paCaption').textContent=RALLY.on?`파티 랠리 ${RALLY.idx+1}판 · ${RALLY.wins[0]} : ${RALLY.wins[1]} · ${def.name}`:def.name+' · '+stage.name;
