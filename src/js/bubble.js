@@ -142,30 +142,8 @@
       $('bPending'+i).textContent=p>0?p+'줄 내려와요!':'';
     }
   }
-  // The Hall of Fame's overall weekly champion is based on class roster seats.
-  function bSetChampion(i,champ){
-    $('bTeam'+i).classList.toggle('weekly-champion',champ);
-    $('bName'+i).textContent=(champ?'👑 챔피언 ':'')+gamePlayerName(i);
-  }
-  async function bRefreshChampions(){
-    const token=BB.token,epoch=hofViewScope(),code=HOF.cfg?.code;
-    if(!code||hofQrStale())return;
-    const seats=HOF.players.slice(0,2),roster=JSON.stringify(HOF.cfg.names);
-    if(!seats.some(s=>Number.isInteger(s)&&s>0&&s<=HOF_MAX))return;
-    try{
-      const board=await hofRpc('hof_board',{p_code:code});
-      if(!BB.on||BB.token!==token||!hofScopeCurrent(epoch)||hofQrStale()||
-        roster!==JSON.stringify(HOF.cfg?.names)||!Array.isArray(board?.periods?.week))return;
-      const champions=new Set(hofChampion(board.periods.week).seats);
-      for(let i=0;i<2;i++){
-        const seat=seats[i],name=String(HOF.cfg.names?.[seat-1]||'').trim();
-        const eligible=!(aiLevel&&i===1)&&Number.isInteger(seat)&&seat>0&&seat<=HOF_MAX&&
-          seat===HOF.players[i]&&name&&name===gamePlayerName(i);
-        bSetChampion(i,Boolean(eligible&&champions.has(seat)));
-      }
-    }catch{/* Offline or unverified records: leave the normal nameplates. */}
-  }
   function bNewMatch(){
+    wcStart();
     BB.token++;
     const st=B_STAGES.find(s=>s.id===bubbleStage),seed=Math.floor(Math.random()*1e9);
     BB.stage=st;BB.fields=[bMakeField(0,seed,st),bMakeField(1,seed,st)];
@@ -173,13 +151,12 @@
     BB.result=null;BB.time=0;BB.phase='countdown';BB.countdown=2.4;BB.cShown=0;BB.acc=0;
     $('bOverlay').hidden=true;
     for(let i=0;i<2;i++){
-      bSetChampion(i,false);
+      wcBind($('bName'+i),i,$('bTeam'+i));
       $('bLabel'+i).textContent=aiLevel&&i===1?'COMPUTER · '+AI_LEVELS[aiLevel].label:i?'2P':'1P';
       bNote(i,'neutral','');
     }
     $('bCaption').textContent='HOJA 퍼즐버블 · '+st.name;
     bSyncScores();bBuildSprites();
-    bRefreshChampions();
     setBgmTempo(1);playMood('action');
   }
   function bFire(f){
