@@ -186,18 +186,16 @@
     }
   }
   function gNewMatch(){
+    wcStart();
     GO.token++;clearTimeout(GO.aiTimer);
     const st=G_STAGES.find(s=>s.id===gomokuStage);
     GO.stage=st;GO.n=st.n;GO.board=new Int8Array(st.n*st.n);GO.hover=-1;GO.pid=null;GO.last=-1;GO.win=null;GO.moves=0;GO.timer=0;
     GO.hints=[2,2];GO.undos=2;GO.hintCell=-1;GO.queues=[[],[]];GO.history=[];GO.floats=[];GO.sparks=[];GO.pop=null;GO.fading=[];GO.banner=null;
     GO.bgDirty=true;$('gOverlay').hidden=true;
     for(let i=0;i<2;i++){
-      $('gName'+i).textContent=gamePlayerName(i);
+      wcBind($('gName'+i),i,$('gTeam'+i));
       $('gLabel'+i).textContent=aiLevel&&i===1?'COMPUTER · '+AI_LEVELS[aiLevel].label:i?'PLAYER 2 · 오른쪽':'PLAYER 1 · 왼쪽';
       gMood(i+1,'neutral',aiLevel&&i===1?'컴퓨터 상대':'다섯 줄, 간다!');
-      const champ=streak.side===i&&streak.id===choices[i]&&streak.count>0;
-      $('gStreak'+i).textContent=champ?(streak.count>=2?streak.count+'연승 중':'챔피언'):'';
-      $('gTeam'+i).classList.toggle('champion',champ);
     }
     const first=Math.random()<.5?1:2;
     GO.turn=first;GO.phase='opening';gSyncUI();
@@ -254,8 +252,6 @@
     roundFinish();GO.phase='over';GO.win={line,t0:performance.now(),p};
     const w=p-1;
     if(tournamentResult(w))return;
-    const repeat=streak.side===w&&streak.id===choices[w];
-    streak={side:w,id:choices[w],count:repeat?streak.count+1:1};
     hofWin('gomoku',w);
     gMood(p,'happy','다섯 줄!');gMood(3-p,'sad','아쉬워…');gSyncUI();
     sfx('goal',1.1);sfx('smash',1);cheer(1.1);stopBgm(.4);GO.shake=.2;
@@ -263,7 +259,7 @@
     const W=gCanvas.width;
     for(let k=0;k<150&&GO.sparks.length<320;k++)GO.sparks.push({x:Math.random()*W,y:-Math.random()*W*.3,vx:(Math.random()-.5)*W*.12,vy:W*(.15+Math.random()*.25),ttl:1.5+Math.random()*1.4,c:[SIDE_COLOR[w],SIDE_GLOW[w],'#ffe08a','#ffffff'][k%4],sz:W*(.006+Math.random()*.007),conf:true,rot:Math.random()*6});
     victoryJingle();
-    gResult(streak.count>=2?`${gamePlayerName(w)} ${streak.count}연승!`:`${gamePlayerName(w)} 승리!`,GO.moves+'수 만에 다섯 줄 완성',1500);
+    gResult(`${gamePlayerName(w)} 승리!`,GO.moves+'수 만에 다섯 줄 완성',1500);
   }
   function gResult(title,detail,delay){
     const next=button('다음 도전자 ▶','primary',()=>{leaveGomoku();enterSelection();});
