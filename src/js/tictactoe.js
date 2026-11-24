@@ -113,15 +113,13 @@
     $('ttLeft').textContent=`${rn}판째 · ${rn>=7?'마지막 판':tNeed(rn)+'점 먼저'}`;
   }
   function tNewMatch(){
+    wcStart();
     TT.token++;clearTimeout(TT.aiTimer);
     TT.stage=T_STAGES.find(s=>s.id===tttStage);TT.geo=tGeo(TT.stage.n,TT.stage.k);
     TT.scores=[0,0];TT.round=0;TT.first=Math.random()<.5?1:2;TT.bgDirty=true;$('ttOverlay').hidden=true;
     for(let i=0;i<2;i++){
-      $('ttName'+i).textContent=gamePlayerName(i);
+      wcBind($('ttName'+i),i,$('ttTeam'+i));
       $('ttLabel'+i).textContent=aiLevel&&i===1?'COMPUTER · '+AI_LEVELS[aiLevel].label:i?'PLAYER 2 · 오른쪽':'PLAYER 1 · 왼쪽';
-      const champ=streak.side===i&&streak.id===choices[i]&&streak.count>0;
-      $('ttStreak'+i).textContent=champ?(streak.count>=2?streak.count+'연승 중':'챔피언'):'';
-      $('ttTeam'+i).classList.toggle('champion',champ);
       tMood(i+1,'neutral',aiLevel&&i===1?'컴퓨터 상대':'');
     }
     tNewRound();
@@ -184,11 +182,9 @@
     TT.phase='over';tSync();
     let title='무승부!';
     if(w>=0){
-      const repeat=streak.side===w&&streak.id===choices[w];
-      streak={side:w,id:choices[w],count:repeat?streak.count+1:1};
       hofWin('ttt',w);
       tMood(w+1,'happy','이겼다!');tMood(2-w,'sad','아쉬워…');cheer(1.1);victoryJingle();
-      title=streak.count>=2?`${gamePlayerName(w)} ${streak.count}연승!`:`${gamePlayerName(w)} 승리!`;
+      title=`${gamePlayerName(w)} 승리!`;
     }else{hofWin('ttt',-1);tMood(1,'surprised','막상막하!');tMood(2,'surprised','막상막하!');sfx('goal',.7);}
     const next=button('다음 도전자 ▶','primary',()=>{leaveTtt();enterSelection();});
     const again=button('↻ 바로 재대결','',tNewMatch);
