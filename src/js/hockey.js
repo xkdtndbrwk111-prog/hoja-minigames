@@ -131,6 +131,7 @@
   }
   function resetStage(){stageTime=0;boosted=false;zoneContact=false;drop=null;dropCooldown=4;darkTime=0;darkSide=-1;smashSide=-1;goalWide=[0,0];walls=[0,0];iceTime=0;twin=null;cannonWide=-1;lunch=[];}
   function resetMatch(){
+    wcStart();
     resetStage();resetShots();closeCut();
     scores=[0,0];scoreEls[0].textContent='0';scoreEls[1].textContent='0';
     clock=90;goalSeconds=0;golden=false;matchPointShown=false;serve=null;freeze=0;puckHidden=false;
@@ -140,11 +141,9 @@
     trail=[];particles=[];floats=[];rings=[];flash=null;shake=0;updateRally();syncGauge();
     resetPositions();resetGoalCamp();phase='ready';updateClock();
     syncCharacterUI();
-    $('teamNameLeft').textContent=gamePlayerName(0);
-    $('teamNameRight').textContent=gamePlayerName(1);
+    wcBind($('teamNameLeft'),0,teamEls[0]);
+    wcBind($('teamNameRight'),1,teamEls[1]);
     setMood(0,'neutral','손가락을 올려!');setMood(1,'neutral',aiLevel?'컴퓨터 상대':'손가락을 올려!');
-    for(let i=0;i<2;i++)teamEls[i].classList.toggle('champion',streak.side===i&&streak.id===choices[i]&&streak.count>0);
-    for(let i=0;i<2;i++)$(i?'streakRight':'streakLeft').textContent=(streak.side===i&&streak.id===choices[i]&&streak.count>0)?(streak.count>=2?streak.count+'연승 중':'챔피언'):'';
     hideOverlay();hideGoalBanner();syncStrip();
     faceImages[0].src=portraitFor(0);faceImages[1].src=portraitFor(1);arenaDirty=true;
     setBgmTempo(1);
@@ -194,12 +193,10 @@
     resetShots();closeCut();hideGoalBanner();floats=[];resetGoalCamp();phase='finished';releaseTouches();
     const winner=scores[0]>scores[1]?0:1;
     if(tournamentResult(winner))return;
-    const repeat=streak.side===winner&&streak.id===choices[winner];
-    streak={side:winner,id:choices[winner],count:repeat?streak.count+1:1};
     hofWin('hockey',winner);
     setMood(winner,'happy','이겼다!');setMood(1-winner,'sad','아쉬워…');
     const line=`${scores[0]} : ${scores[1]}   ·   최고 랠리 ${bestRally}   ·   강타 ${stats[0].smash} : ${stats[1].smash}`;
-    const crown=streak.count>=2?`${gamePlayerName(winner)} ${streak.count}연승!`:`${gamePlayerName(winner)} 승리!`;
+    const crown=`${gamePlayerName(winner)} 승리!`;
     const next=button('다음 도전자 ▶','primary',()=>{leaveGame();enterSelection();});
     const again=button('↻ 바로 재대결','',()=>{resetMatch();});
     const home=button('← 모음집','',()=>{streak={side:-1,id:null,count:0};leaveGame();$('menuScreen').hidden=false;$('gameScreen').hidden=true;});
@@ -1232,7 +1229,7 @@
       if(phase!=='ready'){ctx.save();ctx.globalAlpha=.62;text(String(scores[i]),W/2+dir*92,H/2,150,SIDE_COLOR[i]);ctx.restore();}
       ctx.save();ctx.globalAlpha=.75;
       text(time,W/2+dir*204,H/2,38,clock<=15?'#c0532f':'#4a4037');
-      text(gamePlayerName(i),W/2+dir*256,H/2,30,SIDE_COLOR[i]);
+      text(wcName(i),W/2+dir*256,H/2,wcIs(i)?24:30,wcColor(i,SIDE_COLOR[i]));
       ctx.restore();
       // Fills from the child's own end toward the centre line, on both rails so either hand can see it.
       const full=gauge[i]>=GAUGE_MAX,pulse=.5+.5*Math.sin(performance.now()/140),t=RM-14,span=W/2-110;
