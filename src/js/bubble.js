@@ -109,9 +109,9 @@
 
   /* ---------- Puzzle Bubble: match ---------- */
   let bubbleStage='std';
-  const BB={on:false,raf:0,phase:'idle',resume:'playing',stage:null,fields:[],countdown:0,cShown:0,token:0,acc:0,lastT:0,sprites:[],faces:[],result:null,time:0};
+  const BB={on:false,raf:0,phase:'idle',resume:'playing',stage:null,fields:[],countdown:0,cShown:0,token:0,acc:0,lastT:0,sprites:[],dangerSprites:[],faces:[],dangerFaces:[],result:null,time:0};
   const bCanvases=[$('bField0'),$('bField1')],bCtx=bCanvases.map(c=>c.getContext('2d',{alpha:false}));
-  B_FACES.forEach((id,i)=>{const im=new Image();im.addEventListener('load',bBuildSprites);im.src=characterPortrait(id);BB.faces[i]=im;});
+  B_FACES.forEach((id,i)=>{for(const [mood,faces] of [['neutral',BB.faces],['surprised',BB.dangerFaces]]){const im=new Image();im.addEventListener('load',bBuildSprites);faces[i]=im;im.src=characterPortrait(id,mood);}});
   const bIsAI=i=>aiLevel>0&&i===1;
   function bRng(seed){let s=seed>>>0;return ()=>{s=(s+0x6D2B79F5)>>>0;let t=s;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;};}
   function bMakeField(i,seed,stage){
@@ -381,19 +381,20 @@
   /* ---------- Puzzle Bubble: drawing ---------- */
   function bBuildSprites(){
     const S=Math.ceil(bCanvases[0].width/B_W*B_D)||80;
-    BB.sprites=[];
-    for(let v=1;v<=5;v++){
+    BB.sprites=[];BB.dangerSprites=[];
+    for(const [sprites,faces] of [[BB.sprites,BB.faces],[BB.dangerSprites,BB.dangerFaces]])for(let v=1;v<=5;v++){
       const c=document.createElement('canvas');c.width=c.height=S;
       const g=c.getContext('2d'),r=S/2,tint=B_TINT[v-1];
       g.beginPath();g.arc(r,r,r-S*.0225-.5,0,Math.PI*2);g.fillStyle=tint;g.fill();
       g.lineWidth=S*.045;g.strokeStyle='rgba(30,30,40,.55)';g.stroke();
-      const im=BB.faces[v-1];
+      const candidate=faces[v-1];
+      const im=candidate&&candidate.complete&&candidate.naturalWidth?candidate:BB.faces[v-1];
       if(im&&im.complete&&im.naturalWidth){
         const fr=r*.7;g.save();g.beginPath();g.arc(r,r,fr,0,Math.PI*2);g.clip();g.fillStyle='#fff9ee';g.fillRect(0,0,S,S);g.drawImage(im,r-fr*1.15,r-fr*1.15,fr*2.3,fr*2.3);g.restore();
       }
       const shine=g.createRadialGradient(r*.65,r*.5,1,r*.65,r*.5,r*.65);shine.addColorStop(0,'rgba(255,255,255,.55)');shine.addColorStop(1,'rgba(255,255,255,0)');
       g.fillStyle=shine;g.beginPath();g.arc(r,r,r-2,0,Math.PI*2);g.fill();
-      BB.sprites[v]=c;
+      sprites[v]=c;
     }
     const rock=document.createElement('canvas');rock.width=rock.height=S;
     {const g=rock.getContext('2d'),r=S/2;const gr=g.createRadialGradient(r*.7,r*.6,2,r,r,r);gr.addColorStop(0,'#a9a59b');gr.addColorStop(1,'#5a564e');
@@ -408,8 +409,8 @@
       g.fillStyle='#fff';g.font=`${S*.34}px "HojaTitle",sans-serif`;g.textAlign='center';g.textBaseline='middle';g.fillText('펑',r,r*1.1);}
     BB.sprites[B_BOMB]=bomb;
   }
-  function bDrawBall(g,v,x,y,scale=1,alpha=1){
-    const s=BB.sprites[v];if(!s)return;
+  function bDrawBall(g,v,x,y,scale=1,alpha=1,danger=false){
+    const s=(danger&&BB.dangerSprites[v])||BB.sprites[v];if(!s)return;
     const S=B_D*scale;g.globalAlpha=alpha;g.drawImage(s,x-S/2,y-S/2,S,S);g.globalAlpha=1;
   }
   function bText(g,str,x,y,size,color){
@@ -434,7 +435,7 @@
     const slide=f.slide;
     for(let r=0;r<f.rows.length;r++){
       const row=f.rows[r];
-      for(let c=0;c<B_COLS;c++)if(row[c])bDrawBall(g,row[c],bX(f,r,c),bY(r)-slide);
+      for(let c=0;c<B_COLS;c++)if(row[c])bDrawBall(g,row[c],bX(f,r,c),bY(r)-slide,1,1,danger);
     }
     // Pops and falls
     for(let q=f.pops.length-1;q>=0;q--){
@@ -465,19 +466,19 @@
       }
       g.restore();
     }
-    if(f.shot)bDrawBall(g,f.shot.v,f.shot.x,f.shot.y);
+    if(f.shot)bDrawBall(g,f.shot.v,f.shot.x,f.shot.y,1,1,danger);
     // Launcher
     g.save();g.translate(B_W/2,B_LY);
     const base=g.createRadialGradient(0,0,10,0,0,B_D*.95);base.addColorStop(0,f.i===0?'#2f9c8c':'#e0694f');base.addColorStop(1,f.i===0?'#14574f':'#94402d');
     g.fillStyle=base;g.beginPath();g.arc(0,0,B_D*.82,0,Math.PI*2);g.fill();g.lineWidth=6;g.strokeStyle='rgba(255,255,255,.7)';g.stroke();
     g.rotate(f.angle);g.fillStyle='#f3e5c0';g.strokeStyle='#4b3e35';g.lineWidth=5;g.beginPath();g.moveTo(-20,-B_D*.72);g.lineTo(0,-B_D*1.08);g.lineTo(20,-B_D*.72);g.closePath();g.fill();g.stroke();
     g.restore();
-    if(!f.shot&&!f.lost)bDrawBall(g,f.cur,B_W/2,B_LY);
+    if(!f.shot&&!f.lost)bDrawBall(g,f.cur,B_W/2,B_LY,1,1,danger);
     // Next bubble: also the swap button
     const nx=B_W/2+B_D*2.1,ny=B_LY+B_D*.08;
     g.fillStyle='rgba(255,255,255,.72)';g.beginPath();g.arc(nx,ny,B_D*.66,0,Math.PI*2);g.fill();g.lineWidth=4;g.strokeStyle='#4b3e35';g.stroke();
     if(f.swapR>0)f.swapR=Math.max(0,f.swapR-dt*5);
-    bDrawBall(g,f.next,nx,ny,.78+f.swapR*.2);
+    bDrawBall(g,f.next,nx,ny,.78+f.swapR*.2,1,danger);
     if(!bIsAI(f.i)){
       g.font='22px "HojaBody",sans-serif';g.fillStyle='#3b3229';g.textAlign='center';g.textBaseline='middle';
       g.fillText('눌러서 바꾸기',nx,ny+B_D*.82);
