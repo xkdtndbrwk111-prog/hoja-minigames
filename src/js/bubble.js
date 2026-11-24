@@ -142,6 +142,29 @@
       $('bPending'+i).textContent=p>0?p+'줄 내려와요!':'';
     }
   }
+  // The Hall of Fame's overall weekly champion is based on class roster seats.
+  function bSetChampion(i,champ){
+    $('bTeam'+i).classList.toggle('weekly-champion',champ);
+    $('bName'+i).textContent=(champ?'👑 챔피언 ':'')+gamePlayerName(i);
+  }
+  async function bRefreshChampions(){
+    const token=BB.token,epoch=hofViewScope(),code=HOF.cfg?.code;
+    if(!code||hofQrStale())return;
+    const seats=HOF.players.slice(0,2),roster=JSON.stringify(HOF.cfg.names);
+    if(!seats.some(s=>Number.isInteger(s)&&s>0&&s<=HOF_MAX))return;
+    try{
+      const board=await hofRpc('hof_board',{p_code:code});
+      if(!BB.on||BB.token!==token||!hofScopeCurrent(epoch)||hofQrStale()||
+        roster!==JSON.stringify(HOF.cfg?.names)||!Array.isArray(board?.periods?.week))return;
+      const champions=new Set(hofChampion(board.periods.week).seats);
+      for(let i=0;i<2;i++){
+        const seat=seats[i],name=String(HOF.cfg.names?.[seat-1]||'').trim();
+        const eligible=!(aiLevel&&i===1)&&Number.isInteger(seat)&&seat>0&&seat<=HOF_MAX&&
+          seat===HOF.players[i]&&name&&name===gamePlayerName(i);
+        bSetChampion(i,Boolean(eligible&&champions.has(seat)));
+      }
+    }catch{/* Offline or unverified records: leave the normal nameplates. */}
+  }
   function bNewMatch(){
     BB.token++;
     const st=B_STAGES.find(s=>s.id===bubbleStage),seed=Math.floor(Math.random()*1e9);
@@ -150,14 +173,13 @@
     BB.result=null;BB.time=0;BB.phase='countdown';BB.countdown=2.4;BB.cShown=0;BB.acc=0;
     $('bOverlay').hidden=true;
     for(let i=0;i<2;i++){
-      $('bName'+i).textContent=gamePlayerName(i);
+      bSetChampion(i,false);
       $('bLabel'+i).textContent=aiLevel&&i===1?'COMPUTER · '+AI_LEVELS[aiLevel].label:i?'2P':'1P';
       bNote(i,'neutral','');
-      const champ=streak.side===i&&streak.id===choices[i]&&streak.count>0;
-      $('bStreak'+i).textContent=champ?(streak.count>=2?streak.count+'연승 중':'챔피언'):'';
     }
     $('bCaption').textContent='HOJA 퍼즐버블 · '+st.name;
     bSyncScores();bBuildSprites();
+    bRefreshChampions();
     setBgmTempo(1);playMood('action');
   }
   function bFire(f){
@@ -245,16 +267,14 @@
     BB.fields.forEach(f=>{f.shot=null;f.pid=null;f.trace=null;});
     const loser=BB.fields[1-w];
     loser.rows.forEach((row,r)=>row.forEach((v,c)=>{if(v){loser.falls.push({x:bX(loser,r,c),y:bY(r),v,vx:(Math.random()-.5)*260,vy:-120-Math.random()*220,rot:0});row[c]=0;}}));
-    const repeat=streak.side===w&&streak.id===choices[w];
-    streak={side:w,id:choices[w],count:repeat?streak.count+1:1};
     hofWin('bubble',w);
     bNote(w,'happy','이겼다!');bNote(1-w,'sad','아쉬워…');
     sfx('goal',1.1);sfx('boom',.9);cheer(1.1);victoryJingle();
-    const title=streak.count>=2?`${gamePlayerName(w)} ${streak.count}연승!`:`${gamePlayerName(w)} 승리!`;
+    const title=`${gamePlayerName(w)} 승리!`;
     const detail=`${BB.fields[0].score} : ${BB.fields[1].score}점 · ${Math.ceil(BB.time)}초`;
     const next=button('다음 도전자 ▶','primary',()=>{leaveBubble();enterSelection();});
     const again=button('↻ 바로 재대결','',()=>{bNewMatch();});
-    const home=button('← 모음집','',()=>{streak={side:-1,id:null,count:0};leaveBubble();$('menuScreen').hidden=false;playBgm('menu',{gain:.8});});
+    const home=button('← 모음집','',()=>{leaveBubble();$('menuScreen').hidden=false;playBgm('menu',{gain:.8});});
     // Both children are mid-swing when a match ends; hold the buttons off so a stray lift doesn't skip it.
     [next,again,home].forEach(b=>{b.disabled=true;setTimeout(()=>{b.disabled=false;},1900);});
     setTimeout(()=>{if(BB.on&&BB.phase==='over')bOverlay(title,detail,[next,again,home]);},1100);
