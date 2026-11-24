@@ -514,7 +514,8 @@ button{touch-action:manipulation}
 }
 .b-team .b-note:empty{display:none}
 .b-pending{font-size:clamp(12px,1.05vw,21px);min-height:1.2em;line-height:1.2;color:#c0392b}
-.b-streak{font-size:clamp(11px,1vw,20px);min-height:1em;line-height:1;color:#b4661f}
+.b-team.one.weekly-champion,.b-team.two.weekly-champion{background:linear-gradient(145deg,#fff9e5,#ffedb5);border-color:#c9972d;box-shadow:inset 0 0 0 2px #ffeab1,0 0 10px #d3a03c55}
+.b-team.one.weekly-champion .b-name,.b-team.two.weekly-champion .b-name{color:#80500b;white-space:normal;overflow-wrap:anywhere;text-align:center;line-height:1.2;text-shadow:0 1px #fff8df}
 .b-menu.control{flex:none;width:92%;min-width:0;min-height:clamp(52px,7.6vh,84px);font-size:clamp(16px,1.35vw,26px)}
 .b-overlay{position:absolute;left:0;right:0;bottom:0;top:34%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:clamp(8px,1.4vh,18px);background:rgba(32,46,42,.74);color:#fffbe7;padding:12px;z-index:5}
 .b-overlay .overlay-actions{justify-content:center}
@@ -762,7 +763,7 @@ html[data-device=tablet] .b-overlay{top:0}
 html[data-device=tablet] .b-play{gap:6px;padding:6px;box-sizing:border-box}
 html[data-device=tablet] #bField1{transform:rotate(180deg)}
 html[data-device=tablet] .b-center{padding:6px 0;gap:6px}
-html[data-device=tablet] .b-caption,html[data-device=tablet] .b-label,html[data-device=tablet] .b-note,html[data-device=tablet] .b-streak{display:none}
+html[data-device=tablet] .b-caption,html[data-device=tablet] .b-label,html[data-device=tablet] .b-note{display:none}
 html[data-device=tablet] .b-team{padding:4px 2px}
 html[data-device=tablet] .b-team.two{order:-1;transform:rotate(180deg)}
 html[data-device=tablet] .b-name{font-size:clamp(13px,1.9vmin,20px);white-space:normal;word-break:keep-all;text-align:center}
@@ -1705,7 +1706,6 @@ body.hoja-refund-ready #app{height:calc(100dvh - var(--hoja-refund-height));min-
             <div class="avatar-wrap"><img id="bPortrait0" alt=""></div>
             <div class="b-name" id="bName0"></div>
             <div class="b-score" id="bScore0">0</div>
-            <div class="b-streak" id="bStreak0"></div>
             <div class="b-pending" id="bPending0"></div>
             <div class="b-note" id="bNote0"></div>
           </div><div class="b-team two" id="bTeam1">
@@ -1713,7 +1713,6 @@ body.hoja-refund-ready #app{height:calc(100dvh - var(--hoja-refund-height));min-
             <div class="avatar-wrap"><img id="bPortrait1" alt=""></div>
             <div class="b-name" id="bName1"></div>
             <div class="b-score" id="bScore1">0</div>
-            <div class="b-streak" id="bStreak1"></div>
             <div class="b-pending" id="bPending1"></div>
             <div class="b-note" id="bNote1"></div>
           </div></div>
@@ -7914,7 +7913,7 @@ var qrcode = function() {
       hint.textContent='두 캐릭터를 자유롭게 고르세요 · 1인은 두 캐릭터를 혼자, 2인 협동은 한 캐릭터씩 조작합니다.';
       hint.classList.remove('hot');kbSyncGuide();return;
     }
-    if(streak.count>=1&&streak.side>=0&&choices[streak.side]===streak.id){
+    if(currentGame!=='bubble'&&streak.count>=1&&streak.side>=0&&choices[streak.side]===streak.id){
       hint.textContent=streak.count>=2?nameFor(streak.side)+' '+streak.count+'연승 중! 도전자 나와라':'챔피언 '+nameFor(streak.side)+'! 도전자 나와라';hint.classList.add('hot');
     }else{hint.textContent='각자 캐릭터와 경기장을 고르고 시작';hint.classList.remove('hot');}
     kbSyncGuide();
@@ -10601,6 +10600,29 @@ var qrcode = function() {
       $('bPending'+i).textContent=p>0?p+'줄 내려와요!':'';
     }
   }
+  // The Hall of Fame's overall weekly champion is based on class roster seats.
+  function bSetChampion(i,champ){
+    $('bTeam'+i).classList.toggle('weekly-champion',champ);
+    $('bName'+i).textContent=(champ?'👑 챔피언 ':'')+gamePlayerName(i);
+  }
+  async function bRefreshChampions(){
+    const token=BB.token,epoch=hofViewScope(),code=HOF.cfg?.code;
+    if(!code||hofQrStale())return;
+    const seats=HOF.players.slice(0,2),roster=JSON.stringify(HOF.cfg.names);
+    if(!seats.some(s=>Number.isInteger(s)&&s>0&&s<=HOF_MAX))return;
+    try{
+      const board=await hofRpc('hof_board',{p_code:code});
+      if(!BB.on||BB.token!==token||!hofScopeCurrent(epoch)||hofQrStale()||
+        roster!==JSON.stringify(HOF.cfg?.names)||!Array.isArray(board?.periods?.week))return;
+      const champions=new Set(hofChampion(board.periods.week).seats);
+      for(let i=0;i<2;i++){
+        const seat=seats[i],name=String(HOF.cfg.names?.[seat-1]||'').trim();
+        const eligible=!(aiLevel&&i===1)&&Number.isInteger(seat)&&seat>0&&seat<=HOF_MAX&&
+          seat===HOF.players[i]&&name&&name===gamePlayerName(i);
+        bSetChampion(i,Boolean(eligible&&champions.has(seat)));
+      }
+    }catch{/* Offline or unverified records: leave the normal nameplates. */}
+  }
   function bNewMatch(){
     BB.token++;
     const st=B_STAGES.find(s=>s.id===bubbleStage),seed=Math.floor(Math.random()*1e9);
@@ -10609,14 +10631,13 @@ var qrcode = function() {
     BB.result=null;BB.time=0;BB.phase='countdown';BB.countdown=2.4;BB.cShown=0;BB.acc=0;
     $('bOverlay').hidden=true;
     for(let i=0;i<2;i++){
-      $('bName'+i).textContent=gamePlayerName(i);
+      bSetChampion(i,false);
       $('bLabel'+i).textContent=aiLevel&&i===1?'COMPUTER · '+AI_LEVELS[aiLevel].label:i?'2P':'1P';
       bNote(i,'neutral','');
-      const champ=streak.side===i&&streak.id===choices[i]&&streak.count>0;
-      $('bStreak'+i).textContent=champ?(streak.count>=2?streak.count+'연승 중':'챔피언'):'';
     }
     $('bCaption').textContent='HOJA 퍼즐버블 · '+st.name;
     bSyncScores();bBuildSprites();
+    bRefreshChampions();
     setBgmTempo(1);playMood('action');
   }
   function bFire(f){
@@ -10704,16 +10725,14 @@ var qrcode = function() {
     BB.fields.forEach(f=>{f.shot=null;f.pid=null;f.trace=null;});
     const loser=BB.fields[1-w];
     loser.rows.forEach((row,r)=>row.forEach((v,c)=>{if(v){loser.falls.push({x:bX(loser,r,c),y:bY(r),v,vx:(Math.random()-.5)*260,vy:-120-Math.random()*220,rot:0});row[c]=0;}}));
-    const repeat=streak.side===w&&streak.id===choices[w];
-    streak={side:w,id:choices[w],count:repeat?streak.count+1:1};
     hofWin('bubble',w);
     bNote(w,'happy','이겼다!');bNote(1-w,'sad','아쉬워…');
     sfx('goal',1.1);sfx('boom',.9);cheer(1.1);victoryJingle();
-    const title=streak.count>=2?`${gamePlayerName(w)} ${streak.count}연승!`:`${gamePlayerName(w)} 승리!`;
+    const title=`${gamePlayerName(w)} 승리!`;
     const detail=`${BB.fields[0].score} : ${BB.fields[1].score}점 · ${Math.ceil(BB.time)}초`;
     const next=button('다음 도전자 ▶','primary',()=>{leaveBubble();enterSelection();});
     const again=button('↻ 바로 재대결','',()=>{bNewMatch();});
-    const home=button('← 모음집','',()=>{streak={side:-1,id:null,count:0};leaveBubble();$('menuScreen').hidden=false;playBgm('menu',{gain:.8});});
+    const home=button('← 모음집','',()=>{leaveBubble();$('menuScreen').hidden=false;playBgm('menu',{gain:.8});});
     // Both children are mid-swing when a match ends; hold the buttons off so a stray lift doesn't skip it.
     [next,again,home].forEach(b=>{b.disabled=true;setTimeout(()=>{b.disabled=false;},1900);});
     setTimeout(()=>{if(BB.on&&BB.phase==='over')bOverlay(title,detail,[next,again,home]);},1100);
