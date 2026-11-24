@@ -89,7 +89,7 @@
 };
   const lessonPhase=function phase(start,now){if(!Number.isFinite(start))return "idle";const left=start-now;return left<=30000?"close":left<=60000?"warn":"idle";};
   const lessonPick=function pick(table,rng=Math.random){const keys=Object.keys(table);const id=keys[Math.floor(rng()*keys.length)];const [mood,motion,...lines]=table[id];return {id,mood,motion,line:lines[Math.floor(rng()*lines.length)]};};
-  let lessonStart=null,lessonRevision=-1,lessonClosed=false,lessonWarning=false;
+  let lessonStart=null,lessonRevision=-1,lessonClosed=false,lessonWarning=false,lessonEffects=true,lessonAudioAllowed=true;
   let lessonOverlay=null,lessonFuse=null,lessonCount=null,lessonPulseAt=0,lessonFlashUntil=0,lessonNoise=null,lessonNoiseGain=null;
   function lessonDuck(){
     if(!ac||!sfxBus||!bgmBus)return;
@@ -97,7 +97,7 @@
     bgmBus.gain.value=soundMode==='all'?.34*.2:0;
   }
   function lessonTone(){
-    if(!ac||ac.state!=='running'||soundMode==='off')return;
+    if(!lessonAudioAllowed||!ac||ac.state!=='running'||soundMode==='off')return;
     const t=ac.currentTime;
     for(const [offset,amp] of [[0,.30],[.13,.19]]){
       const o=ac.createOscillator(),g=ac.createGain(),at=t+offset;
@@ -107,7 +107,7 @@
     }
   }
   function lessonHiss(){
-    if(!ac||ac.state!=='running'||soundMode==='off'){lessonStopHiss();return;}
+    if(!lessonAudioAllowed||!ac||ac.state!=='running'||soundMode==='off'){lessonStopHiss();return;}
     if(lessonNoise)return;
     const len=ac.sampleRate,buf=ac.createBuffer(1,len,ac.sampleRate),samples=buf.getChannelData(0);
     for(let i=0;i<len;i++)samples[i]=(Math.random()*2-1)*(.45+.55*Math.random());
@@ -158,7 +158,8 @@
     const now=Date.now(),state=lessonPhase(lessonStart,now);
     if(state==='close'){lessonClose();return;}
     if(state==='idle'){if(lessonWarning)lessonClear();return;}
-    lessonWarning=true;lessonShow();lessonDuck();lessonHiss();
+    if(!lessonEffects){if(lessonWarning)lessonClear();return;}
+    lessonWarning=true;lessonShow();if(lessonAudioAllowed){lessonDuck();lessonHiss();}else{lessonStopHiss();applySoundMode();}
     const remaining=Math.max(0,lessonStart-now-30000);
     lessonFuse.style.width=(remaining/300)+'%';lessonCount.textContent='종료까지 '+Math.ceil(remaining/1000)+'초';
     const interval=450+remaining/30000*1050;
@@ -174,6 +175,7 @@
          typeof m.enabled!=='boolean'||(m.lessonStartMs!==null&&!Number.isSafeInteger(m.lessonStartMs)))return;
       lessonRevision=m.revision;
       lessonStart=m.enabled?m.lessonStartMs:null;
+      lessonEffects=m.effects!==false;lessonAudioAllowed=m.audio!==false;
       lessonTick();
     });
     const lessonTimer=setInterval(lessonTick,75);
