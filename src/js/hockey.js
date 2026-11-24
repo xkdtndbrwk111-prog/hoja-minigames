@@ -744,15 +744,19 @@
     burst(x,y,Math.min(6,s/220),['#ffffff','#bfe9df'],200);
     sfx('rail',.3+Math.min(.6,s/1800));
   }
-  // 반가사유상: time runs slow on the owner's half and fast on the other half.
-  function fieldRate(x){
+  // 반가사유상: rate follows travel toward the opposing/own goal, not rink position.
+  function fieldRate(vx){
     if(slowField.time<=0)return 1;
-    const own=slowField.side===0?x<W/2:x>=W/2;
-    return own?SLOW_OWN:SLOW_FOE;
+    const forward=slowField.side===0?vx:-vx;
+    if(Math.abs(forward)<.01)return 1;
+    return forward>0?SLOW_FOE:SLOW_OWN;
+  }
+  function puckBrightness(x){
+    return darkTime>0&&(darkSide===0?x<W/2:x>=W/2)?0.5:1;
   }
   // The second puck from the twin item: real (it scores), simpler physics, gone after a few seconds.
   function stepTwin(dt){
-    const b=twin,bdt=dt*fieldRate(b.x);
+    const b=twin,bdt=dt*fieldRate(b.vx);
     b.ttl-=dt;
     if(b.ttl<=0){burst(b.x,b.y,12,['#ffffff','#d9d2bf'],300);sfx('soft',.6);twin=null;return false;}
     b.x+=b.vx*bdt;b.y+=b.vy*bdt;
@@ -804,7 +808,7 @@
     if(iceTime>0)iceTime=Math.max(0,iceTime-dt);
     if(cannonWide>=0&&!shot.cannon)cannonWide=-1;
 
-    const pdt=dt*fieldRate(puck.x);
+    const pdt=dt*fieldRate(puck.vx);
     const ox=puck.x,oy=puck.y;
     puck.x+=puck.vx*pdt;puck.y+=puck.vy*pdt;
 
@@ -859,7 +863,7 @@
     for(let k=ghosts.length-1;k>=0;k--){
       const g=ghosts[k];
       // The decoys survive launch next to the attacker's mallet, and follow the real puck's air drag.
-      const gdt=dt*fieldRate(g.x);
+      const gdt=dt*fieldRate(g.vx);
       g.x+=g.vx*gdt;g.y+=g.vy*gdt;g.ttl-=dt;g.grace=Math.max(0,g.grace-dt);
       const drag=Math.pow(.88,gdt);g.vx*=drag;g.vy*=drag;
       if(g.y<R||g.y>H-R){g.y=clamp(g.y,R,H-R);g.vy*=-1;}
@@ -1095,15 +1099,17 @@
       ctx.restore();
     }
     if(slowField.time>0){
-      const i=slowField.side,x=i===0?0:W/2,fx=i===0?W/2:0,dir=i===0?1:-1;
-      ctx.save();ctx.globalAlpha=.16;ctx.fillStyle='#6f7fd8';ctx.fillRect(x,0,W/2,H);
-      ctx.globalAlpha=.3;ctx.strokeStyle='#5a6bd0';ctx.lineWidth=3;
-      for(let k=0;k<3;k++){const r=((stageTime*50+k*90)%270)+20;ctx.beginPath();ctx.arc(i===0?W/4:W*.75,H/2,r,0,Math.PI*2);ctx.stroke();}
-      // The other half runs fast: warm tint and streaks rushing toward that side's goal.
-      ctx.globalAlpha=.13;ctx.fillStyle='#ff9a3d';ctx.fillRect(fx,0,W/2,H);
-      ctx.globalAlpha=.35;ctx.strokeStyle='#ff8a2a';ctx.lineWidth=5;ctx.lineCap='round';
-      for(let k=0;k<9;k++){const y=H*(k+.5)/9,len=90,base=fx+((stageTime*520+k*137)%(W/2));const sx=dir>0?base:fx+W/2-(base-fx);
-        ctx.beginPath();ctx.moveTo(sx,y);ctx.lineTo(sx-dir*len,y);ctx.stroke();}
+      const dir=slowField.side===0?1:-1;
+      // Directional streaks span the full rink: warm toward foe, cool toward owner.
+      ctx.save();ctx.lineCap='round';ctx.lineWidth=5;
+      for(let k=0;k<9;k++){
+        const y=H*(k+.5)/9,len=70;
+        const fast=(stageTime*520+k*137)%W,slow=(stageTime*160+k*173)%W;
+        const fx=dir>0?fast:W-fast,sx=dir>0?W-slow:slow;
+        ctx.globalAlpha=.25;ctx.strokeStyle='#ff8a2a';
+        ctx.beginPath();ctx.moveTo(fx,y);ctx.lineTo(fx-dir*len,y);ctx.stroke();
+        ctx.strokeStyle='#5a6bd0';ctx.beginPath();ctx.moveTo(sx,y+20);ctx.lineTo(sx+dir*len,y+20);ctx.stroke();
+      }
       ctx.restore();
     }
     if(conquer.time>0){
@@ -1174,6 +1180,8 @@
   }
   function drawPuck(x,y,owner=-1){
     // Keep real and fake puck pixels, owner rings and opacity identical.
+    ctx.save();
+    if(puckBrightness(x)<1)ctx.filter='brightness(50%)';
     if(owner>=0&&!serve){
       ctx.save();ctx.globalAlpha=.85;ctx.strokeStyle=SIDE_COLOR[owner];ctx.lineWidth=6;
       ctx.beginPath();ctx.arc(x,y,R+7,0,Math.PI*2);ctx.stroke();ctx.restore();
@@ -1184,6 +1192,7 @@
     else{ctx.beginPath();ctx.arc(x,y,R,0,Math.PI*2);ctx.fillStyle='#efdaab';ctx.fill();}
     // The sprite is pale on a pale table; a dark edge keeps it readable from the back of the room.
     ctx.strokeStyle='#2b2320';ctx.lineWidth=4.5;ctx.beginPath();ctx.arc(x,y,R,0,Math.PI*2);ctx.stroke();
+    ctx.restore();
     ctx.restore();
   }
   function text(str,x,y,size,color,stroke,font){
