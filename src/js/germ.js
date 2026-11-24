@@ -133,17 +133,15 @@
     $('gxLeft').textContent='빈칸 '+left;
   }
   function xNewMatch(){
+    wcStart();
     GX.token++;clearTimeout(GX.aiTimer);
     const st=X_STAGES.find(s=>s.id===germStage);
     GX.stage=st;GX.geo=xGeo(st.n);GX.board=xStart(st);GX.show=Int8Array.from(GX.board);
     GX.sel=-1;GX.hover=-1;GX.pid=null;GX.dragFrom=-1;GX.hints=[2,2];GX.undos=2;GX.hint=null;GX.history=[];GX.anim=[];GX.hop=null;GX.jumpRun=0;GX.last=-1;GX.banner=null;GX.sparks=[];GX.floats=[];
     GX.displayed=xCount(GX.board);GX.bgDirty=true;$('gxOverlay').hidden=true;
     for(let i=0;i<2;i++){
-      $('gxName'+i).textContent=gamePlayerName(i);GX.faces[i].src=portraitFor(i);
+      wcBind($('gxName'+i),i,$('gxTeam'+i));GX.faces[i].src=portraitFor(i);
       $('gxLabel'+i).textContent=aiLevel&&i===1?'COMPUTER · '+AI_LEVELS[aiLevel].label:i?'PLAYER 2 · 오른쪽':'PLAYER 1 · 왼쪽';
-      const champ=streak.side===i&&streak.id===choices[i]&&streak.count>0;
-      $('gxStreak'+i).textContent=champ?(streak.count>=2?streak.count+'연승 중':'챔피언'):'';
-      $('gxTeam'+i).classList.toggle('champion',champ);
       xMood(i+1,'neutral',aiLevel&&i===1?'컴퓨터 상대':'퍼뜨려 보자!');
     }
     xBuildSprites();
@@ -216,10 +214,8 @@
     const line=`${a} : ${d}`+(note?'   ·   '+note:'');
     let title='무승부!';
     if(w>=0){
-      const repeat=streak.side===w&&streak.id===choices[w];
-      streak={side:w,id:choices[w],count:repeat?streak.count+1:1};
       hofWin('germ',w);
-      title=streak.count>=2?`${gamePlayerName(w)} ${streak.count}연승!`:`${gamePlayerName(w)} 승리!`;
+      title=`${gamePlayerName(w)} 승리!`;
       xMood(w+1,'happy','판을 뒤덮었다!');xMood(2-w,'sad','아쉬워…');cheer(1.1);victoryJingle();
     }else{hofWin('germ',-1);xMood(1,'surprised','똑같아!');xMood(2,'surprised','다시 붙자!');sfx('goal',.7);}
     const next=button('다음 도전자 ▶','primary',()=>{leaveGerm();enterSelection();});
