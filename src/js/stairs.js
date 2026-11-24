@@ -26,6 +26,7 @@
   }
   const stName=i=>gamePlayerName(i);
   function stNew(){
+    wcStart();
     hofRefresh();
     const st=ST_STAGES.find(s=>s.id===stairsStage);
     ST.n=st.n;ST.solo=st.n===1;ST.xs=[0];ST.nextDir=undefined;ST.rng=bRng(Math.floor(Math.random()*1e9));
@@ -82,11 +83,6 @@
     if(leaders.length>1)title='공동 1등!';
     else{
       title=`${stName(leaders[0].i)} 1등!`;
-      if(ST.n===2){
-        const w=leaders[0].i,repeat=streak.side===w&&streak.id===choices[w];
-        streak={side:w,id:choices[w],count:repeat?streak.count+1:1};
-        if(streak.count>=2)title=`${stName(w)} ${streak.count}연승!`;
-      }
     }
     sfx('goal',1.1);cheer(1.1);victoryJingle();
     const detail=rank.map((p,k)=>`${k+1}등 ${stName(p.i)} ${p.idx}층`).join('   ·   ');
@@ -248,8 +244,8 @@
     }
     // Where the next step goes is shown on the character's foot, for reading the stairs at speed.
     const hud=Math.min(44,w*.1);
-    g.fillStyle='rgba(255,250,235,.92)';g.beginPath();g.roundRect(x+8,8,w-16,hud*2.3,12);g.fill();
-    stLabel(g,ST.n===1?'층수':stName(p.i),x+w/2,8+hud*.55,hud*.62,'#6a5e50');
+    g.fillStyle=wcIs(p.i)?'#ffedb5':'rgba(255,250,235,.92)';g.beginPath();g.roundRect(x+8,8,w-16,hud*2.3,12);g.fill();
+    stLabel(g,wcName(p.i),x+w/2,8+hud*.55,hud*(wcIs(p.i)?.5:.62),wcColor(p.i,'#6a5e50'));
     stLabel(g,p.idx+'층',x+w/2,8+hud*1.55,hud*1.15,'#3b3229');
     if(ST.solo){
       const gx=x+w*.2,gw=w*.6,gy=8+hud*2.3+10,hgt=26;
