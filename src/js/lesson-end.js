@@ -141,6 +141,11 @@
   function lessonClose(){
     if(lessonClosed)return;lessonClosed=true;lessonClear();
     const cue=lessonPick(LESSON_LINES);
+    const stem=cue.id.toLowerCase();
+    const portrait=mood=>EMBED_ASSETS['portraits/'+stem+'_'+MOOD_FILE[mood]+'.webp']||null;
+    cue.portrait=portrait(cue.mood);
+    if(cue.id==='CHILJIDO_ELDER')cue.sleepPortrait=portrait('neutral');
+    if(cue.id==='HOJA')cue.sadPortrait=portrait('sad');
     document.body.inert=true;
     // Existing manual/routine close contract: roundClose is idempotent; recovery
     // persists unsettled refunds. Host must immediately unmount this iframe.
