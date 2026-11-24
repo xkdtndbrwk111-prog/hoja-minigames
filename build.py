@@ -46,6 +46,7 @@ MAIN_JS = [
     'js/hall-of-fame.js',
     'js/coins.js',            # play limits, dashboard coins, class setup screens
     'js/tournament.js',       # shared tournament bracket and adapters
+    'js/break-deadline.js',   # dashboard-only break deadline adapter
     'js/controls.js',         # menu buttons, start-up, #debug hook (window.__hoja)
 ]
 
