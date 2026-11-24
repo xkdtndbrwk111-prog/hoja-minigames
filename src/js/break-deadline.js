@@ -21,17 +21,32 @@
   }
   function installBreakDeadline(){
     if(!EMBED)return;
-    let classStartAt=null,revision=-1,timer=null,closed=false,overlay=null,fill=null,label=null,nextPulse=0,warning=false,audible=true;
+    let classStartAt=null,revision=-1,timer=null,closed=false,overlay=null,fill=null,label=null,fusePath=null,fuseSpark=null,nextPulse=0,nextCrackle=0,warning=false,audible=true;
     function clearWarning(){
-      if(overlay){overlay.remove();overlay=fill=label=null;}
+      if(overlay){overlay.remove();overlay=fill=label=fusePath=fuseSpark=null;}
       if(warning){warning=false;applySoundMode();}
-      nextPulse=0;
+      nextPulse=nextCrackle=0;
+    }
+    function crackle(){
+      if(!ac||!sfxBus||soundMode==='off'||ac.state!=='running')return;
+      try{const duration=.055,b=ac.createBuffer(1,Math.ceil(ac.sampleRate*duration),ac.sampleRate),d=b.getChannelData(0);
+        for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/d.length*5);
+        const src=ac.createBufferSource(),filter=ac.createBiquadFilter(),gain=ac.createGain();src.buffer=b;filter.type='bandpass';filter.frequency.value=2400;filter.Q.value=.75;gain.gain.value=.055;
+        src.connect(filter);filter.connect(gain);gain.connect(sfxBus);src.start();
+      }catch{}
     }
     function drawWarning(now){
       if(!overlay){
         overlay=document.createElement('div');
         overlay.id='hojaBreakWarning';
         overlay.style.cssText='position:fixed;inset:0;z-index:2147483646;pointer-events:none;box-shadow:inset 0 0 25px #e55239;border:4px solid #e55239;display:flex;justify-content:center;align-items:flex-start;padding-top:10px;';
+        const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
+        svg.setAttribute('viewBox','0 0 1000 1000');svg.setAttribute('preserveAspectRatio','none');svg.style.cssText='position:absolute;inset:0;width:100%;height:100%;overflow:visible;';
+        const pathData='M 8 8 H 992 V 992 H 8 Z';
+        const track=document.createElementNS(ns,'path');track.setAttribute('d',pathData);track.setAttribute('fill','none');track.setAttribute('stroke','#54362b');track.setAttribute('stroke-width','6');track.setAttribute('vector-effect','non-scaling-stroke');
+        fusePath=document.createElementNS(ns,'path');fusePath.setAttribute('d',pathData);fusePath.setAttribute('fill','none');fusePath.setAttribute('stroke','#ffc65e');fusePath.setAttribute('stroke-width','4');fusePath.setAttribute('pathLength','100');
+        fuseSpark=document.createElementNS(ns,'circle');fuseSpark.setAttribute('r','7');fuseSpark.setAttribute('fill','#fff4a0');fuseSpark.style.filter='drop-shadow(0 0 6px #ff7130)';
+        svg.append(track,fusePath,fuseSpark);overlay.append(svg);
         const panel=document.createElement('div');
         panel.style.cssText='background:#30201e;color:white;border-radius:14px;padding:8px 16px;min-width:230px;text-align:center;font-size:clamp(14px,2vw,22px);box-shadow:0 2px 10px #0006;';
         label=document.createElement('div');label.setAttribute('role','status');label.setAttribute('aria-live','off');
@@ -44,12 +59,17 @@
       const message='게임 종료 '+Math.ceil(remaining/1000)+'초 전';
       if(label.textContent!==message)label.textContent=message;
       fill.style.width=(ratio*100)+'%';
+      const burned=(1-ratio)*100;
+      fusePath.setAttribute('stroke-dasharray','0 '+burned+' '+(ratio*100)+' 100');
+      const progress=(1-ratio)*4,side=Math.min(3,Math.floor(progress)),along=Math.min(1,progress-side),corners=[[8+984*along,8],[992,8+984*along],[992-984*along,992],[8,992-984*along]];
+      fuseSpark.setAttribute('cx',String(corners[side][0]));fuseSpark.setAttribute('cy',String(corners[side][1]));
       const reduce=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
       const period=1000+Math.round(ratio*1000);
       const pulse=reduce?1:.75+.25*Math.sin(now/period*Math.PI*2);
       overlay.style.borderColor='rgba(229,82,57,'+pulse+')';
       if(ac&&bgmBus&&soundMode==='all')bgmBus.gain.value=.14;
       if(now>=nextPulse){nextPulse=now+period;if(audible)sfx('low',.35);}
+      if(now>=nextCrackle){nextCrackle=now+200+Math.round(ratio*250);if(audible)crackle();}
     }
     function finish(){
       if(closed)return;
