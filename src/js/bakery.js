@@ -129,6 +129,7 @@
   }
   /* ---------- Bungeoppang shop: flow ---------- */
   function shNewGame(){
+    wcStart();
     const st=SH_STAGES.find(s=>s.id===shopStage);
     // A removed selection must never launch an undefined stage.
     SH.mode=st?st.id:'solo';SH.people=st?st.people||0:0;
@@ -411,9 +412,7 @@
       hofRecord('shop_vs2',0,a);hofRecord('shop_vs2',1,b);
       let title='무승부!';
       if(w>=0){
-        const repeat=streak.side===w&&streak.id===choices[w];
-        streak={side:w,id:choices[w],count:repeat?streak.count+1:1};
-        title=streak.count>=2?`${gamePlayerName(w)} ${streak.count}연승!`:`${gamePlayerName(w)} 승리!`;
+        title=`${gamePlayerName(w)} 승리!`;
       }
       SH.winner=w;sfx('goal',1.1);cheer(1);victoryJingle();
       shResult(title,`${shWon(a)} : ${shWon(b)}`,[['다음 도전자 ▶','primary',()=>{leaveShop();enterSelection();}],['↻ 바로 재대결','',shNewGame],['← 모음집','',shHome]]);
@@ -736,13 +735,14 @@
   function shDrawCo(g,now){
     const {TZ,H,W}=SH,c=SH.co,s=SH.shops[0],colors=SH_CO_COLORS[SH.people],
       names=['① 반죽','② 굽기','③ 포장','④ 계산'].map((label,i)=>
-        SH.people===4?label+' · '+gamePlayerName(i):label);
+        label+' · '+wcName(SH.people===4?i:Math.floor(i/2)));
     const pad=10,top=TZ+8,bot=H-72,cw=(W-pad*5)/4,head=46;
     for(let i=0;i<4;i++){
       const x=pad+i*(cw+pad);
       shRound(g,x,top,cw,bot-top,16,'rgba(255,248,232,.92)',colors[i],5);
-      shRound(g,x,top,cw,head,{tl:14,tr:14,bl:0,br:0},colors[i],null);
-      shText(g,names[i],x+cw/2,top+head/2+1,28,'#fff');
+      const player=SH.people===4?i:Math.floor(i/2),champ=wcIs(player);
+      shRound(g,x,top,cw,head,{tl:14,tr:14,bl:0,br:0},champ?'#ffdc83':colors[i],null);
+      shText(g,names[i],x+cw/2,top+head/2+1,champ?21:24,champ?'#80500b':'#fff');
     }
     const body=top+head+8,bh=bot-body-8;
     // ① Batter station
@@ -850,14 +850,14 @@
     const {W,H,TZ}=SH;
     const left=Math.max(0,SH.dayLen-SH.time),warn=left<=10&&SH.phase==='day';
     const timeText=`${Math.floor(Math.ceil(left)/60)}:${String(Math.ceil(left)%60).padStart(2,'0')}`;
-    const panel=(cx,w,label,value,color)=>{
-      shRound(g,cx-w/2,H-64,w,56,12,'#fff8e8','#3b3229',3);
-      shText(g,label,cx-w/2+Math.min(72,w*.24),H-36,22,'#7a6a54','"HojaBody",sans-serif');
+    const panel=(cx,w,label,value,color,player=-1)=>{
+      shRound(g,cx-w/2,H-64,w,56,12,player>=0&&wcIs(player)?'#ffedb5':'#fff8e8','#3b3229',3);
+      shText(g,label,cx-w/2+Math.min(72,w*.24),H-36,player>=0&&wcIs(player)?17:22,player>=0?wcColor(player,'#7a6a54'):'#7a6a54','"HojaBody",sans-serif');
       shText(g,value,cx+Math.min(46,w*.14),H-36,30,color);
     };
     if(SH.mode==='versus'){
-      panel(W*.25,430,gamePlayerName(0),shWon(SH.shops[0].earned),SIDE_COLOR[0]);
-      panel(W*.75,430,gamePlayerName(1),shWon(SH.shops[1].earned),SIDE_COLOR[1]);
+      panel(W*.25,430,wcName(0),shWon(SH.shops[0].earned),SIDE_COLOR[0],0);
+      panel(W*.75,430,wcName(1),shWon(SH.shops[1].earned),SIDE_COLOR[1],1);
     }else if(SH.mode==='solo'){
       const tg=shTarget();
       panel(W*.2,500,(SH.day+1)+'일째',`${shWon(SH.earned)} / ${shWon(tg)}`,SH.earned>=tg?'#1f8a58':'#3b3229');
@@ -883,10 +883,10 @@
     }
     // Keep the solo shop sign; cooperative players already have role-local names.
     if(SH.mode==='solo'&&!shFaced()){
-      const sign='호자네 붕어빵';
+      const sign=wcIs(0)?wcName(0)+'의 붕어빵':'호자네 붕어빵';
       const sw=Math.min(W*.8,Math.max(236,sign.length*27));
-      shRound(g,W/2-sw/2,8,sw,48,12,'#d9573f','#7a2a1b',4);
-      shText(g,sign,W/2,33,Math.min(28,Math.max(19,900/Math.max(20,sign.length))),'#fff6e3');
+      shRound(g,W/2-sw/2,8,sw,48,12,wcIs(0)?'#ffdc83':'#d9573f',wcIs(0)?'#ad7823':'#7a2a1b',4);
+      shText(g,sign,W/2,33,Math.min(28,Math.max(19,900/Math.max(20,sign.length))),wcIs(0)?'#80500b':'#fff6e3');
     }
   }
   function shDrawUpgrades(g,now){
