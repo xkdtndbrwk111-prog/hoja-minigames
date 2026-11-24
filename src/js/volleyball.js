@@ -15,6 +15,7 @@
     return {side,x:side===0?VB.W*.22:VB.W*.78,y:VB.GY-VB_PR,vx:0,vy:0,left:false,right:false,armed:0,cool:0,air:false,land:0,mood:'neutral',moodT:0,tx:0,err:0};
   }
   function vbNew(){
+    wcStart();
     const st=VB_STAGES.find(s=>s.id===volleyStage);
     VB.stage=st;VB.scores=[0,0];VB.gauge=[0,0];VB.cut=null;VB.server=Math.random()<.5?0:1;VB.winner=-1;VB.pointers.clear();VB.rallies=[];
     VB.players=[vbPlayer(0),vbPlayer(1)];VB.floats=[];VB.sparks=[];VB.bgKey='';
@@ -62,12 +63,10 @@
   function vbFinish(w){
     roundFinish();if(tournamentResult(w))return;
     VB.phase='over';VB.winner=w;VB.pointers.clear();
-    const repeat=streak.side===w&&streak.id===choices[w];
-    streak={side:w,id:choices[w],count:repeat?streak.count+1:1};
     hofWin('volley',w);
     cheer(1.2);sfx('goal',1.1);victoryJingle();
     vbSetMood(VB.players[w],'happy',99);vbSetMood(VB.players[1-w],'sad',99);
-    const title=streak.count>=2?`${gamePlayerName(w)} ${streak.count}연승!`:`${gamePlayerName(w)} 승리!`;
+    const title=`${gamePlayerName(w)} 승리!`;
     const next=button('다음 도전자 ▶','primary',()=>{leaveVolley();enterSelection();});
     const again=button('↻ 바로 재대결','',vbNew);
     const home=button('← 모음집','',vbHome);
@@ -308,8 +307,8 @@
     // Score
     g.fillStyle='rgba(255,250,235,.9)';g.beginPath();g.roundRect(W/2-180,10,360,104,18);g.fill();g.lineWidth=4;g.strokeStyle='#3b3229';g.stroke();
     vbText(g,String(VB.scores[0]),W/2-92,64,84,SIDE_COLOR[0]);vbText(g,':',W/2,60,60,'#8a7a5a');vbText(g,String(VB.scores[1]),W/2+92,64,84,SIDE_COLOR[1]);
-    vbText(g,gamePlayerName(0),W/2-330,60,40,SIDE_COLOR[0],'rgba(255,255,255,.9)');
-    vbText(g,aiLevel?gamePlayerName(1)+' · '+AI_LEVELS[aiLevel].label:gamePlayerName(1),W/2+360,60,40,SIDE_COLOR[1],'rgba(255,255,255,.9)');
+    vbText(g,wcName(0),W/2-330,60,wcIs(0)?32:40,wcColor(0,SIDE_COLOR[0]),'rgba(255,255,255,.9)');
+    vbText(g,aiLevel?gamePlayerName(1)+' · '+AI_LEVELS[aiLevel].label:wcName(1),W/2+360,60,wcIs(1)?32:40,wcColor(1,SIDE_COLOR[1]),'rgba(255,255,255,.9)');
     // Special gauges fill toward the score box.
     for(const side of [0,1]){
       const v=VB.gauge[side],full=v>=100,gw=300,gx=side?W/2+200:W/2-200-gw,fw=(gw-6)*v/100;
