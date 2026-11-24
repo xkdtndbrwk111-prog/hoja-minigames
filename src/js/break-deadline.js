@@ -21,7 +21,7 @@
   }
   function installBreakDeadline(){
     if(!EMBED)return;
-    let classStartAt=null,revision=-1,timer=null,closed=false,overlay=null,fill=null,label=null,nextPulse=0,warning=false;
+    let classStartAt=null,revision=-1,timer=null,closed=false,overlay=null,fill=null,label=null,nextPulse=0,warning=false,audible=true;
     function clearWarning(){
       if(overlay){overlay.remove();overlay=fill=label=null;}
       if(warning){warning=false;applySoundMode();}
@@ -49,12 +49,15 @@
       const pulse=reduce?1:.75+.25*Math.sin(now/period*Math.PI*2);
       overlay.style.borderColor='rgba(229,82,57,'+pulse+')';
       if(ac&&bgmBus&&soundMode==='all')bgmBus.gain.value=.14;
-      if(now>=nextPulse){nextPulse=now+period;sfx('low',.35);}
+      if(now>=nextPulse){nextPulse=now+period;if(audible)sfx('low',.35);}
     }
     function finish(){
       if(closed)return;
       closed=true;clearInterval(timer);timer=null;clearWarning();
       const dismissal=breakDismissal();
+      dismissal.portrait=characterPortrait(dismissal.id,dismissal.mood);
+      if(dismissal.id==='CHILJIDO_ELDER')dismissal.secondPortrait=characterPortrait(dismissal.id,'neutral');
+      for(const type of ['pointerdown','pointermove','pointerup','click','keydown','keyup','touchstart'])window.addEventListener(type,e=>{e.preventDefault();e.stopImmediatePropagation();},{capture:true,passive:false});
       // Match the established dashboard exit semantics, including pending payments.
       try{roundClose();}finally{
         try{cancelPendingPayment();}finally{
@@ -76,7 +79,7 @@
       const m=event.data;
       if(!m||m.type!=='hoja-break-schedule'||!Number.isSafeInteger(m.revision)||m.revision<=revision)return;
       if(m.classStartAt!==null&&(!Number.isSafeInteger(m.classStartAt)||m.classStartAt<=0))return;
-      revision=m.revision;classStartAt=m.classStartAt;
+      revision=m.revision;classStartAt=m.classStartAt;audible=m.audible!==false;
       if(timer===null&&classStartAt!==null)timer=setInterval(tick,200);
       if(classStartAt===null){clearInterval(timer);timer=null;}
       tick();
