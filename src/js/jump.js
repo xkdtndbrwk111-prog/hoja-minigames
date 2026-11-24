@@ -70,6 +70,7 @@ function laneUi(){
     let host=box;
     if(facing){host=document.createElement('div');host.className='cj-lane'+(L.id?' turned':'');host.style.left=left+'%';host.style.width=width+'%';box.append(host);}
     const add=(cls,txt)=>{const d=document.createElement('div');d.className='cj-t cj-'+cls;d.style.left=facing?'0':left+'%';d.style.width=facing?'100%':width+'%';d.textContent=txt||'';host.append(d);return d;};
+    if(G.mode!=='menu'){L.el.name=add('name');wcBind(L.el.name,L.id);}
     L.el.hud=add('hud','0층');L.el.best=add('best');L.el.banner=add('banner');
     L.el.hint=add('hint',G.mode==='duel'?(TABLET?'내 쪽을 터치하면 점프':L.id?'오른쪽 터치로 점프':'왼쪽 터치로 점프'):'아래쪽 어디든 터치하면 점프! 공중에서 두 번 더');
     if(G.mode==='menu'){L.el.hud.style.display='none';L.el.hint.style.display='none';}
@@ -81,6 +82,7 @@ function setMode(mode){
   W=mode==='duel'?960:640;resize();
   G.lanes=mode==='duel'?[makeLane(0,0,480,2,1),makeLane(1,480,480,1,2)]:[makeLane(0,0,640,2,2)];
   for(const L of G.lanes)fillPlats(L);
+  if(mode!=='menu')wcStart();
   laneUi();
   $('cjTitle').style.display=mode==='menu'?'':'none';
   $('cjMenu').style.display=mode==='menu'?'flex':'none';
