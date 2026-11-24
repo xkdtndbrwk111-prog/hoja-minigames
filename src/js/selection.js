@@ -89,7 +89,7 @@
       hint.textContent='두 캐릭터를 자유롭게 고르세요 · 1인은 두 캐릭터를 혼자, 2인 협동은 한 캐릭터씩 조작합니다.';
       hint.classList.remove('hot');kbSyncGuide();return;
     }
-    if(streak.count>=1&&streak.side>=0&&choices[streak.side]===streak.id){
+    if(currentGame!=='bubble'&&streak.count>=1&&streak.side>=0&&choices[streak.side]===streak.id){
       hint.textContent=streak.count>=2?nameFor(streak.side)+' '+streak.count+'연승 중! 도전자 나와라':'챔피언 '+nameFor(streak.side)+'! 도전자 나와라';hint.classList.add('hot');
     }else{hint.textContent='각자 캐릭터와 경기장을 고르고 시작';hint.classList.remove('hot');}
     kbSyncGuide();
