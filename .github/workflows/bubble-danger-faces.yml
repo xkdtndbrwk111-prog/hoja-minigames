@@ -1,0 +1,32 @@
+name: Bubble danger faces release build
+on:
+  push:
+    branches: [fix/bubble-danger-faces-20261124]
+    paths: ['.github/workflows/bubble-danger-faces.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Verify and rebuild
+        run: |
+          set -euo pipefail
+          node --check src/js/bubble.js
+          node --test tests/*.test.js
+          python3 build.py
+          python3 build.py --check
+      - name: Publish verified build to main
+        run: |
+          set -euo pipefail
+          git add -- index.html
+          test "$(git diff --cached --name-only)" = index.html
+          git config user.name "hoja-build"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "build(bubble): regenerate danger face release"
+          git push origin HEAD:refs/heads/fix/bubble-danger-faces-20261124
+          git fetch origin main
+          git merge-base --is-ancestor origin/main HEAD
+          git push origin HEAD:refs/heads/main
