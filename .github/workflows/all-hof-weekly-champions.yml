@@ -1,0 +1,29 @@
+name: All HOF weekly champion candidate
+on:
+  push:
+    branches: [fix/all-hof-weekly-champions-20261124]
+    paths: ['.github/workflows/all-hof-weekly-champions.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Verify and rebuild
+        run: |
+          set -euo pipefail
+          find src/js -name '*.js' -exec node --check {} \;
+          node --test tests/*.test.js
+          python3 build.py
+          python3 build.py --check
+      - name: Commit generated page to review branch
+        run: |
+          set -euo pipefail
+          git add -- index.html
+          test "$(git diff --cached --name-only)" = index.html
+          git config user.name "hoja-build"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "build: regenerate all-game weekly champion candidate"
+          git push origin HEAD:refs/heads/fix/all-hof-weekly-champions-20261124
