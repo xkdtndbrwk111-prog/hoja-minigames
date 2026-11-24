@@ -76,8 +76,8 @@
     keys.append(left);
     if(!solo)keys.append(right);
     function labels(){
-      left.textContent=solo?'터치해서 회전 · SPACE':gamePlayerName(0)+' · '+nameFor(0)+' (A)';
-      right.textContent=gamePlayerName(1)+' · '+nameFor(1)+' (L)';
+      wcBind(left,0,null,solo?' · 회전 SPACE':' · '+nameFor(0)+' (A)');
+      if(!solo)wcBind(right,1,null,' · '+nameFor(1)+' (L)');
     }
     labels();
     function resize(){
