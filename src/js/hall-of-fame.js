@@ -74,6 +74,46 @@
     if(player===1&&aiLevel&&!PARTY_GAMES[currentGame]&&!['stairs','shop','jump'].includes(currentGame))return '컴퓨터';
     return (player+1)+'P';
   }
+  // Presentation only: never alter gamePlayerName, record payloads or roster selection.
+  const WC={serial:0,scope:null,game:null,expires:0,seats:[],names:[],winners:new Set(),bindings:[]};
+  const WC_GAMES=new Set(['hockey','volley','bubble','othello','gomoku','ttt','germ','stairs','jump','shop','flash','dance','rally']);
+  function wcWeekEnd(now=new Date()){
+    const d=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+    d.setDate(d.getDate()+7-(d.getDay()+6)%7);return +d;
+  }
+  function wcIs(i){
+    const seat=HOF.players[i];
+    return WC.game===currentGame&&WC.scope===HOF.viewKey&&WC.expires>Date.now()&&
+      !(i===1&&aiLevel&&!PARTY_GAMES[currentGame]&&!['stairs','shop','jump'].includes(currentGame))&&
+      Number.isInteger(seat)&&seat>0&&seat<=HOF_MAX&&WC.seats[i]===seat&&WC.winners.has(seat)&&
+      WC.names[i]===gamePlayerName(i)&&WC.names[i]===String(HOF.cfg?.names?.[seat-1]||'').trim();
+  }
+  function wcName(i){return (wcIs(i)?'챔피언 ':'')+gamePlayerName(i);}
+  function wcColor(i,normal){return wcIs(i)?'#b07813':normal;}
+  function wcPaint(binding){
+    const {el,i,panel,tail}=binding,champ=wcIs(i);
+    el.textContent=wcName(i)+tail;
+    el.classList.toggle('wc-name',champ);
+    if(panel)panel.classList.toggle('wc-panel',champ);
+  }
+  function wcBind(el,i,panel=null,tail=''){
+    const binding={el,i,panel,tail};WC.bindings.push(binding);wcPaint(binding);
+  }
+  async function wcStart(){
+    for(const b of WC.bindings){b.el.classList.remove('wc-name');if(b.panel)b.panel.classList.remove('wc-panel');}
+    WC.bindings=[];WC.winners=new Set();
+    const serial=++WC.serial,epoch=hofViewScope(),code=HOF.cfg?.code,game=currentGame;
+    WC.scope=HOF.viewKey;WC.game=game;WC.expires=wcWeekEnd();WC.seats=HOF.players.slice();WC.names=Array.from({length:6},(_,i)=>gamePlayerName(i));
+    const seats=WC.seats.slice(),roster=JSON.stringify(HOF.cfg?.names);
+    if(!WC_GAMES.has(game)||!code||hofQrStale()||!seats.some(s=>Number.isInteger(s)&&s>0&&s<=HOF_MAX))return;
+    try{
+      const board=await hofRpc('hof_board',{p_code:code});
+      if(serial!==WC.serial||game!==currentGame||!hofScopeCurrent(epoch)||hofQrStale()||Date.now()>=WC.expires||
+         roster!==JSON.stringify(HOF.cfg?.names)||seats.some((s,i)=>s!==HOF.players[i])||!Array.isArray(board?.periods?.week))return;
+      WC.winners=new Set(hofChampion(board.periods.week).seats);
+      for(const b of WC.bindings)wcPaint(b);
+    }catch{/* No confirmed current-week record: keep normal nameplates. */}
+  }
   /* Links carry the names after the #, which browsers never send to any server. */
   function hofEncode(names){
     const bytes=new TextEncoder().encode(JSON.stringify(names));let bin='';bytes.forEach(b=>{bin+=String.fromCharCode(b);});
