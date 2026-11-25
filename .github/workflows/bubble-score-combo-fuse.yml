@@ -1,0 +1,21 @@
+name: Bubble score combo and fuse verification
+on:
+  push:
+    branches: [feature/bubble-score-combo-fuse]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Syntax and regression tests
+        run: |
+          node --check src/js/bubble.js
+          node --check src/js/lesson-end.js
+          node --test tests/*.test.js
+      - name: Verify generated build
+        run: |
+          python3 build.py
+          python3 build.py --check
