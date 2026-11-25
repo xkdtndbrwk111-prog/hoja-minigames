@@ -22,3 +22,15 @@ test('visual hooks leave attack accounting and danger portraits wired',()=>{
  assert.match(s,/pointer-events:none;z-index:4/);
  assert.match(s,/danger=low>=B_DEAD-2/);
 });
+
+test('danger portrait overrides happy attack reaction and recovers to neutral',()=>{
+ const nodes=new Map(),BB={phase:'playing',fields:[{i:0,low:9,warned:false}]},sounds=[];
+ const c=vm.createContext({BB,B_DEAD:11,bLowest:f=>f.low,portraitFor:(i,m)=>m,sfx:(...args)=>sounds.push(args),bEnd(){throw Error('unexpected end')},$:id=>{if(!nodes.has(id))nodes.set(id,{src:'',textContent:'',classList:{toggle(){}}});return nodes.get(id);}});
+ vm.runInContext(s.slice(s.indexOf('  function bNote('),s.indexOf('  function bSyncScores('))+s.slice(s.indexOf('  function bCheckLoss('),s.indexOf('  function bEnd(')),c);
+ vm.runInContext("bCheckLoss(BB.fields[0]);bNote(0,'happy','받아라!')",c);
+ assert.equal(nodes.get('bPortrait0').src,'surprised');assert.equal(nodes.get('bNote0').textContent,'위험해!');
+ assert.equal(sounds.length,1);
+ vm.runInContext('BB.fields[0].low=8;bCheckLoss(BB.fields[0])',c);
+ assert.equal(nodes.get('bPortrait0').src,'neutral');assert.equal(nodes.get('bNote0').textContent,'');
+ vm.runInContext("bNote(0,'happy','받아라!')",c);assert.equal(nodes.get('bPortrait0').src,'happy');
+});
