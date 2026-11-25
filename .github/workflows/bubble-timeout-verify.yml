@@ -1,9 +1,10 @@
-name: Bubble timeout verification
+name: Bubble timeout verification and release
 on:
   push:
     branches: [feature/bubble-90s-verdict]
+    paths: ['.github/workflows/bubble-timeout-verify.yml']
 permissions:
-  contents: read
+  contents: write
 jobs:
   verify:
     runs-on: ubuntu-24.04
@@ -18,3 +19,15 @@ jobs:
         run: |
           python3 build.py
           python3 build.py --check
+      - name: Publish verified build to main
+        run: |
+          set -euo pipefail
+          git add -- index.html
+          test "$(git diff --cached --name-only)" = index.html
+          git config user.name "hoja-build"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "build(bubble): publish 90-second verdict"
+          git fetch origin main
+          git merge-base --is-ancestor origin/main HEAD
+          git push origin HEAD:refs/heads/feature/bubble-90s-verdict
+          git push origin HEAD:refs/heads/main
