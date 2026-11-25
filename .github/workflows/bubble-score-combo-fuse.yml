@@ -2,8 +2,9 @@ name: Bubble score combo and fuse verification
 on:
   push:
     branches: [feature/bubble-score-combo-fuse]
+    paths: ['.github/workflows/bubble-score-combo-fuse.yml']
 permissions:
-  contents: read
+  contents: write
 jobs:
   verify:
     runs-on: ubuntu-24.04
@@ -19,3 +20,15 @@ jobs:
         run: |
           python3 build.py
           python3 build.py --check
+      - name: Publish verified build
+        run: |
+          set -euo pipefail
+          git add -- index.html
+          test "$(git diff --cached --name-only)" = index.html
+          git config user.name "hoja-build"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "build: release Bubble score combo and original pixel fuse"
+          git fetch origin main
+          git merge-base --is-ancestor origin/main HEAD
+          git push origin HEAD:refs/heads/feature/bubble-score-combo-fuse
+          git push origin HEAD:refs/heads/main
