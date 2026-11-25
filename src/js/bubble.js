@@ -45,6 +45,12 @@
     return out;
   }
   function bLowest(f){for(let r=f.rows.length-1;r>=0;r--)if(f.rows[r].some(Boolean))return r;return -1;}
+  const B_MATCH_MS=90000,B_EXTRA_MS=10000;
+  function bVerdict(fields){
+    const stats=fields.map(f=>({low:bLowest(f),count:f.rows.reduce((n,row)=>n+row.filter(Boolean).length,0)}));
+    const a=stats[0],b=stats[1];
+    return {stats,winner:a.low!==b.low?(a.low<b.low?0:1):a.count!==b.count?(a.count<b.count?0:1):-1,reason:a.low!==b.low?'최하단 버블':a.count!==b.count?'남은 버블 수':'동률'};
+  }
   function bPresentColors(f){
     const s=new Set();for(const row of f.rows)for(const v of row)if(v>=1&&v<=5)s.add(v);return [...s];
   }
@@ -109,7 +115,7 @@
 
   /* ---------- Puzzle Bubble: match ---------- */
   let bubbleStage='std';
-  const BB={on:false,raf:0,phase:'idle',resume:'playing',stage:null,fields:[],countdown:0,cShown:0,token:0,acc:0,lastT:0,sprites:[],dangerSprites:[],faces:[],dangerFaces:[],result:null,time:0};
+  const BB={on:false,raf:0,phase:'idle',resume:'playing',stage:null,fields:[],countdown:0,cShown:0,token:0,acc:0,lastT:0,sprites:[],dangerSprites:[],faces:[],dangerFaces:[],result:null,time:0,deadline:0,remaining:B_MATCH_MS,clockShown:null,extra:false,verdict:null,pauseAt:0};
   const bCanvases=[$('bField0'),$('bField1')],bCtx=bCanvases.map(c=>c.getContext('2d',{alpha:false}));
   B_FACES.forEach((id,i)=>{for(const [mood,faces] of [['neutral',BB.faces],['surprised',BB.dangerFaces]]){const im=new Image();im.addEventListener('load',bBuildSprites);faces[i]=im;im.src=characterPortrait(id,mood);}});
   const bIsAI=i=>aiLevel>0&&i===1;
@@ -142,12 +148,30 @@
       $('bPending'+i).textContent=p>0?p+'줄 내려와요!':'';
     }
   }
+  function bClock(){
+    let el=$('bMatchClock');
+    if(!el){el=document.createElement('div');el.id='bMatchClock';el.style.cssText='font-size:clamp(18px,2.5vw,42px);font-weight:bold;font-variant-numeric:tabular-nums;line-height:1.1;text-align:center';$('bCaption').after(el);}
+    const sec=Math.ceil(Math.max(0,BB.remaining)/1000);
+    el.textContent=(BB.extra?'연장 ':'')+Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');
+    el.style.color=sec<=10?'#b91c1c':'';
+    el.style.opacity=sec>0&&sec<=10&&!reducedMotion&&BB.phase==='playing'&&Math.floor(BB.remaining/250)%2===0?'.55':'1';
+    if(BB.phase==='playing'&&sec!==BB.clockShown&&sec>0&&sec<=5)sfx('menu',.8,1.2);
+    BB.clockShown=sec;
+  }
+  function bTimeout(){
+    const verdict=bVerdict(BB.fields);
+    if(verdict.winner===-1&&TM.running&&!BB.extra){
+      BB.extra=true;BB.remaining=B_EXTRA_MS;BB.deadline=performance.now()+B_EXTRA_MS;BB.clockShown=null;bClock();
+      BB.fields.forEach(f=>bFloat(f,B_W/2,B_LY*.45,'10초 연장!','#c0532f',64,1.5));return;
+    }
+    BB.verdict=verdict;BB.remaining=0;bClock();bEnd(verdict.winner);
+  }
   function bNewMatch(){
     BB.token++;
     const st=B_STAGES.find(s=>s.id===bubbleStage),seed=Math.floor(Math.random()*1e9);
     BB.stage=st;BB.fields=[bMakeField(0,seed,st),bMakeField(1,seed,st)];
     BB.fields.forEach(f=>{f.cur=bDrawColor(f);f.next=bDrawColor(f);});
-    BB.result=null;BB.time=0;BB.phase='countdown';BB.countdown=2.4;BB.cShown=0;BB.acc=0;
+    BB.result=null;BB.time=0;BB.deadline=0;BB.remaining=B_MATCH_MS;BB.clockShown=null;BB.extra=false;BB.verdict=null;BB.pauseAt=0;BB.phase='countdown';BB.countdown=2.4;BB.cShown=0;BB.acc=0;
     $('bOverlay').hidden=true;
     for(let i=0;i<2;i++){
       $('bName'+i).textContent=gamePlayerName(i);
@@ -157,7 +181,7 @@
       $('bStreak'+i).textContent=champ?(streak.count>=2?streak.count+'연승 중':'챔피언'):'';
     }
     $('bCaption').textContent='HOJA 퍼즐버블 · '+st.name;
-    bSyncScores();bBuildSprites();
+    bSyncScores();bBuildSprites();bClock();
     setBgmTempo(1);playMood('action');
   }
   function bFire(f){
@@ -240,24 +264,30 @@
     f.warned=danger;
   }
   function bEnd(w){
-    roundFinish();if(tournamentResult(w))return;
+    if(BB.phase!=='playing'||lessonClosed)return;
+    if(lessonPhase(lessonStart,Date.now())==='close'){lessonTick();return;}
     BB.phase='over';BB.result=w;
     BB.fields.forEach(f=>{f.shot=null;f.pid=null;f.trace=null;});
+    bClock();roundFinish();if(tournamentResult(w))return;
+    if(w===-1){
+      streak={side:-1,id:null,count:0};bNote(0,'neutral','무승부!');bNote(1,'neutral','무승부!');
+      const token=BB.token;setTimeout(()=>{if(BB.on&&BB.phase==='over'&&BB.token===token)bOverlay('무승부!', '최하단 위치와 남은 버블 수가 같아요.',[button('다시 겨루기','primary',()=>bNewMatch()),button('← 모음집','',()=>{leaveBubble();$('menuScreen').hidden=false;playBgm('menu',{gain:.8});})]);},1100);return;
+    }
     const loser=BB.fields[1-w];
-    loser.rows.forEach((row,r)=>row.forEach((v,c)=>{if(v){loser.falls.push({x:bX(loser,r,c),y:bY(r),v,vx:(Math.random()-.5)*260,vy:-120-Math.random()*220,rot:0});row[c]=0;}}));
+    if(!BB.verdict)loser.rows.forEach((row,r)=>row.forEach((v,c)=>{if(v){loser.falls.push({x:bX(loser,r,c),y:bY(r),v,vx:(Math.random()-.5)*260,vy:-120-Math.random()*220,rot:0});row[c]=0;}}));
     const repeat=streak.side===w&&streak.id===choices[w];
     streak={side:w,id:choices[w],count:repeat?streak.count+1:1};
     hofWin('bubble',w);
     bNote(w,'happy','이겼다!');bNote(1-w,'sad','아쉬워…');
     sfx('goal',1.1);sfx('boom',.9);cheer(1.1);victoryJingle();
     const title=streak.count>=2?`${gamePlayerName(w)} ${streak.count}연승!`:`${gamePlayerName(w)} 승리!`;
-    const detail=`${BB.fields[0].score} : ${BB.fields[1].score}점 · ${Math.ceil(BB.time)}초`;
+    const detail=BB.verdict?`시간 종료 · ${BB.verdict.reason} 판정`:`${BB.fields[0].score} : ${BB.fields[1].score}점 · ${Math.ceil(BB.time)}초`;
     const next=button('다음 도전자 ▶','primary',()=>{leaveBubble();enterSelection();});
     const again=button('↻ 바로 재대결','',()=>{bNewMatch();});
     const home=button('← 모음집','',()=>{streak={side:-1,id:null,count:0};leaveBubble();$('menuScreen').hidden=false;playBgm('menu',{gain:.8});});
     // Both children are mid-swing when a match ends; hold the buttons off so a stray lift doesn't skip it.
     [next,again,home].forEach(b=>{b.disabled=true;setTimeout(()=>{b.disabled=false;},1900);});
-    setTimeout(()=>{if(BB.on&&BB.phase==='over')bOverlay(title,detail,[next,again,home]);},1100);
+    const token=BB.token;setTimeout(()=>{if(BB.on&&BB.phase==='over'&&BB.token===token)bOverlay(title,detail,[next,again,home]);},1100);
   }
   function bOverlay(title,detail,actions){
     $('bOverlay').hidden=false;$('bOverlayTitle').textContent=title;$('bOverlayDetail').textContent=detail;
@@ -265,11 +295,11 @@
   }
   function bOpenMenu(){
     if(BB.phase==='over'||BB.phase==='paused'||!BB.on)return;
-    BB.resume=BB.phase;BB.phase='paused';BB.fields.forEach(f=>{f.pid=null;});
+    BB.resume=BB.phase;BB.pauseAt=performance.now();BB.phase='paused';bClock();BB.fields.forEach(f=>{f.pid=null;});
     const label=()=>soundMode==='all'?'♪ 소리 전체':soundMode==='sfx'?'♪ 효과음만':'소리 끔';
     const sound=button(label(),'',()=>{cycleSound();sound.textContent=label();});
     bOverlay('잠깐 쉬는 중','',[
-      button('▶ 계속','primary',()=>{$('bOverlay').hidden=true;BB.phase=BB.resume;}),
+      button('▶ 계속','primary',()=>{$('bOverlay').hidden=true;if(BB.resume==='playing')BB.deadline+=performance.now()-BB.pauseAt;BB.phase=BB.resume;bClock();}),
       button('↻ 다시 하기','',()=>{bNewMatch();}),
       button('인물 변경','',()=>{leaveBubble();enterSelection();}),
       button('← 모음집','',()=>{leaveBubble();$('menuScreen').hidden=false;playBgm('menu',{gain:.8});}),
@@ -334,10 +364,14 @@
       BB.countdown-=dt;
       const show=Math.ceil(BB.countdown/.8);
       if(show!==BB.cShown&&show>0){BB.cShown=show;sfx('menu',1,1+(3-show)*.16);}
-      if(BB.countdown<=0){roundBegin();BB.phase='playing';sfx('goal',.9);}
+      if(BB.countdown<=0){roundBegin();BB.phase='playing';BB.deadline=performance.now()+B_MATCH_MS;bClock();sfx('goal',.9);}
       return;
     }
     if(BB.phase!=='playing')return;
+    if(lessonClosed)return;
+    if(lessonPhase(lessonStart,Date.now())==='close'){lessonTick();return;}
+    BB.remaining=Math.max(0,BB.deadline-performance.now());bClock();
+    if(BB.remaining<=0){bTimeout();return;}
     BB.time+=dt;
     for(const f of BB.fields){bStepField(f,dt);if(BB.phase!=='playing')return;}
   }
@@ -437,6 +471,7 @@
       const row=f.rows[r];
       for(let c=0;c<B_COLS;c++)if(row[c])bDrawBall(g,row[c],bX(f,r,c),bY(r)-slide,1,1,danger);
     }
+    if(BB.verdict){const low=BB.verdict.stats[f.i].low,y=low<0?4:bY(low)+B_R-slide;g.save();g.strokeStyle=BB.result===f.i?'#fff4a0':'#ffffff';g.lineWidth=7;g.setLineDash([18,10]);g.beginPath();g.moveTo(0,y);g.lineTo(B_W,y);g.stroke();g.restore();}
     // Pops and falls
     for(let q=f.pops.length-1;q>=0;q--){
       const p=f.pops[q];p.t+=dt;if(p.t>=p.life){f.pops.splice(q,1);continue;}
@@ -497,7 +532,7 @@
       g.globalAlpha=.5+.5*frac;bText(g,String(n),B_W/2,B_LY*.62,190+70*frac,f.i===0?SIDE_COLOR[0]:SIDE_COLOR[1]);g.globalAlpha=1;
     }
     if(BB.phase==='over'&&BB.result!==null){
-      bText(g,BB.result===f.i?'승리!':'아쉬워!',B_W/2,B_LY*.3,110,BB.result===f.i?'#c0532f':'#5c5243');
+      bText(g,BB.result===-1?'무승부!':BB.result===f.i?'승리!':'아쉬워!',B_W/2,B_LY*.3,110,BB.result===f.i?'#c0532f':'#5c5243');
     }
     g.setTransform(1,0,0,1,0,0);
   }
