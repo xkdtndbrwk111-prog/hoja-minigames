@@ -135,6 +135,8 @@
   }
   function bFloat(f,x,y,text,color,size=44,ttl=1){f.floats.push({x,y,text,color,size,ttl,life:ttl});}
   function bNote(i,mood,note){
+    const field=BB.fields[i];
+    if(BB.phase==='playing'&&field&&bLowest(field)>=B_DEAD-2){mood='surprised';note='위험해!';}
     $('bPortrait'+i).src=portraitFor(i,mood);
     if(note!==undefined)$('bNote'+i).textContent=note;
     const t=$('bTeam'+i);t.classList.toggle('react',mood==='happy'||mood==='surprised');t.classList.toggle('sad',mood==='sad'||mood==='angry');
@@ -349,6 +351,7 @@
     if(low>=B_DEAD){f.lost=true;bEnd(1-f.i);return;}
     const danger=low>=B_DEAD-2;
     if(danger&&!f.warned){bNote(f.i,'surprised','위험해!');sfx('item',.7,.8);}
+    else if(!danger&&f.warned)bNote(f.i,'neutral','');
     f.warned=danger;
   }
   function bEnd(w){
