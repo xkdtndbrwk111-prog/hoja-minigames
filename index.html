@@ -10504,6 +10504,11 @@ var qrcode = function() {
     return out;
   }
   function bLowest(f){for(let r=f.rows.length-1;r>=0;r--)if(f.rows[r].some(Boolean))return r;return -1;}
+  const B_MATCH_MS=90000,B_EXTRA_MS=10000;
+  function bVerdict(fields){
+    const scores=fields.map(f=>f.score);
+    return {scores,winner:scores[0]===scores[1]?-1:scores[0]>scores[1]?0:1,reason:'점수'};
+  }
   function bPresentColors(f){
     const s=new Set();for(const row of f.rows)for(const v of row)if(v>=1&&v<=5)s.add(v);return [...s];
   }
@@ -10568,7 +10573,7 @@ var qrcode = function() {
 
   /* ---------- Puzzle Bubble: match ---------- */
   let bubbleStage='std';
-  const BB={on:false,raf:0,phase:'idle',resume:'playing',stage:null,fields:[],countdown:0,cShown:0,token:0,acc:0,lastT:0,sprites:[],dangerSprites:[],faces:[],dangerFaces:[],result:null,time:0};
+  const BB={on:false,raf:0,phase:'idle',resume:'playing',stage:null,fields:[],countdown:0,cShown:0,token:0,acc:0,lastT:0,sprites:[],dangerSprites:[],faces:[],dangerFaces:[],result:null,time:0,deadline:0,remaining:B_MATCH_MS,clockShown:null,extra:false,verdict:null,pauseAt:0};
   const bCanvases=[$('bField0'),$('bField1')],bCtx=bCanvases.map(c=>c.getContext('2d',{alpha:false}));
   B_FACES.forEach((id,i)=>{for(const [mood,faces] of [['neutral',BB.faces],['surprised',BB.dangerFaces]]){const im=new Image();im.addEventListener('load',bBuildSprites);faces[i]=im;im.src=characterPortrait(id,mood);}});
   const bIsAI=i=>aiLevel>0&&i===1;
@@ -10576,7 +10581,7 @@ var qrcode = function() {
   function bMakeField(i,seed,stage){
     const rng=bRng(seed),rows=[];
     for(let r=0;r<stage.rows;r++)rows.push(bRandomRow(stage,rng,stage.rocks?.08:0));
-    return {i,rows,shift:0,rng:Math.random,stage,angle:0,pid:null,lastMove:0,shot:null,cur:0,next:0,shots:0,pushT:stage.push,slide:0,pending:0,score:0,lost:false,
+    return {i,rows,shift:0,rng:Math.random,stage,angle:0,pid:null,lastMove:0,shot:null,cur:0,next:0,shots:0,pushT:stage.push,slide:0,pending:0,pendingRocks:[],score:0,lost:false,
       pops:[],falls:[],floats:[],trace:null,traceAng:null,aiT:1.2+Math.random()*.4,aiTarget:0,shake:0,flash:0,warned:false,combo:0,swapR:0};
   }
   function bDrawColor(f){
@@ -10601,12 +10606,30 @@ var qrcode = function() {
       $('bPending'+i).textContent=p>0?p+'줄 내려와요!':'';
     }
   }
+  function bClock(){
+    let el=$('bMatchClock');
+    if(!el){el=document.createElement('div');el.id='bMatchClock';el.style.cssText='font-size:clamp(18px,2.5vw,42px);font-weight:bold;font-variant-numeric:tabular-nums;line-height:1.1;text-align:center';$('bCaption').after(el);}
+    const sec=Math.ceil(Math.max(0,BB.remaining)/1000);
+    el.textContent=(BB.extra?'연장 ':'')+Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');
+    el.style.color=sec<=10?'#b91c1c':'';
+    el.style.opacity=sec>0&&sec<=10&&!reducedMotion&&BB.phase==='playing'&&Math.floor(BB.remaining/250)%2===0?'.55':'1';
+    if(BB.phase==='playing'&&sec!==BB.clockShown&&sec>0&&sec<=5)sfx('menu',.8,1.2);
+    BB.clockShown=sec;
+  }
+  function bTimeout(){
+    const verdict=bVerdict(BB.fields);
+    if(verdict.winner===-1&&TM.running&&!BB.extra){
+      BB.extra=true;BB.remaining=B_EXTRA_MS;BB.deadline=performance.now()+B_EXTRA_MS;BB.clockShown=null;bClock();
+      BB.fields.forEach(f=>bFloat(f,B_W/2,B_LY*.45,'10초 연장!','#c0532f',64,1.5));return;
+    }
+    BB.verdict=verdict;BB.remaining=0;bClock();bEnd(verdict.winner);
+  }
   function bNewMatch(){
     BB.token++;
     const st=B_STAGES.find(s=>s.id===bubbleStage),seed=Math.floor(Math.random()*1e9);
     BB.stage=st;BB.fields=[bMakeField(0,seed,st),bMakeField(1,seed,st)];
     BB.fields.forEach(f=>{f.cur=bDrawColor(f);f.next=bDrawColor(f);});
-    BB.result=null;BB.time=0;BB.phase='countdown';BB.countdown=2.4;BB.cShown=0;BB.acc=0;
+    BB.result=null;BB.time=0;BB.deadline=0;BB.remaining=B_MATCH_MS;BB.clockShown=null;BB.extra=false;BB.verdict=null;BB.pauseAt=0;BB.phase='countdown';BB.countdown=2.4;BB.cShown=0;BB.acc=0;
     $('bOverlay').hidden=true;
     for(let i=0;i<2;i++){
       $('bName'+i).textContent=gamePlayerName(i);
@@ -10616,7 +10639,7 @@ var qrcode = function() {
       $('bStreak'+i).textContent=champ?(streak.count>=2?streak.count+'연승 중':'챔피언'):'';
     }
     $('bCaption').textContent='HOJA 퍼즐버블 · '+st.name;
-    bSyncScores();bBuildSprites();
+    bSyncScores();bBuildSprites();bClock();
     setBgmTempo(1);playMood('action');
   }
   function bFire(f){
@@ -10658,34 +10681,43 @@ var qrcode = function() {
       if(cl.length>=3){removed=cl.length;bRemove(f,cl,'pop');}
     }
     if(removed){
+      f.combo++;
       const fl=bFloating(f);dropped=fl.length;bRemove(f,fl,'fall');
       for(let k=0;k<Math.min(5,removed);k++)setTimeout(()=>bPopTone(1+k*.16),k*38);
       const total=removed+dropped;
       f.score+=removed*10+dropped*20;
       // Big plays push rows onto the opponent; incoming rows get cancelled first, so defence is rewarded too.
       let attack=(total>=7?1+Math.floor((total-7)/6):0)+(dropped>=6?1:0);
+      if(f.combo>=2)attack=Math.max(1,attack);
+      const rocks=Math.min(3,Math.max(0,f.combo-2));
+      if(f.combo>=2)bFloat(f,B_W/2,bY(Math.max(0,r-1))+65,f.combo>=5?'SUPER COMBO!':f.combo+' COMBO!'+(rocks?' 바위 공격!':''),'#c0532f',48,1.2);
       if(attack>0){
-        const can=Math.min(attack,f.pending);f.pending-=can;attack-=can;
+        const can=Math.min(attack,f.pending);f.pending-=can;f.pendingRocks.splice(0,can);attack-=can;
         if(attack>0){
-          BB.fields[1-f.i].pending+=attack;
+          const rival=BB.fields[1-f.i];
+          while(rival.pendingRocks.length<rival.pending)rival.pendingRocks.push(0);
+          rival.pending+=attack;for(let k=0;k<attack;k++)rival.pendingRocks.push(k===0?rocks:0);
           bFloat(f,B_W/2,bY(Math.max(0,r-1)),attack+'줄 공격!',SIDE_COLOR[f.i],54,1.1);
           sfx('smash',.8);bNote(f.i,'happy','받아라!');bNote(1-f.i,'surprised','온다!');
         }else bFloat(f,B_W/2,bY(Math.max(0,r-1)),'방어!',SIDE_COLOR[f.i],48,.9);
       }else if(dropped>=2){bFloat(f,bX(f,r,c),bY(r)-50,dropped+'개 떨어짐!',SIDE_COLOR[f.i],42,.9);}
       if(bLowest(f)<0){
-        f.score+=300;BB.fields[1-f.i].pending+=2;bFloat(f,B_W/2,B_LY*.45,'올 클리어!','#c0532f',72,1.5);sfx('goal',1);cheer(.8);bNote(f.i,'happy','싹 비웠다!');
+        f.score+=300;const rival=BB.fields[1-f.i];while(rival.pendingRocks.length<rival.pending)rival.pendingRocks.push(0);rival.pending+=2;rival.pendingRocks.push(0,0);bFloat(f,B_W/2,B_LY*.45,'올 클리어!','#c0532f',72,1.5);sfx('goal',1);cheer(.8);bNote(f.i,'happy','싹 비웠다!');
         const rng=Math.random;for(let k=0;k<3;k++)f.rows.unshift(bRandomRow(f.stage,rng,0)),f.shift^=1;
       }
-    }
+    }else f.combo=0;
     bSyncScores();
     // Rows owed from the opponent land between shots, never mid-flight, so a shot's result is always fair.
-    if(f.pending>0){f.pending--;bPushRow(f,true);bSyncScores();}
+    if(f.pending>0){f.pending--;bPushRow(f,true,f.pendingRocks.shift()||0);bSyncScores();}
     bCheckLoss(f);
     if(f.cur!==B_BOMB&&bPresentColors(f).length&&!bPresentColors(f).includes(f.cur))f.cur=bDrawColor(f);
     if(f.next!==B_BOMB&&bPresentColors(f).length&&!bPresentColors(f).includes(f.next))f.next=bDrawColor(f);
   }
-  function bPushRow(f,hostile){
-    f.rows.unshift(bRandomRow(f.stage,Math.random,f.stage.rocks?.08:0));f.shift^=1;f.slide=B_H;f.trace=null;
+  function bPushRow(f,hostile,rocks=0){
+    const row=bRandomRow(f.stage,Math.random,f.stage.rocks?.08:0);
+    const cells=Array.from({length:B_COLS},(_,i)=>i).filter(i=>row[i]!==B_ROCK);
+    for(let n=0;n<rocks&&cells.length;n++){const i=cells.splice(Math.floor(Math.random()*cells.length),1)[0];row[i]=B_ROCK;}
+    f.rows.unshift(row);f.shift^=1;f.slide=B_H;f.trace=null;
     while(f.rows.length>B_DEAD+3)f.rows.pop();
     if(hostile){f.shake=Math.max(f.shake,.6);sfx('low',.7);}else sfx('soft',.6);
     if(f.shot){bCheckLoss(f);return;}
@@ -10699,24 +10731,30 @@ var qrcode = function() {
     f.warned=danger;
   }
   function bEnd(w){
-    roundFinish();if(tournamentResult(w))return;
+    if(BB.phase!=='playing'||lessonClosed)return;
+    if(lessonPhase(lessonStart,Date.now())==='close'){lessonTick();return;}
     BB.phase='over';BB.result=w;
     BB.fields.forEach(f=>{f.shot=null;f.pid=null;f.trace=null;});
+    bClock();roundFinish();if(tournamentResult(w))return;
+    if(w===-1){
+      streak={side:-1,id:null,count:0};bNote(0,'neutral','무승부!');bNote(1,'neutral','무승부!');
+      const token=BB.token;setTimeout(()=>{if(BB.on&&BB.phase==='over'&&BB.token===token)bOverlay('무승부!', '두 선수의 점수가 같아요.',[button('다시 겨루기','primary',()=>bNewMatch()),button('← 모음집','',()=>{leaveBubble();$('menuScreen').hidden=false;playBgm('menu',{gain:.8});})]);},1100);return;
+    }
     const loser=BB.fields[1-w];
-    loser.rows.forEach((row,r)=>row.forEach((v,c)=>{if(v){loser.falls.push({x:bX(loser,r,c),y:bY(r),v,vx:(Math.random()-.5)*260,vy:-120-Math.random()*220,rot:0});row[c]=0;}}));
+    if(!BB.verdict)loser.rows.forEach((row,r)=>row.forEach((v,c)=>{if(v){loser.falls.push({x:bX(loser,r,c),y:bY(r),v,vx:(Math.random()-.5)*260,vy:-120-Math.random()*220,rot:0});row[c]=0;}}));
     const repeat=streak.side===w&&streak.id===choices[w];
     streak={side:w,id:choices[w],count:repeat?streak.count+1:1};
     hofWin('bubble',w);
     bNote(w,'happy','이겼다!');bNote(1-w,'sad','아쉬워…');
     sfx('goal',1.1);sfx('boom',.9);cheer(1.1);victoryJingle();
     const title=streak.count>=2?`${gamePlayerName(w)} ${streak.count}연승!`:`${gamePlayerName(w)} 승리!`;
-    const detail=`${BB.fields[0].score} : ${BB.fields[1].score}점 · ${Math.ceil(BB.time)}초`;
+    const detail=BB.verdict?`시간 종료 · ${BB.verdict.scores.join(' : ')}점`:`${BB.fields[0].score} : ${BB.fields[1].score}점 · ${Math.ceil(BB.time)}초`;
     const next=button('다음 도전자 ▶','primary',()=>{leaveBubble();enterSelection();});
     const again=button('↻ 바로 재대결','',()=>{bNewMatch();});
     const home=button('← 모음집','',()=>{streak={side:-1,id:null,count:0};leaveBubble();$('menuScreen').hidden=false;playBgm('menu',{gain:.8});});
     // Both children are mid-swing when a match ends; hold the buttons off so a stray lift doesn't skip it.
     [next,again,home].forEach(b=>{b.disabled=true;setTimeout(()=>{b.disabled=false;},1900);});
-    setTimeout(()=>{if(BB.on&&BB.phase==='over')bOverlay(title,detail,[next,again,home]);},1100);
+    const token=BB.token;setTimeout(()=>{if(BB.on&&BB.phase==='over'&&BB.token===token)bOverlay(title,detail,[next,again,home]);},1100);
   }
   function bOverlay(title,detail,actions){
     $('bOverlay').hidden=false;$('bOverlayTitle').textContent=title;$('bOverlayDetail').textContent=detail;
@@ -10724,11 +10762,11 @@ var qrcode = function() {
   }
   function bOpenMenu(){
     if(BB.phase==='over'||BB.phase==='paused'||!BB.on)return;
-    BB.resume=BB.phase;BB.phase='paused';BB.fields.forEach(f=>{f.pid=null;});
+    BB.resume=BB.phase;BB.pauseAt=performance.now();BB.phase='paused';bClock();BB.fields.forEach(f=>{f.pid=null;});
     const label=()=>soundMode==='all'?'♪ 소리 전체':soundMode==='sfx'?'♪ 효과음만':'소리 끔';
     const sound=button(label(),'',()=>{cycleSound();sound.textContent=label();});
     bOverlay('잠깐 쉬는 중','',[
-      button('▶ 계속','primary',()=>{$('bOverlay').hidden=true;BB.phase=BB.resume;}),
+      button('▶ 계속','primary',()=>{$('bOverlay').hidden=true;if(BB.resume==='playing')BB.deadline+=performance.now()-BB.pauseAt;BB.phase=BB.resume;bClock();}),
       button('↻ 다시 하기','',()=>{bNewMatch();}),
       button('인물 변경','',()=>{leaveBubble();enterSelection();}),
       button('← 모음집','',()=>{leaveBubble();$('menuScreen').hidden=false;playBgm('menu',{gain:.8});}),
@@ -10793,10 +10831,14 @@ var qrcode = function() {
       BB.countdown-=dt;
       const show=Math.ceil(BB.countdown/.8);
       if(show!==BB.cShown&&show>0){BB.cShown=show;sfx('menu',1,1+(3-show)*.16);}
-      if(BB.countdown<=0){roundBegin();BB.phase='playing';sfx('goal',.9);}
+      if(BB.countdown<=0){roundBegin();BB.phase='playing';BB.deadline=performance.now()+B_MATCH_MS;bClock();sfx('goal',.9);}
       return;
     }
     if(BB.phase!=='playing')return;
+    if(lessonClosed)return;
+    if(lessonPhase(lessonStart,Date.now())==='close'){lessonTick();return;}
+    BB.remaining=Math.max(0,BB.deadline-performance.now());bClock();
+    if(BB.remaining<=0){bTimeout();return;}
     BB.time+=dt;
     for(const f of BB.fields){bStepField(f,dt);if(BB.phase!=='playing')return;}
   }
@@ -10956,7 +10998,7 @@ var qrcode = function() {
       g.globalAlpha=.5+.5*frac;bText(g,String(n),B_W/2,B_LY*.62,190+70*frac,f.i===0?SIDE_COLOR[0]:SIDE_COLOR[1]);g.globalAlpha=1;
     }
     if(BB.phase==='over'&&BB.result!==null){
-      bText(g,BB.result===f.i?'승리!':'아쉬워!',B_W/2,B_LY*.3,110,BB.result===f.i?'#c0532f':'#5c5243');
+      bText(g,BB.result===-1?'무승부!':BB.result===f.i?'승리!':'아쉬워!',B_W/2,B_LY*.3,110,BB.result===f.i?'#c0532f':'#5c5243');
     }
     g.setTransform(1,0,0,1,0,0);
   }
@@ -15850,19 +15892,43 @@ return {enter,scene,key,openMenu,home,get on(){return on;},debug:{G,step,render,
     if(lessonNoise){try{lessonNoise.stop();lessonNoise.disconnect();lessonNoiseGain.disconnect();}catch{}}
     lessonNoise=null;lessonNoiseGain=null;
   }
+  // Pixel fuse renderer and original art from Teacher Tools dashboard blob 6b38c540.
+  const lessonFuseArt={"spark":{"frames":[[[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"#fffcb4",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,"#f64e12",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"#fffcb4",null,null,null,null],[null,null,null,null,null,null,"#f64e12",null,null,"#f64e12",null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,"#f64e12",null,null,null,null,"#f64e12",null,null,"#f66312",null,"#f64e12",null,null,null],["#f64e12",null,null,null,null,"#f66312",null,"#f66312",null,null,null,"#f66312",null,null,null,"#ede423",null,null,null,null],[null,null,null,null,null,"#f66312",null,null,"#f66312","#ede423","#f66312","#ede423","#f66312","#f66312",null,"#ede423",null,null,null,null],[null,null,null,null,null,null,"#f66312",null,"#f66312","#ede423",null,"#ede423","#f66312","#ede423","#f66312",null,"#f66312",null,null,null],[null,"#fffcb4",null,null,null,null,null,"#f66312","#f66312","#ede423","#ede423","#ede423","#ede423","#ede423","#ede423","#ede423",null,"#f66312","#f66312",null],[null,null,null,null,null,"#f64e12",null,"#ede423","#ede423","#f66312","#ede423","#ede423","#ede423",null,"#ede423",null,null,null,null,null],[null,null,null,null,null,null,"#f66312",null,null,"#ede423","#fffcb4","#ede423",null,"#ede423",null,null,null,null,null,null],[null,null,null,null,null,null,"#f66312","#f66312","#ede423","#ede423","#ede423","#ede423","#ede423",null,null,null,null,null,null,null],[null,null,null,null,null,"#f66312",null,null,"#f64e12","#f66312",null,"#ede423","#f66312",null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,"#f66312",null,null,"#fffcb4",null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,"#f66312",null,null,null,null,null,null,null],[null,null,null,"#fffcb4",null,null,null,null,null,null,"#f64e12",null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null]],[[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,"#fffcb4",null,null,null,null,"#fffcb4",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,"#f64e12",null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,"#f64e12",null,null,"#f64e12",null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,"#f64e12",null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,"#f64e12",null,null,"#f66312",null,null,null,null,null,"#f64e12",null,null,null],[null,null,null,null,null,null,"#f66312","#f64e12",null,null,"#f66312",null,"#f66312",null,null,null,"#f64e12",null,null,null],[null,null,null,null,"#fffcb4",null,"#f64e12","#ede423","#ede423",null,"#f66312",null,null,null,"#ede423","#f66312",null,null,null,null],[null,null,null,null,null,null,"#ede423","#f66312",null,"#f66312","#f66312",null,"#ede423","#fffcb4","#f66312",null,"#f66312","#f66312",null,null],[null,null,null,null,null,null,null,null,null,null,"#f66312","#f66312","#ede423","#ede423","#f66312","#ede423","#ede423",null,null,null],[null,null,null,null,null,null,null,"#f66312","#f66312","#f66312","#ede423","#ede423","#ede423",null,"#ede423","#f66312",null,null,null,null],[null,null,"#f64e12",null,null,"#f66312","#f66312",null,"#fffcb4",null,"#ede423","#fffcb4","#ede423","#ede423",null,null,null,null,null,null],[null,null,"#fffcb4",null,null,null,"#ede423","#f66312","#ede423","#ede423",null,"#ede423",null,"#ede423","#ede423",null,null,null,null,null],[null,null,null,null,null,"#f64e12",null,null,null,null,null,"#f66312",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,"#f64e12","#ede423","#ede423",null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,"#f66312","#f66312","#f66312","#f66312",null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,"#f64e12",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,"#fffcb4",null,null,null,null,null,null,null,null,null,null,null,null]],[[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,"#fffcb4",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,"#f64e12",null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,"#f64e12",null,"#f64e12","#f66312",null,null,"#fffcb4",null,null,null,null,null],[null,null,null,null,null,null,null,null,"#f64e12",null,"#f64e12","#f66312",null,"#f64e12",null,null,null,"#f66312",null,null],[null,null,null,null,null,null,null,null,"#f64e12","#f66312","#f66312",null,"#f66312",null,null,null,null,null,null,null],[null,null,null,null,null,null,"#f64e12","#ede423","#ede423","#f66312",null,null,null,"#ede423",null,null,"#f64e12",null,null,null],[null,null,null,null,null,"#f64e12",null,null,"#f66312","#ede423","#f66312","#ede423","#ede423","#f66312","#f66312",null,"#f64e12",null,null,null],[null,"#fffcb4",null,null,null,"#f64e12",null,"#f66312","#ede423",null,"#f66312","#ede423",null,"#ede423","#ede423","#f66312",null,null,null,null],[null,null,null,null,"#f66312",null,"#fffcb4","#ede423","#f66312","#ede423","#ede423","#ede423","#fffcb4","#ede423",null,null,"#ede423",null,null,null],[null,null,null,null,"#f66312","#f66312","#f66312","#f66312","#f66312",null,null,null,"#ede423",null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,"#f64e12","#ede423","#ede423","#ede423","#ede423",null,null,null,null,null,null,null],[null,null,null,null,null,"#f64e12",null,"#f64e12","#ede423",null,null,"#ede423",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,"#f66312",null,null,"#f66312",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,"#f66312",null,"#f66312","#f66312",null,"#ede423",null,null,null,null,null,null,null],[null,null,null,null,null,null,"#f66312",null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,"#fffcb4",null,null,null,null,null,null,null,null,null,null,null],[null,"#fffcb4",null,null,null,null,null,null,null,null,null,null,null,null,"#fffcb4",null,null,null,null,null]],[[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"#fffcb4",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,"#f64e12",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"#fffcb4",null,null,null,null],[null,null,null,null,null,null,"#f64e12",null,null,"#f64e12",null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,"#f64e12",null,null,null,null,"#f64e12",null,null,"#f66312",null,"#f64e12",null,null,null],["#f64e12",null,null,null,null,"#f66312",null,"#f66312",null,null,null,"#f66312",null,null,null,"#ede423",null,null,null,null],[null,null,null,null,null,"#f66312",null,null,"#f66312","#ede423","#f66312","#ede423","#f66312","#f66312",null,"#ede423",null,null,null,null],[null,null,null,null,null,null,"#f66312",null,"#f66312","#ede423",null,"#ede423","#f66312","#ede423","#f66312",null,"#f66312",null,null,null],[null,"#fffcb4",null,null,null,null,null,"#f66312","#f66312","#ede423","#ede423","#ede423","#ede423","#ede423","#ede423","#ede423",null,"#f66312","#f66312",null],[null,null,null,null,null,"#f64e12",null,"#ede423","#ede423","#f66312","#ede423","#ede423","#ede423",null,"#ede423",null,null,null,null,null],[null,null,null,null,null,null,"#f66312",null,null,"#ede423","#fffcb4","#ede423",null,"#ede423",null,null,null,null,null,null],[null,null,null,null,null,null,"#f66312","#f66312","#ede423","#ede423","#ede423","#ede423","#ede423",null,null,null,null,null,null,null],[null,null,null,null,null,"#f66312",null,null,"#f64e12","#f66312",null,"#ede423","#f66312",null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,"#f66312",null,null,"#fffcb4",null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,"#f66312",null,null,null,null,null,null,null],[null,null,null,"#fffcb4",null,null,null,null,null,null,"#f64e12",null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null]],[[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,"#fffcb4",null,null,null,null,"#fffcb4",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,"#f64e12",null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,"#f64e12",null,null,"#f64e12",null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,"#f64e12",null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,"#f64e12",null,null,"#f66312",null,null,null,null,null,"#f64e12",null,null,null],[null,null,null,null,null,null,"#f66312","#f64e12",null,null,"#f66312",null,"#f66312",null,null,null,"#f64e12",null,null,null],[null,null,null,null,"#fffcb4",null,"#f64e12","#ede423","#ede423",null,"#f66312",null,null,null,"#ede423","#f66312",null,null,null,null],[null,null,null,null,null,null,"#ede423","#f66312",null,"#f66312","#f66312",null,"#ede423","#fffcb4","#f66312",null,"#f66312","#f66312",null,null],[null,null,null,null,null,null,null,null,null,null,"#f66312","#f66312","#ede423","#ede423","#f66312","#ede423","#ede423",null,null,null],[null,null,null,null,null,null,null,"#f66312","#f66312","#f66312","#ede423","#ede423","#ede423",null,"#ede423","#f66312",null,null,null,null],[null,null,"#f64e12",null,null,"#f66312","#f66312",null,"#fffcb4",null,"#ede423","#fffcb4","#ede423","#ede423",null,null,null,null,null,null],[null,null,"#fffcb4",null,null,null,"#ede423","#f66312","#ede423","#ede423",null,"#ede423",null,"#ede423","#ede423",null,null,null,null,null],[null,null,null,null,null,"#f64e12",null,null,null,null,null,"#f66312",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,"#f64e12","#ede423","#ede423",null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,"#f66312","#f66312","#f66312","#f66312",null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,"#f64e12",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,"#fffcb4",null,null,null,null,null,null,null,null,null,null,null,null]],[[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,"#fffcb4",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,"#f64e12",null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,"#f64e12",null,"#f64e12","#f66312",null,null,"#fffcb4",null,null,null,null,null],[null,null,null,null,null,null,null,null,"#f64e12",null,"#f64e12","#f66312",null,"#f64e12",null,null,null,"#f66312",null,null],[null,null,null,null,null,null,null,null,"#f64e12","#f66312","#f66312",null,"#f66312",null,null,null,null,null,null,null],[null,null,null,null,null,null,"#f64e12","#ede423","#ede423","#f66312",null,null,null,"#ede423",null,null,"#f64e12",null,null,null],[null,null,null,null,null,"#f64e12",null,null,"#f66312","#ede423","#f66312","#ede423","#ede423","#f66312","#f66312",null,"#f64e12",null,null,null],[null,"#fffcb4",null,null,null,"#f64e12",null,"#f66312","#ede423",null,"#f66312","#ede423",null,"#ede423","#ede423","#f66312",null,null,null,null],[null,null,null,null,"#f66312",null,"#fffcb4","#ede423","#f66312","#ede423","#ede423","#ede423","#fffcb4","#ede423",null,null,"#ede423",null,null,null],[null,null,null,null,"#f66312","#f66312","#f66312","#f66312","#f66312",null,null,null,"#ede423",null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,"#f64e12","#ede423","#ede423","#ede423","#ede423",null,null,null,null,null,null,null],[null,null,null,null,null,"#f64e12",null,"#f64e12","#ede423",null,null,"#ede423",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,"#f66312",null,null,"#f66312",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,"#f66312",null,"#f66312","#f66312",null,"#ede423",null,null,null,null,null,null,null],[null,null,null,null,null,null,"#f66312",null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,"#fffcb4",null,null,null,null,null,null,null,null,null,null,null],[null,"#fffcb4",null,null,null,null,null,null,null,null,null,null,null,null,"#fffcb4",null,null,null,null,null]],[[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"#fffcb4",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,"#f64e12",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"#fffcb4",null,null,null,null],[null,null,null,null,null,null,"#f64e12",null,null,"#f64e12",null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,"#f64e12",null,null,null,null,"#f64e12",null,null,"#f66312",null,"#f64e12",null,null,null],["#f64e12",null,null,null,null,"#f66312",null,"#f66312",null,null,null,"#f66312",null,null,null,"#ede423",null,null,null,null],[null,null,null,null,null,"#f66312",null,null,"#f66312","#ede423","#f66312","#ede423","#f66312","#f66312",null,"#ede423",null,null,null,null],[null,null,null,null,null,null,"#f66312",null,"#f66312","#ede423",null,"#ede423","#f66312","#ede423","#f66312",null,"#f66312",null,null,null],[null,"#fffcb4",null,null,null,null,null,"#f66312","#f66312","#ede423","#ede423","#ede423","#ede423","#ede423","#ede423","#ede423",null,"#f66312","#f66312",null],[null,null,null,null,null,"#f64e12",null,"#ede423","#ede423","#f66312","#ede423","#ede423","#ede423",null,"#ede423",null,null,null,null,null],[null,null,null,null,null,null,"#f66312",null,null,"#ede423","#fffcb4","#ede423",null,"#ede423",null,null,null,null,null,null],[null,null,null,null,null,null,"#f66312","#f66312","#ede423","#ede423","#ede423","#ede423","#ede423",null,null,null,null,null,null,null],[null,null,null,null,null,"#f66312",null,null,"#f64e12","#f66312",null,"#ede423","#f66312",null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,"#f66312",null,null,"#fffcb4",null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,"#f66312",null,null,null,null,null,null,null],[null,null,null,"#fffcb4",null,null,null,null,null,null,"#f64e12",null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null]],[[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,"#fffcb4",null,null,null,null,"#fffcb4",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,"#f64e12",null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,"#f64e12",null,null,"#f64e12",null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,"#f64e12",null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,"#f64e12",null,null,"#f66312",null,null,null,null,null,"#f64e12",null,null,null],[null,null,null,null,null,null,"#f66312","#f64e12",null,null,"#f66312",null,"#f66312",null,null,null,"#f64e12",null,null,null],[null,null,null,null,"#fffcb4",null,"#f64e12","#ede423","#ede423",null,"#f66312",null,null,null,"#ede423","#f66312",null,null,null,null],[null,null,null,null,null,null,"#ede423","#f66312",null,"#f66312","#f66312",null,"#ede423","#fffcb4","#f66312",null,"#f66312","#f66312",null,null],[null,null,null,null,null,null,null,null,null,null,"#f66312","#f66312","#ede423","#ede423","#f66312","#ede423","#ede423",null,null,null],[null,null,null,null,null,null,null,"#f66312","#f66312","#f66312","#ede423","#ede423","#ede423",null,"#ede423","#f66312",null,null,null,null],[null,null,"#f64e12",null,null,"#f66312","#f66312",null,"#fffcb4",null,"#ede423","#fffcb4","#ede423","#ede423",null,null,null,null,null,null],[null,null,"#fffcb4",null,null,null,"#ede423","#f66312","#ede423","#ede423",null,"#ede423",null,"#ede423","#ede423",null,null,null,null,null],[null,null,null,null,null,"#f64e12",null,null,null,null,null,"#f66312",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,"#f64e12","#ede423","#ede423",null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,"#f66312","#f66312","#f66312","#f66312",null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,"#f64e12",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,"#fffcb4",null,null,null,null,null,null,null,null,null,null,null,null]],[[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,"#fffcb4",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,"#f64e12",null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,"#f64e12",null,"#f64e12","#f66312",null,null,"#fffcb4",null,null,null,null,null],[null,null,null,null,null,null,null,null,"#f64e12",null,"#f64e12","#f66312",null,"#f64e12",null,null,null,"#f66312",null,null],[null,null,null,null,null,null,null,null,"#f64e12","#f66312","#f66312",null,"#f66312",null,null,null,null,null,null,null],[null,null,null,null,null,null,"#f64e12","#ede423","#ede423","#f66312",null,null,null,"#ede423",null,null,"#f64e12",null,null,null],[null,null,null,null,null,"#f64e12",null,null,"#f66312","#ede423","#f66312","#ede423","#ede423","#f66312","#f66312",null,"#f64e12",null,null,null],[null,"#fffcb4",null,null,null,"#f64e12",null,"#f66312","#ede423",null,"#f66312","#ede423",null,"#ede423","#ede423","#f66312",null,null,null,null],[null,null,null,null,"#f66312",null,"#fffcb4","#ede423","#f66312","#ede423","#ede423","#ede423","#fffcb4","#ede423",null,null,"#ede423",null,null,null],[null,null,null,null,"#f66312","#f66312","#f66312","#f66312","#f66312",null,null,null,"#ede423",null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,"#f64e12","#ede423","#ede423","#ede423","#ede423",null,null,null,null,null,null,null],[null,null,null,null,null,"#f64e12",null,"#f64e12","#ede423",null,null,"#ede423",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,"#f66312",null,null,"#f66312",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,"#f66312",null,"#f66312","#f66312",null,"#ede423",null,null,null,null,null,null,null],[null,null,null,null,null,null,"#f66312",null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,"#fffcb4",null,null,null,null,null,null,null,null,null,null,null],[null,"#fffcb4",null,null,null,null,null,null,null,null,null,null,null,null,"#fffcb4",null,null,null,null,null]]]},"particles":{"ember":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAjUlEQVR4nGNgGAV4ga+57n8LIfn/ZGv+v8fz/zxRdtINgWn+36X1/3+XFl5DWLBp3tQqw8Bw7iEDQ0QAAwMDA0MiwwYGhu67DAxC8v9PvHvIiKyeCd2A17c/McyP3AfhrNjAwLBiA8PZLc9J8gGDhZD8/3mi7P//d2n9P2MnSF44wAwhSzOyIWRrHkEAAEzMQWwxWN3RAAAAAElFTkSuQmCC","cloud_puff":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAxUlEQVR4nGNgGPKAEZ+kr1vofxj76fPXDOcuH8CrHkMzMmjpm/ffSNfhP2GdaJq//EBgbIYw4XP2159EOxi/zfhcwYKsedPOVQRt1dfTY2BIjGNgmM/w/9zlA4yMpGjef+QsnH3x0iWGdfMXYYYBMZqRARMDAySOW/vn49SISzMDAzQMzl0+wMgwn+E/AwMDQ0FWIormi5cuMTAwQP2O5vxzlw8wwgMR2RBksG7+IggjMQ5FDJYqMZImekKBKUQWJylJEwIAzkekIWCno+oAAAAASUVORK5CYII="}};
+  function lessonCreateFuse(canvas){
+    const ctx=canvas.getContext('2d');let W=0,H=0,last=0,embers=[];
+    const img={};for(const [k,v] of Object.entries(lessonFuseArt.particles)){const i=new Image();i.src=v;img[k]=i}
+    const sparks=(lessonFuseArt.spark.frames||[]).map(fr=>{const c=document.createElement('canvas');c.width=20;c.height=20;const g=c.getContext('2d');fr.forEach((r,y)=>r.forEach((col,x)=>{if(col){g.fillStyle=col;g.fillRect(x,y,1,1)}}));return c});
+    const rnd=(a,b)=>a+Math.random()*(b-a);
+ const IN=3,TH=3;
+ const L=()=>2*((W-2*IN-TH)+(H-2*IN-TH));
+ function at(d){const w=W-2*IN-TH,h=H-2*IN-TH;d=Math.max(0,Math.min(L(),d));if(d<=w)return[IN+d,IN,0];d-=w;if(d<=h)return[IN+w,IN+d,1];d-=h;if(d<=w)return[IN+w-d,IN+h,2];d-=w;return[IN,IN+h-d,3]}
+ const ROPE=['#6e4524','#a8703a','#d29a58','#a8703a'];
+    return {draw(remaining,now){
+      const S=Math.max(2,Math.round(innerHeight/360)),w=Math.ceil(innerWidth/S),h=Math.ceil(innerHeight/S);
+      if(W!==w||H!==h){W=w;H=h;canvas.width=W;canvas.height=H;ctx.imageSmoothingEnabled=false;embers=[];}
+      const dt=last?Math.min(.05,(now-last)/1000):0;last=now;ctx.clearRect(0,0,W,H);
+      const fuse={dur:30},t=Math.max(0,Math.min(30,30-remaining/1000)),len=L(),prog=Math.min(1,t/fuse.dur),head=prog*len;
+   for(let d=0;d<len;d++){const [x,y,side]=at(d);for(let k=0;k<TH;k++){const px=side%2===0?x:x+k,py=side%2===0?y+k:y;
+     if(d>=head){ctx.fillStyle=ROPE[(d+k)%4];ctx.fillRect(px,py,1,1);continue}
+     const age=t-d/len*fuse.dur;if(age>9)continue;const n=(d*7+k*13)%11,hot=n<2&&age<2.5;ctx.globalAlpha=Math.max(0,1-age/9)*(hot?1:.85);ctx.fillStyle=hot?(n?'#f66312':'#ede423'):(n<5?'#4a3d35':'#2c2725');ctx.fillRect(px,py,1,1);ctx.globalAlpha=1}}
+   if(prog<1){const [hx,hy]=at(head),late=fuse.dur-t<10,big=late?1.35:1,sp=sparks[Math.floor(now/1000*(late?18:11))%Math.max(1,sparks.length)];
+    if(sp){const sz=Math.round(20*big);ctx.drawImage(sp,Math.round(hx+1-sz/2),Math.round(hy+1-sz/2),sz,sz)}
+    if(Math.random()<(late?.9:.45))embers.push({k:'ember',x:hx,y:hy,vx:rnd(-30,30),vy:rnd(-40,-8),life:rnd(.4,.9),a:0});
+    if(Math.random()<(late?.25:.12))embers.push({k:'cloud_puff',x:hx,y:hy,vx:rnd(-4,4),vy:rnd(-12,-5),life:rnd(1.2,2),a:0,smoke:1});
+    }
+   
+   for(const p of embers){p.a+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;if(!p.smoke)p.vy+=60*dt;const f=1-p.a/p.life;if(f<=0)continue;const im=img[p.k];if(!im||!im.complete||!im.naturalWidth)continue;ctx.globalAlpha=p.smoke?f*.45:f;const s=p.smoke?Math.round(8+p.a*5):8;ctx.drawImage(im,Math.round(p.x-s/2),Math.round(p.y-s/2),s,s);ctx.globalAlpha=1}
+   embers=embers.filter(p=>p.a<p.life);
+    }};
+  }
   function lessonShow(){
     if(lessonOverlay)return;
     const e=document.createElement('div');
     e.setAttribute('aria-hidden','true');
     e.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:2147483640;box-shadow:inset 0 0 32px 8px rgba(220,35,35,.13);';
-    const panel=document.createElement('div');
-    panel.style.cssText='position:absolute;top:12px;right:12px;width:clamp(105px,12vw,170px);padding:6px 10px;border-radius:12px;background:#242020dd;color:white;text-align:center;font:600 14px system-ui;';
-    const icon=document.createElement('div');icon.textContent='🧨';icon.style.fontSize='26px';
-    const track=document.createElement('div');track.style.cssText='height:5px;background:#695449;border-radius:5px;overflow:hidden;margin:3px 0 5px;';
-    lessonFuse=document.createElement('div');lessonFuse.style.cssText='height:100%;width:100%;background:linear-gradient(90deg,#e4ac65,#ff5b32);box-shadow:3px 0 6px #ff9432;';
-    track.append(lessonFuse);
-    lessonCount=document.createElement('div');
-    panel.append(icon,track,lessonCount);e.append(panel);document.body.append(e);lessonOverlay=e;
+    const cv=document.createElement('canvas');
+    cv.style.cssText='position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;pointer-events:none;';
+    e.append(cv);document.body.append(e);lessonOverlay=e;lessonFuse=lessonCreateFuse(cv);
   }
   function lessonClear(){
     const wasWarning=lessonWarning;lessonWarning=false;lessonPulseAt=0;lessonFlashUntil=0;lessonStopHiss();
@@ -15892,7 +15958,7 @@ return {enter,scene,key,openMenu,home,get on(){return on;},debug:{G,step,render,
     if(!lessonEffects){if(lessonWarning)lessonClear();return;}
     lessonWarning=true;lessonShow();if(lessonAudioAllowed){lessonDuck();lessonHiss();}else{lessonStopHiss();applySoundMode();}
     const remaining=Math.max(0,lessonStart-now-30000);
-    lessonFuse.style.width=(remaining/300)+'%';lessonCount.textContent='종료까지 '+Math.ceil(remaining/1000)+'초';
+    lessonFuse.draw(remaining,performance.now());
     const interval=450+remaining/30000*1050;
     if(now>=lessonPulseAt){lessonPulseAt=now+interval;lessonFlashUntil=now+140;lessonTone();}
     const steady=matchMedia('(prefers-reduced-motion: reduce)').matches;
