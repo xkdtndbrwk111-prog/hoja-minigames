@@ -2,17 +2,36 @@ name: Bubble attack flight verification
 on:
   push:
     branches: [feature/bubble-attack-flight]
+    paths: ['.github/workflows/bubble-attack-flight.yml']
 permissions:
-  contents: read
+  contents: write
 jobs:
   verify:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
       - name: Verify syntax, game rules and build
         run: |
           node --check src/js/bubble.js
           node --test tests/*.test.js
           python3 build.py
           python3 build.py --check
+      - name: Install browser test driver
+        run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install --prefix /tmp/hoja-flight --no-audit --no-fund --no-package-lock playwright@1.55.0
+      - name: Check attack rendering and touch transparency
+        run: NODE_PATH=/tmp/hoja-flight/node_modules node tests/bubble-attack-flight-browser.cjs
+      - name: Publish verified build
+        run: |
+          set -euo pipefail
+          git add -- index.html
+          test "$(git diff --cached --name-only)" = index.html
+          git config user.name "hoja-build"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "build: publish Bubble attack flight and danger portraits"
+          git fetch origin main
+          git merge-base --is-ancestor origin/main HEAD
+          git push origin HEAD:refs/heads/feature/bubble-attack-flight
+          git push origin HEAD:refs/heads/main
