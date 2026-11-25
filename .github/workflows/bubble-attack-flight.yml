@@ -1,0 +1,18 @@
+name: Bubble attack flight verification
+on:
+  push:
+    branches: [feature/bubble-attack-flight]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Verify syntax, game rules and build
+        run: |
+          node --check src/js/bubble.js
+          node --test tests/*.test.js
+          python3 build.py
+          python3 build.py --check
