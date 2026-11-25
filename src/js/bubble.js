@@ -243,7 +243,7 @@
         }else bFloat(f,B_W/2,bY(Math.max(0,r-1)),'방어!',SIDE_COLOR[f.i],48,.9);
       }else if(dropped>=2){bFloat(f,bX(f,r,c),bY(r)-50,dropped+'개 떨어짐!',SIDE_COLOR[f.i],42,.9);}
       if(bLowest(f)<0){
-        f.score+=300;BB.fields[1-f.i].pending+=2;bFloat(f,B_W/2,B_LY*.45,'올 클리어!','#c0532f',72,1.5);sfx('goal',1);cheer(.8);bNote(f.i,'happy','싹 비웠다!');
+        f.score+=300;const rival=BB.fields[1-f.i];while(rival.pendingRocks.length<rival.pending)rival.pendingRocks.push(0);rival.pending+=2;rival.pendingRocks.push(0,0);bFloat(f,B_W/2,B_LY*.45,'올 클리어!','#c0532f',72,1.5);sfx('goal',1);cheer(.8);bNote(f.i,'happy','싹 비웠다!');
         const rng=Math.random;for(let k=0;k<3;k++)f.rows.unshift(bRandomRow(f.stage,rng,0)),f.shift^=1;
       }
     }else f.combo=0;
