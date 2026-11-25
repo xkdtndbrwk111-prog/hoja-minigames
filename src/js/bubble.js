@@ -1,6 +1,6 @@
   /* ---------- Puzzle Bubble: rules ---------- */
   const B_STAGES=[
-    {id:'std',name:'기본 4색',desc:'같은 얼굴 3개를 붙이면 터져요',colors:4,push:22,rows:4},
+    {id:'std',name:'기본모드',desc:'같은 얼굴 3개를 붙이면 터져요',colors:4,push:22,rows:4},
     {id:'fast',name:'빠른 천장',desc:'줄이 금방금방 내려와요',colors:4,push:12,rows:4},
     {id:'rock',name:'바위 판',desc:'바위는 안 터져요 · 붙은 곳을 끊으면 떨어져요',colors:4,push:22,rows:4,rocks:true},
     {id:'bomb',name:'폭탄 판',desc:'여섯 번째마다 폭탄! 닿은 곳 주변이 터져요',colors:5,push:22,rows:4,bomb:6},
