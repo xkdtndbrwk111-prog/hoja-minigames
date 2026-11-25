@@ -147,6 +147,8 @@
     const valid=[];
     for(const t of items){
       if(t.cancelled){if(t.cancelled.refund&&t.charge)queueRefund(t.charge,t.classId,'중단된 토너먼트 취소 복구');tmClear(t);continue;}
+      // Retired Bubble stage: keep saved brackets and resume on standard four colors.
+      if(t.game==='bubble'&&t.stage==='easy')t.stage='std';
       if(!['normal','world'].includes(t.mode)||!tmGame(t.game)?.stages.some(s=>s.id===t.stage)||!Array.isArray(t.players)||!Array.isArray(t.rounds)||(!t.rounds.length&&!t.groups?.length))continue;
       if(t.version===1){t.version=2;t.format='single';t.groups=[];t.faces={};t.legacy=true;tmCheckpoint(t);}
       valid.push(t);
