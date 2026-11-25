@@ -135,6 +135,7 @@
       if(W!==w||H!==h){W=w;H=h;canvas.width=W;canvas.height=H;ctx.imageSmoothingEnabled=false;embers=[];}
       const dt=last?Math.min(.05,(now-last)/1000):0;last=now;ctx.clearRect(0,0,W,H);
       const fuse={dur:30},t=Math.max(0,Math.min(30,30-remaining/1000)),len=L(),prog=Math.min(1,t/fuse.dur),head=prog*len;
+   for(let d=0;d<len;d++){const [x,y,side]=at(d);for(let k=0;k<TH;k++){const px=side%2===0?x:x+k,py=side%2===0?y+k:y;
      if(d>=head){ctx.fillStyle=ROPE[(d+k)%4];ctx.fillRect(px,py,1,1);continue}
      const age=t-d/len*fuse.dur;if(age>9)continue;const n=(d*7+k*13)%11,hot=n<2&&age<2.5;ctx.globalAlpha=Math.max(0,1-age/9)*(hot?1:.85);ctx.fillStyle=hot?(n?'#f66312':'#ede423'):(n<5?'#4a3d35':'#2c2725');ctx.fillRect(px,py,1,1);ctx.globalAlpha=1}}
    if(prog<1){const [hx,hy]=at(head),late=fuse.dur-t<10,big=late?1.35:1,sp=sparks[Math.floor(now/1000*(late?18:11))%Math.max(1,sparks.length)];
