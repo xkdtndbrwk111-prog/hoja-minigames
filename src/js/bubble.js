@@ -1,6 +1,5 @@
   /* ---------- Puzzle Bubble: rules ---------- */
   const B_STAGES=[
-    {id:'easy',name:'쉬움 3색',desc:'색이 적고 줄도 천천히 내려와요',colors:3,push:28,rows:4},
     {id:'std',name:'기본 4색',desc:'같은 얼굴 3개를 붙이면 터져요',colors:4,push:22,rows:4},
     {id:'fast',name:'빠른 천장',desc:'줄이 금방금방 내려와요',colors:4,push:12,rows:4},
     {id:'rock',name:'바위 판',desc:'바위는 안 터져요 · 붙은 곳을 끊으면 떨어져요',colors:4,push:22,rows:4,rocks:true},
@@ -167,7 +166,7 @@
   }
   function bNewMatch(){
     BB.token++;
-    const st=B_STAGES.find(s=>s.id===bubbleStage),seed=Math.floor(Math.random()*1e9);
+    const st=B_STAGES.find(s=>s.id===bubbleStage)||B_STAGES[0],seed=Math.floor(Math.random()*1e9);
     BB.stage=st;BB.fields=[bMakeField(0,seed,st),bMakeField(1,seed,st)];
     BB.fields.forEach(f=>{f.cur=bDrawColor(f);f.next=bDrawColor(f);});
     BB.result=null;BB.time=0;BB.deadline=0;BB.remaining=B_MATCH_MS;BB.clockShown=null;BB.extra=false;BB.verdict=null;BB.pauseAt=0;BB.phase='countdown';BB.countdown=2.4;BB.cShown=0;BB.acc=0;
